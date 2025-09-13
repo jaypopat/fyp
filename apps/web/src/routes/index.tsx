@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Building2, Shield, ArrowRight } from "lucide-react";
+import { ArrowRight, Building2, Shield } from "lucide-react";
 
 export const Route = createFileRoute("/")({
 	component: HomeComponent,

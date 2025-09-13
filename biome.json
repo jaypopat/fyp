@@ -46,13 +46,6 @@
 		"enabled": true,
 		"indentStyle": "tab"
 	},
-	"assist": {
-		"actions": {
-			"source": {
-				"organizeImports": "off"
-			}
-		}
-	},
 	"linter": {
 		"enabled": true,
 		"rules": {
