@@ -4,7 +4,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { source } from "@/lib/source";
 import type { PageTree } from "fumadocs-core/server";
 import { useMemo } from "react";
-import { docs } from "../../../source.generated";
+import { docs } from "../../source.generated";
 import {
 	DocsBody,
 	DocsDescription,
@@ -15,13 +15,13 @@ import defaultMdxComponents from "fumadocs-ui/mdx";
 import { createClientLoader } from "fumadocs-mdx/runtime/vite";
 import { baseOptions } from "@/lib/layout.shared";
 
-export const Route = createFileRoute("/docs/$")({
-	component: Page,
+export const Route = createFileRoute("/$")({
 	loader: async ({ params }) => {
 		const data = await loader({ data: params._splat?.split("/") ?? [] });
 		await clientLoader.preload(data.path);
 		return data;
 	},
+	component: Page,
 });
 
 const loader = createServerFn({

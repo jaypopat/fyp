@@ -36,7 +36,10 @@
 			"!**/.wrangler",
 			"!**/.alchemy",
 			"!**/wrangler.jsonc",
-			"!**/.source"
+			"!**/.source",
+			"!**/.output",
+			"!**/.tanstack",
+			"!**/.nitro"
 		]
 	},
 	"formatter": {
