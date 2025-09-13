@@ -9,8 +9,8 @@ import Layout from "../layouts/Layout.astro";
       <!-- Header Bar -->
       <section class="header-bar">
         <div class="header-item">
-          <span class="header-label">Project</span>
-          <span class="header-value">Final Year Project</span>
+          <span class="header-label">Final Year Project</span>
+          <img class="header-value"src="/nuig.svg" alt="Project Logo" />
         </div>
         <div class="header-item">
           <span class="header-label">Year</span>
@@ -183,6 +183,12 @@ import Layout from "../layouts/Layout.astro";
     font-weight: 700;
     font-size: 0.75rem;
     white-space: nowrap;
+  }
+
+  .header-item img {
+    max-height: 30px;
+    width: auto;
+    object-fit: contain;
   }
   .hero {
     border: 4px solid #000;
