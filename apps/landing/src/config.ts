@@ -7,9 +7,9 @@ export const config = {
 	university: "University of Galway",
 	year: "2025",
 	links: {
-		docs: "https://docs.domain.com",
-		github: "https://github.com/jaypopat/zk-fair",
-		paper: "/paper.pdf",
-		demo: "https://app.domain.com",
+		docs: "https://docs.fyp.jaypopat.me",
+		github: "https://github.com/jaypopat/fyp",
+		paper: "/fyp-report.pdf",
+		demo: "https://app.fyp.jaypopat.me",
 	},
 };
