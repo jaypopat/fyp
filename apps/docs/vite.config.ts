@@ -20,7 +20,7 @@ export default defineConfig({
 			prerender: {
 				enabled: true,
 			},
-			target: "static",
+			target: "vercel",
 		}),
 		react(),
 	],
