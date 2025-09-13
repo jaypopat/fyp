@@ -1,0 +1,6 @@
+[package]
+name = "zk_circuit"
+type = "bin"
+authors = [""]
+
+[dependencies]
