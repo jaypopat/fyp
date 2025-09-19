@@ -16,7 +16,8 @@
 		"@zkfair/zk-circuits": "workspace:*"
 	},
 	"exports": {
-		"./verifier-abi": "./artifacts/contracts/Verifier.sol/IVerifier.json"
+		"./verifier-abi": "./artifacts/contracts/Verifier.sol/Counter.json",
+		"./zkfair-abi": "./artifacts/contracts/Counter.sol/IVerifier.json"
 	},
 	"scripts": {
 		"generate-verifier": "bb write_solidity_verifier -k ../zk-circuits/target/vk -o ./contracts/Verifier.sol",

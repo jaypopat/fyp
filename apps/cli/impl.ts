@@ -1,5 +1,4 @@
 import { SDK } from "@zkfair/sdk";
-import fs from "fs";
 import path from "path";
 import { type TypeOf } from "@drizzle-team/brocli";
 
@@ -19,16 +18,18 @@ export type VerifyProofOpts = TypeOf<typeof verifyProofOptions>;
 export type CommitDatasetOpts = TypeOf<typeof commitDatasetOptions>;
 export type CommitWeightsOpts = TypeOf<typeof commitWeightsOptions>;
 
-const sdk = new SDK();
+const zkFairSDK = new SDK({ rpcUrl: process.env.RPC_URL || "", privateKey: process.env.PRIVATE_KEY || "" });
 
-export function listModels() {
+export async function listModels() {
   console.log("Fetching all registered models...");
-  // TODO: call SDK/contract
+  const models = await zkFairSDK.model.list();
+  return models;
 }
 
 export function getModel(options: GetModelOpts) {
   console.log("Fetching model", options.modelHash);
-  // TODO: contract lookup
+  const model = zkFairSDK.model.get(options.modelHash);
+  return model;
 }
 
 export function proveModelBias(opts: ProveModelBiasOpts) {
@@ -61,7 +62,7 @@ export function commitDataset(opts: CommitDatasetOpts) {
 
   const salts = {}; // placeholder: generate random salt per row
   const output = path.resolve(opts.out);
-  fs.writeFileSync(output, JSON.stringify(salts, null, 2));
+  Bun.write(output, JSON.stringify(salts, null, 2));
 
   console.log(`✅ Dataset committed. Salts written to ${output}`);
 }
@@ -71,7 +72,7 @@ export function commitWeights(opts: CommitWeightsOpts) {
 
   const salts = {}; // placeholder: random salt for weight vals
   const output = path.resolve(opts.out);
-  fs.writeFileSync(output, JSON.stringify(salts, null, 2));
+  Bun.write(output, JSON.stringify(salts, null, 2));
 
   console.log(`✅ Weights committed. Salts written to ${output}`);
 }

@@ -1,7 +1,6 @@
 import { command } from "@drizzle-team/brocli";
 import * as commands from "../impl";
 import * as options from "../cli-args";
-import { type TypeOf } from "@drizzle-team/brocli";
 
 export const proveModelBias = command({
   name: "prove-model-bias",
