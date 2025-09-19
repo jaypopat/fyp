@@ -6,6 +6,21 @@
 			"dependsOn": ["^build"],
 			"cache": true
 		},
+		"lander#build": {
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"],
+			"cache": true
+		},
+		"web#build": {
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"],
+			"cache": true
+		},
+		"docs#build": {
+			"dependsOn": ["^build"],
+			"outputs": [".output/**"],
+			"cache": true
+		},
 		"dev": {
 			"dependsOn": ["^build"],
 			"cache": false,
