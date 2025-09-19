@@ -18,3 +18,7 @@
 
 # Hardhat coverage reports
 /coverage
+
+/out
+
+/lib
