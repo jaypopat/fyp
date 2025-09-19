@@ -1,0 +1,25 @@
+import { command } from "@drizzle-team/brocli";
+import * as commands from "../impl";
+import * as options from "../cli-args";
+import { type TypeOf } from "@drizzle-team/brocli";
+
+export const proveModelBias = command({
+  name: "prove-model-bias",
+  desc: "Register model, generate proof of bias, and submit it",
+  options: options.proveModelBiasOptions,
+  handler: (opts) => commands.proveModelBias(opts),
+});
+
+export const getProofStatus = command({
+  name: "status",
+  desc: "Check proof status for a model file",
+  options: options.getProofStatusOptions,
+  handler: (opts) => commands.getProofStatus(opts),
+});
+
+export const verifyProof = command({
+  name: "verify",
+  desc: "Verify proof locally or onchain",
+  options: options.verifyProofOptions,
+  handler: (opts) => commands.verifyProof(opts)
+});

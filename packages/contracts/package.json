@@ -1,5 +1,5 @@
 {
-	"name": "contracts",
+	"name": "@zkfair/contracts",
 	"version": "1.0.0",
 	"type": "module",
 	"devDependencies": {
@@ -10,5 +10,17 @@
 		"hardhat": "^3.0.6",
 		"typescript": "~5.8.0",
 		"viem": "^2.37.5"
+	},
+	"dependencies": {
+		"@openzeppelin/contracts": "^5.4.0",
+		"@zkfair/zk-circuits": "workspace:*"
+	},
+	"exports": {
+		"./verifier-abi": "./artifacts/contracts/Verifier.sol/IVerifier.json"
+	},
+	"scripts": {
+		"generate-verifier": "bb write_solidity_verifier -k ../zk-circuits/target/vk -o ./contracts/Verifier.sol",
+		"build": "bun run generate-verifier && npx hardhat compile",
+		"dev": "bun run build"
 	}
 }

@@ -1,1 +1,1 @@
-export class FairnessProver {}
+export class SDK { }
