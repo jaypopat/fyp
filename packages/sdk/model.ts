@@ -3,11 +3,11 @@ import { ContractClient } from "./client";
 export class ModelAPI {
   constructor(private contracts: ContractClient) { }
 
-  async get(modelHash: string) {
-    return this.contracts.readModel(modelHash);
+  async get(modelId: bigint) {
+    return await this.contracts.getModel(modelId);
   }
 
   async list() {
-    return this.contracts.getAllModels();
+    return await this.contracts.getModels();
   }
 }

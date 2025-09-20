@@ -14,11 +14,9 @@
 		"build": "bun run generate-verifier && forge build && bunx wagmi generate",
 		"test": "forge test",
 		"clean": "forge clean",
-		"dev": "bun run build && forge test --watch"
+		"dev": "bun run build && forge test"
 	},
 	"exports": {
-		"./counter-abi": "./out/Counter.sol/Counter.json",
-		"./verifier-abi": "./out/Verifier.sol/IVerifier.json",
 		"./abi": "./src/generated.ts"
 	}
 }

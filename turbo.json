@@ -21,6 +21,15 @@
 			"outputs": [".output/**"],
 			"cache": true
 		},
+		"@zkfair/zk-circuits#build": {
+			"outputs": ["target/**"],
+			"cache": true
+		},
+		"@zkfair/contracts#build": {
+			"dependsOn": ["@zkfair/zk-circuits#build"],
+			"outputs": ["src/Verifier.sol"],
+			"cache": true
+		},
 		"dev": {
 			"dependsOn": ["^build"],
 			"cache": false,

@@ -7,7 +7,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { ZkFairOptions } from "./types";
-import { counterAbi, iVerifierAbi } from "@zkfair/contracts/abi";
+import { counterAbi, iVerifierAbi, zkFairAbi } from "@zkfair/contracts/abi";
 import { mainnet } from "viem/chains";
 
 export class ContractClient {
@@ -85,6 +85,22 @@ export class ContractClient {
   }
 
   // -----------------------------
-  // Model read methods (from main contract)
+  //  methods (from main contract)
   // -----------------------------
+  async getModels() {
+    return this.publicClient.readContract({
+      address: this.contractAddress,
+      abi: zkFairAbi,
+      functionName: "getAllModels",
+    });
+
+  }
+  async getModel(modelId: bigint) {
+    return this.publicClient.readContract({
+      address: this.contractAddress,
+      abi: zkFairAbi,
+      functionName: "getModel",
+      args: [modelId],
+    });
+  }
 }

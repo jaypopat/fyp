@@ -327,3 +327,324 @@ export const iVerifierAbi = [
     stateMutability: 'view',
   },
 ] as const
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Ownable
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const ownableAbi = [
+  {
+    type: 'function',
+    inputs: [],
+    name: 'owner',
+    outputs: [{ name: '', internalType: 'address', type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'renounceOwnership',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: 'newOwner', internalType: 'address', type: 'address' }],
+    name: 'transferOwnership',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      {
+        name: 'previousOwner',
+        internalType: 'address',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'newOwner',
+        internalType: 'address',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+    name: 'OwnershipTransferred',
+  },
+  {
+    type: 'error',
+    inputs: [{ name: 'owner', internalType: 'address', type: 'address' }],
+    name: 'OwnableInvalidOwner',
+  },
+  {
+    type: 'error',
+    inputs: [{ name: 'account', internalType: 'address', type: 'address' }],
+    name: 'OwnableUnauthorizedAccount',
+  },
+] as const
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ZKFair
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const zkFairAbi = [
+  {
+    type: 'constructor',
+    inputs: [
+      {
+        name: '_verifier',
+        internalType: 'contract IVerifier',
+        type: 'address',
+      },
+    ],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'getAllModels',
+    outputs: [
+      {
+        name: 'models',
+        internalType: 'struct ZKFair.Model[]',
+        type: 'tuple[]',
+        components: [
+          { name: 'name', internalType: 'string', type: 'string' },
+          { name: 'author', internalType: 'address', type: 'address' },
+          { name: 'description', internalType: 'string', type: 'string' },
+          {
+            name: 'datasetMerkleRoot',
+            internalType: 'bytes32',
+            type: 'bytes32',
+          },
+          { name: 'weightsHash', internalType: 'bytes32', type: 'bytes32' },
+          {
+            name: 'status',
+            internalType: 'enum ZKFair.ModelStatus',
+            type: 'uint8',
+          },
+          {
+            name: 'registrationTimestamp',
+            internalType: 'uint256',
+            type: 'uint256',
+          },
+          {
+            name: 'verificationTimestamp',
+            internalType: 'uint256',
+            type: 'uint256',
+          },
+          { name: 'proofHash', internalType: 'bytes32', type: 'bytes32' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: 'modelId', internalType: 'uint256', type: 'uint256' }],
+    name: 'getModel',
+    outputs: [
+      {
+        name: 'model',
+        internalType: 'struct ZKFair.Model',
+        type: 'tuple',
+        components: [
+          { name: 'name', internalType: 'string', type: 'string' },
+          { name: 'author', internalType: 'address', type: 'address' },
+          { name: 'description', internalType: 'string', type: 'string' },
+          {
+            name: 'datasetMerkleRoot',
+            internalType: 'bytes32',
+            type: 'bytes32',
+          },
+          { name: 'weightsHash', internalType: 'bytes32', type: 'bytes32' },
+          {
+            name: 'status',
+            internalType: 'enum ZKFair.ModelStatus',
+            type: 'uint8',
+          },
+          {
+            name: 'registrationTimestamp',
+            internalType: 'uint256',
+            type: 'uint256',
+          },
+          {
+            name: 'verificationTimestamp',
+            internalType: 'uint256',
+            type: 'uint256',
+          },
+          { name: 'proofHash', internalType: 'bytes32', type: 'bytes32' },
+        ],
+      },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: 'author', internalType: 'address', type: 'address' }],
+    name: 'getModelsByAuthor',
+    outputs: [{ name: '', internalType: 'uint256[]', type: 'uint256[]' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'getTotalModels',
+    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'owner',
+    outputs: [{ name: '', internalType: 'address', type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'name', internalType: 'string', type: 'string' },
+      { name: 'description', internalType: 'string', type: 'string' },
+      { name: 'datasetMerkleRoot', internalType: 'bytes32', type: 'bytes32' },
+      { name: 'weightsHash', internalType: 'bytes32', type: 'bytes32' },
+    ],
+    name: 'registerModel',
+    outputs: [{ name: 'modelId', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'renounceOwnership',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 's_verifier',
+    outputs: [
+      { name: '', internalType: 'contract IVerifier', type: 'address' },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [
+      {
+        name: 'newVerifier',
+        internalType: 'contract IVerifier',
+        type: 'address',
+      },
+    ],
+    name: 'setVerifier',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: 'newOwner', internalType: 'address', type: 'address' }],
+    name: 'transferOwnership',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: 'modelId', internalType: 'uint256', type: 'uint256' },
+      { name: 'proof', internalType: 'bytes', type: 'bytes' },
+      { name: 'publicInputs', internalType: 'bytes32[]', type: 'bytes32[]' },
+    ],
+    name: 'verifyModel',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      {
+        name: 'modelId',
+        internalType: 'uint256',
+        type: 'uint256',
+        indexed: true,
+      },
+      {
+        name: 'author',
+        internalType: 'address',
+        type: 'address',
+        indexed: true,
+      },
+      { name: 'name', internalType: 'string', type: 'string', indexed: false },
+      {
+        name: 'datasetMerkleRoot',
+        internalType: 'bytes32',
+        type: 'bytes32',
+        indexed: false,
+      },
+      {
+        name: 'weightsHash',
+        internalType: 'bytes32',
+        type: 'bytes32',
+        indexed: false,
+      },
+    ],
+    name: 'ModelRegistered',
+  },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      {
+        name: 'modelId',
+        internalType: 'uint256',
+        type: 'uint256',
+        indexed: true,
+      },
+      { name: 'passed', internalType: 'bool', type: 'bool', indexed: false },
+      {
+        name: 'proofHash',
+        internalType: 'bytes32',
+        type: 'bytes32',
+        indexed: false,
+      },
+    ],
+    name: 'ModelVerified',
+  },
+  {
+    type: 'event',
+    anonymous: false,
+    inputs: [
+      {
+        name: 'previousOwner',
+        internalType: 'address',
+        type: 'address',
+        indexed: true,
+      },
+      {
+        name: 'newOwner',
+        internalType: 'address',
+        type: 'address',
+        indexed: true,
+      },
+    ],
+    name: 'OwnershipTransferred',
+  },
+  {
+    type: 'error',
+    inputs: [{ name: 'owner', internalType: 'address', type: 'address' }],
+    name: 'OwnableInvalidOwner',
+  },
+  {
+    type: 'error',
+    inputs: [{ name: 'account', internalType: 'address', type: 'address' }],
+    name: 'OwnableUnauthorizedAccount',
+  },
+  { type: 'error', inputs: [], name: 'ZKFair__InvalidInput' },
+  { type: 'error', inputs: [], name: 'ZKFair__InvalidProof' },
+  { type: 'error', inputs: [], name: 'ZKFair__ModelAlreadyExists' },
+  { type: 'error', inputs: [], name: 'ZKFair__ModelNotFound' },
+  { type: 'error', inputs: [], name: 'ZKFair__UnauthorizedAccess' },
+] as const
