@@ -329,6 +329,42 @@ export const iVerifierAbi = [
 ] as const
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// MockVerifier
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const mockVerifierAbi = [
+  {
+    type: 'constructor',
+    inputs: [{ name: '_result', internalType: 'bool', type: 'bool' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [],
+    name: 'result',
+    outputs: [{ name: '', internalType: 'bool', type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: '_result', internalType: 'bool', type: 'bool' }],
+    name: 'setResult',
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    inputs: [
+      { name: '', internalType: 'bytes', type: 'bytes' },
+      { name: '', internalType: 'bytes32[]', type: 'bytes32[]' },
+    ],
+    name: 'verify',
+    outputs: [{ name: '', internalType: 'bool', type: 'bool' }],
+    stateMutability: 'view',
+  },
+] as const
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Ownable
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -483,9 +519,29 @@ export const zkFairAbi = [
   },
   {
     type: 'function',
+    inputs: [{ name: 'weightsHash', internalType: 'bytes32', type: 'bytes32' }],
+    name: 'getModelIdByHash',
+    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
     inputs: [{ name: 'author', internalType: 'address', type: 'address' }],
     name: 'getModelsByAuthor',
     outputs: [{ name: '', internalType: 'uint256[]', type: 'uint256[]' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    inputs: [{ name: 'weightsHash', internalType: 'bytes32', type: 'bytes32' }],
+    name: 'getProofStatusByWeightsHash',
+    outputs: [
+      {
+        name: 'status',
+        internalType: 'enum ZKFair.ModelStatus',
+        type: 'uint8',
+      },
+    ],
     stateMutability: 'view',
   },
   {

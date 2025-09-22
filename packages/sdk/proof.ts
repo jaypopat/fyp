@@ -10,5 +10,13 @@ export class ProofAPI {
     // TODO: generate proof using dataset,salts,weights
 
   }
-
+  async getStatus(weightsHash: `0x${string}`) {
+    try {
+      const status = await this.contracts.getProofStatus(weightsHash);
+      return status;
+    } catch (error) {
+      console.error("Error fetching proof status:", error);
+      throw new Error("Failed to retrieve proof status from contract");
+    }
+  }
 }

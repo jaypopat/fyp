@@ -15,10 +15,3 @@ export const getProofStatus = command({
   options: options.getProofStatusOptions,
   handler: (opts) => commands.getProofStatus(opts),
 });
-
-export const verifyProof = command({
-  name: "verify",
-  desc: "Verify proof locally or onchain",
-  options: options.verifyProofOptions,
-  handler: (opts) => commands.verifyProof(opts)
-});

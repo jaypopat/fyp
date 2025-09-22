@@ -5,7 +5,7 @@ import Papa from "papaparse";
 export class CommitAPI {
   constructor(private contracts: ContractClient) { }
 
-  async makeCommitment(dataSetPath: string, weights: Uint8Array, options: CommitOptions) {
+  async makeCommitment(dataSetPath: string, weights: Uint8Array, options: CommitOptions): Promise<`0x${string}`> {
 
     // i have a csv dataset, i need to serialise each row with a encoding scheme, eg SCALE..
     // then i need to hash (encoded_row + a random salt)
@@ -29,10 +29,11 @@ export class CommitAPI {
     //   dataSetHash,
     //   weightsHash,
     // );
-
+    //
     // write config file
     await this.generateConfigFile(options.model, options.schema, saltsMap, options.outPath);
     // return the tx hash
+    return "0x123456789";
 
   }
   private async getCommitments(datasetRows: string[][], weights: Uint8Array, options: { encoding: string, hashAlgo: string }): Promise<{

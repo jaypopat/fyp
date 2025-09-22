@@ -35,16 +35,6 @@ export class ContractClient {
     }
   }
 
-  // -----------------------------
-  // Counter read methods
-  // -----------------------------
-  async getCount(): Promise<bigint> {
-    return this.publicClient.readContract({
-      address: this.contractAddress,
-      abi: counterAbi,
-      functionName: "number",
-    });
-  }
 
   // -----------------------------
   // Verifier read method
@@ -61,28 +51,28 @@ export class ContractClient {
   // -----------------------------
   // Counter write methods
   // -----------------------------
-  async increment(): Promise<unknown> {
-    if (!this.walletClient) throw new Error("Wallet client required for write operations");
+  // async increment(): Promise<unknown> {
+  //   if (!this.walletClient) throw new Error("Wallet client required for write operations");
 
-    return this.walletClient.writeContract({
-      address: this.contractAddress,
-      abi: counterAbi,
-      functionName: "increment",
-      account: this.walletClient.account,
-    });
-  }
+  //   return this.walletClient.writeContract({
+  //     address: this.contractAddress,
+  //     abi: counterAbi,
+  //     functionName: "increment",
+  //     account: this.walletClient.account,
+  //   });
+  // }
 
-  async setNumber(newNumber: bigint): Promise<unknown> {
-    if (!this.walletClient) throw new Error("Wallet client required for write operations");
+  // async setNumber(newNumber: bigint): Promise<unknown> {
+  //   if (!this.walletClient) throw new Error("Wallet client required for write operations");
 
-    return this.walletClient.writeContract({
-      address: this.contractAddress,
-      abi: counterAbi,
-      functionName: "setNumber",
-      account: this.walletClient.account,
-      args: [newNumber],
-    });
-  }
+  //   return this.walletClient.writeContract({
+  //     address: this.contractAddress,
+  //     abi: counterAbi,
+  //     functionName: "setNumber",
+  //     account: this.walletClient.account,
+  //     args: [newNumber],
+  //   });
+  // }
 
   // -----------------------------
   //  methods (from main contract)
@@ -95,12 +85,27 @@ export class ContractClient {
     });
 
   }
-  async getModel(modelId: bigint) {
+  async getModel(modelId: `0x${string}`) {
     return this.publicClient.readContract({
       address: this.contractAddress,
       abi: zkFairAbi,
-      functionName: "getModel",
+      functionName: "getModelIdByHash",
       args: [modelId],
     });
+  }
+  async getProofStatus(weightsHash: `0x${string}`) {
+    const statusNumeric = await this.publicClient.readContract({
+      address: this.contractAddress,
+      abi: zkFairAbi,
+      functionName: "getProofStatusByWeightsHash",
+      args: [weightsHash],
+    }) as number;
+
+    // Map numeric status to string
+    const statusMap = ["REGISTERED", "VERIFIED", "FAILED"] as const;
+    if (statusNumeric in statusMap) {
+      return statusMap[statusNumeric]!;
+    }
+    return "UNKNOWN";
   }
 }

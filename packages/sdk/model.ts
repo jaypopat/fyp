@@ -3,8 +3,8 @@ import { ContractClient } from "./client";
 export class ModelAPI {
   constructor(private contracts: ContractClient) { }
 
-  async get(modelId: bigint) {
-    return await this.contracts.getModel(modelId);
+  async get(weightHash: `0x${string}`) {
+    return await this.contracts.getModel(weightHash);
   }
 
   async list() {

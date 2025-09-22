@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
-
-import "openzeppelin-contracts/contracts/access/Ownable.sol";
+import "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {IVerifier} from "./Verifier.sol";
 
 /**
@@ -13,6 +12,7 @@ contract ZKFair is Ownable {
     // State variables
     IVerifier public s_verifier;
     uint256 private s_modelCounter;
+
     // Enums
     enum ModelStatus {
         REGISTERED,
@@ -36,6 +36,9 @@ contract ZKFair is Ownable {
     // Storage mappings
     mapping(uint256 => Model) private s_models;
     mapping(address => uint256[]) private s_authorModels;
+
+    // New mapping from weightsHash to modelId
+    mapping(bytes32 => uint256) private s_modelByHash;
 
     // Events
     event ModelRegistered(
@@ -95,6 +98,10 @@ contract ZKFair is Ownable {
         if (datasetMerkleRoot == bytes32(0)) revert ZKFair__InvalidInput();
         if (weightsHash == bytes32(0)) revert ZKFair__InvalidInput();
 
+        // Check if model with this weightsHash already registered
+        if (s_modelByHash[weightsHash] != 0)
+            revert ZKFair__ModelAlreadyExists();
+
         // Increment counter and assign ID
         s_modelCounter++;
         modelId = s_modelCounter;
@@ -109,6 +116,9 @@ contract ZKFair is Ownable {
         newModel.status = ModelStatus.REGISTERED;
         newModel.registrationTimestamp = block.timestamp;
 
+        // Update hash to model mapping
+        s_modelByHash[weightsHash] = modelId;
+
         // Add to author's model list
         s_authorModels[msg.sender].push(modelId);
 
@@ -119,6 +129,32 @@ contract ZKFair is Ownable {
             datasetMerkleRoot,
             weightsHash
         );
+    }
+
+    /**
+     * @notice Get model ID by weights hash
+     * @param weightsHash The hash of the model weights
+     * @return modelId The model ID or 0 if not found
+     */
+    function getModelIdByHash(
+        bytes32 weightsHash
+    ) external view returns (uint256) {
+        return s_modelByHash[weightsHash];
+    }
+
+    /**
+     * @notice Get proof verification status by weights hash
+     * @param weightsHash The hash of the model weights
+     * @return status ModelStatus enum value: 0=REGISTERED, 1=VERIFIED, 2=FAILED
+     */
+    function getProofStatusByWeightsHash(
+        bytes32 weightsHash
+    ) external view returns (ModelStatus status) {
+        uint256 modelId = s_modelByHash[weightsHash];
+        if (modelId == 0) {
+            revert ZKFair__ModelNotFound();
+        }
+        return s_models[modelId].status;
     }
 
     /**
@@ -134,19 +170,15 @@ contract ZKFair is Ownable {
     ) external modelExists(modelId) {
         // Verify the ZK proof
         bool proofValid = s_verifier.verify(proof, publicInputs);
-
         bytes32 proofHash = keccak256(proof);
         Model storage model = s_models[modelId];
-
         if (proofValid) {
             model.status = ModelStatus.VERIFIED;
         } else {
             model.status = ModelStatus.FAILED;
         }
-
         model.verificationTimestamp = block.timestamp;
         model.proofHash = proofHash;
-
         emit ModelVerified(modelId, proofValid, proofHash);
     }
 
@@ -167,7 +199,6 @@ contract ZKFair is Ownable {
      */
     function getAllModels() external view returns (Model[] memory models) {
         models = new Model[](s_modelCounter);
-
         for (uint256 i = 1; i <= s_modelCounter; i++) {
             models[i - 1] = s_models[i];
         }

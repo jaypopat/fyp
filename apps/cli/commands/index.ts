@@ -1,7 +1,8 @@
 import { command } from "@drizzle-team/brocli";
 import { listModels, getModel } from "./model";
-import { getProofStatus, proveModelBias, verifyProof } from "./proof";
-import { commitDataset, commitWeights } from "./commit";
+import { getProofStatus, proveModelBias } from "./proof";
+import { commit as commitSubcmd } from "./commit";
+import { verifyProof } from "./verify"
 
 export const model = command({
   name: "model",
@@ -12,11 +13,16 @@ export const model = command({
 export const proof = command({
   name: "proof",
   desc: "Manage proofs",
-  subcommands: [proveModelBias, getProofStatus, verifyProof],
+  subcommands: [proveModelBias, getProofStatus],
 });
 
 export const commit = command({
   name: "commit",
   desc: "Make commitments for weights and dataset",
-  subcommands: [commitDataset, commitWeights],
+  subcommands: [commitSubcmd],
+});
+export const verify = command({
+  name: "verify",
+  desc: "Verify proofs",
+  subcommands: [verifyProof],
 });

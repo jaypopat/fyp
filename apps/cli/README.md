@@ -1,237 +1,116 @@
 # zkfair CLI
 
-`zkfair` is a command-line tool for generating and submitting **zero-knowledge proofs of model fairness**.
-It allows you to commit datasets and model weights, register models, generate ZK proofs of fairness, submit them on-chain, and verify them locally or on-chain.
+A command-line tool for generating and verifying **zero-knowledge proofs of AI model fairness**—register models, commit datasets and weights, generate and submit proofs, and verify both on-chain or locally.
 
----
+***
 
-## Features
-
-- Commit datasets and model weights (Merkle commitments)
-- Register and manage ML models (with metadata)
-- Generate ZK proofs of fairness (bias metrics)
-- Submit proofs on-chain
-- Verify proofs **on-chain or locally**
-- Query proof status
-
----
-
-## Installation
+## 🚀 Quick Start
 
 ```bash
-# Install dependencies
-bun install
-````
-
-Run using Bun:
-
-```bash
-bun run src/index.ts <command>
+bun install         # Install dependencies
+bun run build           # Build the CLI
+./zkfair --help
 ```
 
-Or package an executable:
+***
+
+## 🛠️ Commands & Options
+
+### model
+
+- **List all models**
+  ```
+  zkfair model list
+  ```
+- **Get model details**
+  ```
+  zkfair model get <model-hash>
+  ```
+
+***
+
+### commit
+
+- **Commit dataset & model weights**
+  ```
+  zkfair commit --model <model.onnx> --data <dataset.csv> --schema <schema.json> --name "Model Name" --description "Desc" --out salts.json
+  ```
+  **Options:**
+  - `--model, -m <path>` *(required)*: Model file path
+  - `--data, -d <path>` *(required)*: Dataset file path
+  - `--schema, -s <path>`: Schema JSON (recommended)
+  - `--name, -n <string>`: Model name
+  - `--description, -D <string>`: Model description
+  - `--out, -o <path>` *(required)*: Output salts JSON
+
+***
+
+### proof
+
+- **Prove model bias**
+  ```
+  zkfair proof proveModelBias --model <model.onnx> --data <test.csv> --attributes gender,age --name "Model" --description "..." --out salts.json
+  ```
+  **Options:**
+    - `--model, -m <path>` *(required)*
+    - `--data, -d <path>` *(required)*
+    - `--attributes, -a <comma,list>` *(required)*
+    - `--name, -n <string>`
+    - `--description, -D <string>`
+    - `--schema, -s <path>`
+    - `--out, -o <path>`
+
+- **Get proof status**
+  ```
+  zkfair proof status <proof-hash>
+  zkfair proof status --model <model.onnx>
+  ```
+  **Options:**
+    - `<proof-hash>`: Proof hash to check
+    - `--model <path>`: Model file to derive proof hash
+
+***
+
+### verify
+
+- **Verify a proof**
+  ```
+  zkfair verify --model <model.onnx> --public-inputs <inputs.json> --local
+  zkfair verify --proof-hash <hash> --public-inputs <val1,val2,...>
+  ```
+  **Options:**
+    - `--model, -m <path>`
+    - `--proof-hash <hash>`
+    - `--public-inputs <data>` *(required)* (comma-separated or JSON file)
+    - `--local`: Verify locally (optional; default is onchain)
+
+***
+
+## 💡 Example Workflow
 
 ```bash
-bun run build
-./zkfair <command>
-```
+# 1. Commit
+zkfair commit --model my_model.onnx --data train.csv --schema schema.json --out salts.json
 
----
+# 2. Prove fairness
+zkfair proof proveModelBias --model my_model.onnx --data test.csv --attributes gender,age --name "FairNet" --description "A fair model" --out proof_salts.json
 
-## CLI Structure
-
-The CLI is organized into **three main command groups**:
-
-* `commit` — dataset & weights commitments
-* `model` — model registration & management
-* `proof` — proof generation, verification, and status
-
----
-
-## 1️⃣ Commit Commands
-
-### Commit a dataset
-
-Generate a Merkle root for your dataset and store per-row salts locally (private).
-
-```bash
-zkfair commit dataset \
-  --data ./datasets/train.csv \
-  --schema ./schemas/train_schema.json \
-  --out .zkfair/salts.json
-```
-
-**Options**
-
-* `--data, -d <path>` — path to dataset (CSV/JSON)
-* `--schema, -s <path>` — dataset schema JSON file
-* `--out, -o <path>` — output salts JSON file (kept private)
-
----
-
-### Commit model weights
-
-Generate a hash commitment for model weights, store salt locally.
-
-```bash
-zkfair commit weights \
-  --model ./models/my_model.onnx \
-  --out .zkfair/weights_salt.json
-```
-
-**Options**
-
-* `--model, -m <path>` — path to model file
-* `--out, -o <path>` — output salts JSON file (kept private)
-
----
-
-## 2️⃣ Model Commands
-
-### List all registered models
-
-```bash
-zkfair model list
-```
-
-### Get details of a specific model
-
-```bash
-zkfair model get <model-hash>
-```
-
-**Notes:**
-
-* The `model-hash` is derived from the model weight commitment.
-* Metadata stored on-chain includes name, description, protected attributes, and verified status.
-
----
-
-## 3️⃣ Proof Commands
-
-### Generate and submit a ZK fairness proof
-
-This wraps the full workflow: register model if not already, calculate bias metrics, generate proof, and submit on-chain.
-
-```bash
-zkfair proof prove-model-bias \
-  -m ./models/my_model.onnx \
-  -d ./datasets/test.csv \
-  -a gender,age \
-  -n "Loan Approval Model" \
-  -D "Predicts loan approval"
-```
-
-**Options**
-
-* `-m, --model <path>` — path to model file (required)
-* `-d, --data <path>` — path to dataset file (required)
-* `-a, --attributes <list>` — comma-separated protected attributes (required)
-* `-n, --name <string>` — human-readable model name
-* `-D, --description <string>` — model description
-
----
-
-### Verify a proof
-
-Verify a proof **on-chain** (default) or **locally** (`--local`).
-
-```bash
-# Local verification
-zkfair proof verify <proof-hash> <public-inputs> --local
-
-# On-chain verification
-zkfair proof verify <proof-hash> <public-inputs>
-```
-
-**Notes:**
-
-* `<public-inputs>` can be a comma-separated list or a JSON file path containing the inputs for the proof.
-
----
-
-### Check proof status
-
-```bash
+# 3. Get proof status
 zkfair proof status <proof-hash>
-```
 
----
+# 4. Verify proof
+zkfair verify --proof-hash <hash> --public-inputs inputs.json --local
 
-## Example Full Workflow
-
-1. **Commit dataset and weights locally**
-
-```bash
-zkfair commit dataset --data ./train.csv --schema ./schema.json --out .zkfair/salts.json
-zkfair commit weights --model ./model.onnx --out .zkfair/weights_salt.json
-```
-
-2. **Generate and submit ZK proof**
-
-```bash
-zkfair proof prove-model-bias \
-  -m ./model.onnx \
-  -d ./test.csv \
-  -a gender,age \
-  -n "Loan Model" \
-  -D "Loan approval predictions"
-```
-
-3. **Verify locally**
-
-```bash
-zkfair proof verify <proof-hash> <public-inputs.json> --local
-```
-
-4. **Check on-chain proof status**
-
-```bash
-zkfair proof status <proof-hash>
-```
-
-5. **Query model metadata**
-
-```bash
+# 5. List and view models
 zkfair model list
 zkfair model get <model-hash>
 ```
 
----
+***
 
-## Notes
+## 🔎 Notes
 
-* **Salts** are stored locally and **never published on-chain**. They are needed for generating proofs but are sensitive.
-* **Commitments** (Merkle root for dataset, hash of weights) are published on-chain.
-* **Metadata** (name, description, protected attributes) is stored on-chain for discoverability.
-* For richer queries or search, consider using an **off-chain indexer** later.
-* CLI is structured to clearly separate **commit**, **model**, and **proof** workflows.
-
----
-
-## JSON Examples
-
-### `schema.json`
-
-```json
-{
-  "columns": [
-    { "name": "age", "type": "int" },
-    { "name": "gender", "type": "string" },
-    { "name": "income", "type": "float" },
-    { "name": "label", "type": "int" }
-  ]
-}
-```
-
-### `salts.json`
-
-```json
-{
-  "rows": {
-    "0": "0xabc123...",
-    "1": "0xdef456...",
-    "2": "0x789abc..."
-  }
-}
-```
+- **Salts**: Kept private (required for proof generation, not published on-chain)
+- **Commitments & Metadata**: Published on-chain for transparency
+- **Proof verification**: Supported both on-chain and offline (dev)
+- **All options**: Shown via `--help` on any command
