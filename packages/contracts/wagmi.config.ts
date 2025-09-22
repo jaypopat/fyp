@@ -6,7 +6,6 @@ export default defineConfig({
   plugins: [
     foundry({
       project: './',
-      // Remove include to get all contracts, or use:
       include: ['*.sol/*.json'],
     }),
   ],
