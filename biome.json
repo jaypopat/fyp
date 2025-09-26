@@ -8,6 +8,9 @@
 					"correctness": {
 						"noUnusedVariables": "off",
 						"noUnusedImports": "off"
+					},
+					"style": {
+						"noUnusedTemplateLiteral": "error"
 					}
 				}
 			}

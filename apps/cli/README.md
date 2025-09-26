@@ -6,9 +6,9 @@ A command-line tool for generating and verifying **zero-knowledge proofs of AI m
 
 ## 🚀 Quick Start
 
-```bash
+```
 bun install         # Install dependencies
-bun run build           # Build the CLI
+bun run build       # Build the CLI
 ./zkfair --help
 ```
 
@@ -25,7 +25,11 @@ bun run build           # Build the CLI
 - **Get model details**
   ```
   zkfair model get <model-hash>
+  zkfair model get --weights <weights.json>
   ```
+  **Options:**
+  - `<model-hash>`: Hash of the model weights to retrieve
+  - `--weights, -w <path>`: Path to weights JSON file (alternative to hash)
 
 ***
 
@@ -33,14 +37,14 @@ bun run build           # Build the CLI
 
 - **Commit dataset & model weights**
   ```
-  zkfair commit --model <model.onnx> --data <dataset.csv> --schema <schema.json> --name "Model Name" --description "Desc" --out salts.json
+  zkfair commit --weights <weights.json> --data <dataset.csv> --schema <schema.json> --name "Model Name" --description "Desc" --out salts.json
   ```
   **Options:**
-  - `--model, -m <path>` *(required)*: Model file path
+  - `--weights, -w <path>` *(required)*: Model weights JSON file path
   - `--data, -d <path>` *(required)*: Dataset file path
   - `--schema, -s <path>`: Schema JSON (recommended)
-  - `--name, -n <string>`: Model name
-  - `--description, -D <string>`: Model description
+  - `--name, -n <string>` *(required)*: Model name
+  - `--description, -D <string>` *(required)*: Model description
   - `--out, -o <path>` *(required)*: Output salts JSON
 
 ***
@@ -49,25 +53,25 @@ bun run build           # Build the CLI
 
 - **Prove model bias**
   ```
-  zkfair proof proveModelBias --model <model.onnx> --data <test.csv> --attributes gender,age --name "Model" --description "..." --out salts.json
+  zkfair proof proveModelBias --weights <weights.json> --data <test.csv> --attributes gender,age --name "Model" --description "..." --out salts.json
   ```
   **Options:**
-    - `--model, -m <path>` *(required)*
-    - `--data, -d <path>` *(required)*
-    - `--attributes, -a <comma,list>` *(required)*
-    - `--name, -n <string>`
-    - `--description, -D <string>`
-    - `--schema, -s <path>`
-    - `--out, -o <path>`
+    - `--weights, -w <path>` *(required)*: Model weights JSON file path
+    - `--data, -d <path>` *(required)*: Dataset file path
+    - `--attributes, -a <comma,list>` *(required)*: Protected attributes
+    - `--name, -n <string>` *(required)*: Model name
+    - `--description, -D <string>` *(required)*: Model description
+    - `--schema, -s <path>`: Dataset schema JSON (optional)
+    - `--out, -o <path>`: Output salts JSON file (optional)
 
 - **Get proof status**
   ```
   zkfair proof status <proof-hash>
-  zkfair proof status --model <model.onnx>
+  zkfair proof status <weights.json>
   ```
   **Options:**
     - `<proof-hash>`: Proof hash to check
-    - `--model <path>`: Model file to derive proof hash
+    - `<weights.json>`: Weights JSON file to derive proof hash from
 
 ***
 
@@ -75,35 +79,68 @@ bun run build           # Build the CLI
 
 - **Verify a proof**
   ```
-  zkfair verify --model <model.onnx> --public-inputs <inputs.json> --local
+  zkfair verify --weights <weights.json> --public-inputs <inputs.json> --local
   zkfair verify --proof-hash <hash> --public-inputs <val1,val2,...>
   ```
   **Options:**
-    - `--model, -m <path>`
-    - `--proof-hash <hash>`
-    - `--public-inputs <data>` *(required)* (comma-separated or JSON file)
+    - `--weights, -w <path>`: Model weights JSON file path
+    - `--proof-hash <hash>`: Specific proof hash to verify
+    - `--public-inputs <data>` *(required)*: Comma-separated values or JSON file path
     - `--local`: Verify locally (optional; default is onchain)
 
 ***
 
 ## 💡 Example Workflow
 
-```bash
-# 1. Commit
-zkfair commit --model my_model.onnx --data train.csv --schema schema.json --out salts.json
+```
+# 1. Train model and export weights
+python train_model.py --dataset train.csv --output weights.json
 
-# 2. Prove fairness
-zkfair proof proveModelBias --model my_model.onnx --data test.csv --attributes gender,age --name "FairNet" --description "A fair model" --out proof_salts.json
+# 2. Commit weights and dataset
+zkfair commit --weights weights.json --data train.csv --schema schema.json --name "FairNet" --description "A fair classification model" --out salts.json
 
-# 3. Get proof status
+# 3. Prove fairness
+zkfair proof proveModelBias --weights weights.json --data test.csv --attributes gender,age --name "FairNet" --description "Bias testing" --out proof_salts.json
+
+# 4. Get proof status
 zkfair proof status <proof-hash>
 
-# 4. Verify proof
+# 5. Verify proof
 zkfair verify --proof-hash <hash> --public-inputs inputs.json --local
 
-# 5. List and view models
+# 6. List and view models
 zkfair model list
 zkfair model get <model-hash>
+```
+
+***
+
+## 📄 Weights JSON Format
+
+The weights JSON file should contain the model parameters in this format:
+
+```
+{
+  "metadata": {
+    "model_type": "RandomForestClassifier",
+    "framework": "scikit-learn",
+    "n_features": 10,
+    "n_classes": 2,
+    "feature_names": ["age", "income", "education", "..."]
+  },
+  "weights": {
+    "trees": [
+      {
+        "tree_id": 0,
+        "feature": [0, 1, -1, 2, -1, -1],
+        "threshold": [0.5, 1000, -2, 12, -2, -2],
+        "value": [[], [], [], [], [], []],
+        "children_left": [1, 2, -1, 4, -1, -1],
+        "children_right": [3, 5, -1, -1, -1, -1]
+      }
+    ]
+  }
+}
 ```
 
 ***
@@ -113,4 +150,5 @@ zkfair model get <model-hash>
 - **Salts**: Kept private (required for proof generation, not published on-chain)
 - **Commitments & Metadata**: Published on-chain for transparency
 - **Proof verification**: Supported both on-chain and offline (dev)
+- **Weights format**: JSON format allows easy integration with any ML framework
 - **All options**: Shown via `--help` on any command

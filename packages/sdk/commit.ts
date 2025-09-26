@@ -24,27 +24,31 @@ export class CommitAPI {
       }
     );
 
-
-    // let res = this.contracts.makeCommitment(
-    //   dataSetHash,
-    //   weightsHash,
-    // );
+    let hash = await this.contracts.createModelAndCommit(
+      options.model.name,
+      options.model.description,
+      dataSetMerkleRoot,
+      weightsHash
+    )
     //
     // write config file
     await this.generateConfigFile(options.model, options.schema, saltsMap, options.outPath);
     // return the tx hash
-    return "0x123456789";
+    return hash;
 
   }
   private async getCommitments(datasetRows: string[][], weights: Uint8Array, options: { encoding: string, hashAlgo: string }): Promise<{
     saltsMap: Record<number, string>,
-    dataSetMerkleRoot: string,
-    weightsHash: string
+    dataSetMerkleRoot: `0x${string}`,
+    weightsHash: `0x${string}`
   }> {
+
+    // TODO complete this
+
     return {
       saltsMap: {},
-      dataSetMerkleRoot: "",
-      weightsHash: ""
+      dataSetMerkleRoot: "0x123456789",
+      weightsHash: "0x123456789"
     }
   }
 

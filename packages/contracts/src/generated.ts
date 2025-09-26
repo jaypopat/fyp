@@ -520,8 +520,41 @@ export const zkFairAbi = [
   {
     type: 'function',
     inputs: [{ name: 'weightsHash', internalType: 'bytes32', type: 'bytes32' }],
-    name: 'getModelIdByHash',
-    outputs: [{ name: '', internalType: 'uint256', type: 'uint256' }],
+    name: 'getModelByHash',
+    outputs: [
+      {
+        name: 'model',
+        internalType: 'struct ZKFair.Model',
+        type: 'tuple',
+        components: [
+          { name: 'name', internalType: 'string', type: 'string' },
+          { name: 'author', internalType: 'address', type: 'address' },
+          { name: 'description', internalType: 'string', type: 'string' },
+          {
+            name: 'datasetMerkleRoot',
+            internalType: 'bytes32',
+            type: 'bytes32',
+          },
+          { name: 'weightsHash', internalType: 'bytes32', type: 'bytes32' },
+          {
+            name: 'status',
+            internalType: 'enum ZKFair.ModelStatus',
+            type: 'uint8',
+          },
+          {
+            name: 'registrationTimestamp',
+            internalType: 'uint256',
+            type: 'uint256',
+          },
+          {
+            name: 'verificationTimestamp',
+            internalType: 'uint256',
+            type: 'uint256',
+          },
+          { name: 'proofHash', internalType: 'bytes32', type: 'bytes32' },
+        ],
+      },
+    ],
     stateMutability: 'view',
   },
   {

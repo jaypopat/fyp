@@ -16,7 +16,7 @@ export class ContractClient {
   private walletClient?;
   private chain: Chain;
 
-  constructor(options: ZkFairOptions & { chain?: Chain }) {
+  constructor(options: ZkFairOptions) {
     this.contractAddress = options.contractAddress as Address;
     this.chain = options.chain ?? mainnet;
 
@@ -38,7 +38,7 @@ export class ContractClient {
   async createModelAndCommit(name: string, description: string, merkleRoot: `0x${string}`, weightsHash: `0x${string}`) {
     if (!this.walletClient) throw new Error("Wallet client required for write operations");
 
-    return this.walletClient.writeContract({
+    return await this.walletClient.writeContract({
       address: this.contractAddress,
       abi: zkFairAbi,
       functionName: "registerModel",
@@ -54,7 +54,7 @@ export class ContractClient {
   async verifyModel(modelId: bigint, proof: `0x${string}`, publicInputs: `0x${string}`[]) {
     if (!this.walletClient) throw new Error("Wallet client required for write operations");
 
-    return this.walletClient.writeContract({
+    return await this.walletClient.writeContract({
       address: this.contractAddress,
       abi: zkFairAbi,
       functionName: "verifyModel",
@@ -75,11 +75,11 @@ export class ContractClient {
     });
 
   }
-  async getModel(modelId: `0x${string}`) {
+  async getModelByHash(modelId: `0x${string}`) {
     return this.publicClient.readContract({
       address: this.contractAddress,
       abi: zkFairAbi,
-      functionName: "getModelIdByHash",
+      functionName: "getModelByHash",
       args: [modelId],
     });
   }
@@ -91,10 +91,9 @@ export class ContractClient {
       args: [weightsHash],
     }) as number;
 
-    // Map numeric status to string
     const statusMap = ["REGISTERED", "VERIFIED", "FAILED"] as const;
-    if (statusNumeric in statusMap) {
-      return statusMap[statusNumeric]!;
+    if (statusNumeric >= 0 && statusNumeric < statusMap.length) {
+      return statusMap[statusNumeric];
     }
     return "UNKNOWN";
   }

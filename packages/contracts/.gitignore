@@ -24,3 +24,7 @@
 /lib
 
 .turbo
+
+.deploys
+
+.states

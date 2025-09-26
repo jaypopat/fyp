@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/style/noUnusedTemplateLiteral: theyre all just debug logs */
 import { SDK } from "@zkfair/sdk";
 import path from "path";
 import { type TypeOf } from "@drizzle-team/brocli";
@@ -9,7 +10,7 @@ import type {
   commitOptions,
 } from "./cli-args";
 
-import { computeFileHash, withSpinner, validateHexHash } from "./utils";
+import { computeFileHash, withSpinner, validateHexHash, modelStatusToString } from "./utils";
 
 export type GetModelOpts = TypeOf<typeof getModelOptions>;
 export type ProveModelBiasOpts = TypeOf<typeof proveModelBiasOptions>;
@@ -20,48 +21,62 @@ export type CommitOpts = TypeOf<typeof commitOptions>;
 const zkFairSDK = new SDK({
   rpcUrl: process.env.RPC_URL || "",
   privateKey: process.env.PRIVATE_KEY || "",
+  contractAddress: process.env.CONTRACT_ADDRESS || ""
 });
 
-async function getModelIdByWeightsHash(weightsHash: `0x${string}`): Promise<bigint> {
+/**
+ * Checks if model exists by weights hash; returns model data or null
+ */
+async function checkModelExists(weightsHash: `0x${string}`) {
   return await withSpinner(
-    "Checking model existence by weights hash",
+    "Checking if model already exists",
     async () => {
-      const modelId = await zkFairSDK.model.get(weightsHash);
-      return BigInt(modelId || 0);
+      try {
+        const model = await zkFairSDK.model.get(weightsHash);
+        return model;
+      } catch (error) {
+        // Model doesn't exist - this is fine for registration
+        return null;
+      }
     },
-    "Model existence check done."
+    "Model existence check completed"
   );
 }
 
 /**
- * Checks if model exists by weights hash; if not, registers new commitment.
+ * Registers a new model if it doesn't already exist.
  * Returns tx hash.
  */
 async function registerModel(params: {
-  modelPath: string;
+  weightsPath: string;
   datasetPath: string;
   schemaPath?: string;
   modelMetadata: {
-    name?: string;
-    description?: string;
+    name: string;
+    description: string;
     creator?: string;
     version?: string;
   };
   outPath?: string;
 }): Promise<`0x${string}`> {
-  const weightsHash = await computeFileHash(params.modelPath);
-  const modelId = await getModelIdByWeightsHash(weightsHash);
-  if (modelId !== BigInt(0)) {
-    console.log(`Model already registered with ID: ${modelId}`);
+  const weightsHash = await computeFileHash(params.weightsPath);
+  const existingModel = await checkModelExists(weightsHash);
+
+  if (existingModel) {
+    console.log(`\n❌ Model already registered:`);
+    console.log(`   Name: ${existingModel.name}`);
+    console.log(`   Hash: ${weightsHash}`);
     throw new Error("Model already registered");
   }
 
+  console.log("🚀 Registering new model...");
+
   const txHash = await withSpinner("Reading model weights file", async () => {
-    if (!(await Bun.file(params.modelPath).exists())) {
-      throw new Error(`Model file not found: ${params.modelPath}`);
+    if (!(await Bun.file(params.weightsPath).exists())) {
+      throw new Error(`Model file not found: ${params.weightsPath}`);
     }
 
-    const weightsBuffer = await Bun.file(params.modelPath).arrayBuffer();
+    const weightsBuffer = await Bun.file(params.weightsPath).arrayBuffer();
 
     let schemaJson: any;
     if (params.schemaPath) {
@@ -73,8 +88,8 @@ async function registerModel(params: {
         );
       }
     }
-    const outPath = params.outPath ?? path.join(process.cwd(), "commitment.json");
 
+    const outPath = params.outPath ?? path.join(process.cwd(), "commitment.json");
 
     return await withSpinner(
       "Submitting commitment to blockchain",
@@ -97,48 +112,86 @@ async function registerModel(params: {
     );
   }, "Weights file read successfully");
 
-  console.log(`✅ Model registered with transaction hash: ${txHash}`);
+  console.log(`\n✅ Model Registration Successful!`);
+  console.log(`   Transaction Hash: ${txHash}`);
+  console.log(`   Model Hash: ${weightsHash}`);
+  console.log(`   Name: ${params.modelMetadata.name || "Unnamed Model"}`);
 
   return txHash;
 }
 
-
 export async function proveModelBias(opts: ProveModelBiasOpts) {
-  console.log("Proving model fairness:", opts);
-  return await registerModel({
-    modelPath: opts.model,
+  console.log("🔬 Starting model fairness proof process...");
+  console.log(`   Weights: ${opts.weights}`);
+  console.log(`   Dataset: ${opts.data}`);
+  console.log(`   Protected Attributes: ${opts.attributes}`);
+
+  const txHash = await registerModel({
+    weightsPath: opts.weights,
     datasetPath: opts.data,
     schemaPath: opts.schema,
-    modelMetadata: { name: opts.name, description: opts.description },
+    modelMetadata: {
+      name: opts.name,
+      description: opts.description,
+    },
     outPath: opts.out,
   });
+
+  console.log(`\n🎯 Fairness Proof Process Complete!`);
+  console.log(`   Next steps: Generate ZK proof and submit for verification`);
+
+  // generate a proof offchain
+  // let proof = zkFairSDK.proof.generateProof(opts.model, opts.data, opts.attributes);
+  // zkFairSDK.proof.submitProof(proof);
+
+  // let res = await zkFairSDK.verify.verifyProof(proof, publicInputs);
+  // if (res) {
+  //   console.log(`\n Fairness Proof Process Complete!`);
+  // }
+  // else {
+  //   console.log(`\n Your proof was not valid!`);
+  // }
 }
 
 export async function commit(opts: CommitOpts) {
-  console.log("Committing model and dataset...");
-  return await registerModel({
-    modelPath: opts.model,
+  console.log("📦 Committing model and dataset...");
+  console.log(`   Weights: ${opts.weights}`);
+  console.log(`   Dataset: ${opts.data}`);
+
+  const txHash = await registerModel({
+    weightsPath: opts.weights,
     datasetPath: opts.data,
     schemaPath: opts.schema,
     modelMetadata: { name: opts.name, description: opts.description },
     outPath: opts.out,
   });
+
+  console.log(`\n✅ Commitment Complete!`);
+  return txHash;
 }
 
 export async function getProofStatus(options: GetProofStatusOpts) {
-  if (!options.proofHash && !options.model) {
-    throw new Error("Missing required option: pass --proofHash or --model");
+  if (!options.proofHash && !options.weights) {
+    throw new Error("Missing required option: pass --proofHash or --weights");
   }
 
-  return await withSpinner("Computing or using provided proof hash", async () => {
-    const proofHash = options.proofHash
+  const result = await withSpinner("Getting proof status", async () => {
+    const weightsHash = options.proofHash
       ? validateHexHash(options.proofHash)
-      : await computeFileHash(options.model);
-    console.log(`Checking proof status for proof hash: ${proofHash}`);
-    const status = await zkFairSDK.proof.getStatus?.(proofHash);
-    console.log(`Proof status: ${status}`);
-    return status;
-  }, "Proof status fetched");
+      : await computeFileHash(options.weights!);
+
+    console.log(`Checking proof status for weights hash: ${weightsHash}`);
+
+    const status = await zkFairSDK.proof.getStatus?.(weightsHash);
+    return { status, weightsHash };
+
+  }, "Proof status retrieved");
+
+  console.log(`\n📊 Proof Status Results:`);
+  console.log(`   Weights Hash: ${result.weightsHash}`);
+  console.log(`   Status: ${result.status}`);
+
+  return result.status;
 }
 
 export async function verifyProof(options: VerifyProofOpts) {
@@ -147,25 +200,95 @@ export async function verifyProof(options: VerifyProofOpts) {
   let hashToVerify: `0x${string}`;
   if (options.proofHash) {
     hashToVerify = validateHexHash(options.proofHash);
-  } else if (options.model) {
-    hashToVerify = await computeFileHash(options.model);
-    console.log(`Computed weights hash from model file: ${hashToVerify}`);
+    console.log(`Using provided proof hash: ${hashToVerify}`);
+  } else if (options.weights) {
+    hashToVerify = await computeFileHash(options.weights);
+    console.log(`Computed weights hash from weights file: ${hashToVerify}`);
   } else {
-    throw new Error("Must provide either model file or proof hash.");
+    throw new Error("Must provide either weights file or proof hash.");
   }
+
+  console.log(`🔐 Starting proof verification...`);
+  console.log(`   Hash: ${hashToVerify}`);
+  console.log(`   Public Inputs: [${publicInputs.join(', ')}]`);
+  console.log(`   Mode: ${options.local ? 'Local' : 'On-chain'}`);
 
   await withSpinner("Verifying proof", async () => {
     await zkFairSDK.verify.verifyProof(hashToVerify, publicInputs, options.local);
   }, "Proof verified successfully");
+
+  console.log(`\n✅ Proof Verification Successful!`);
+  console.log(`   The submitted proof is valid and the model meets fairness constraints.`);
 }
 
 export async function listModels() {
-  console.log("Fetching all registered models...");
-  return await zkFairSDK.model.list();
+  console.log("📋 Fetching all registered models...");
+
+  const models = await withSpinner("Loading models", async () => {
+    return await zkFairSDK.model.list();
+  }, "Models loaded successfully");
+
+  console.log(`\n📊 Found ${models.length} registered models:`);
+  console.log("==========================================");
+
+  if (models.length === 0) {
+    console.log("   No models registered yet.");
+  } else {
+    models.forEach((model, index: number) => {
+      console.log(`\n${index + 1}. ${model.name || 'Unnamed Model'}`);
+      console.log(`   Author: ${model.author}`);
+      console.log(`   Status: ${modelStatusToString(model.status)}`);
+      console.log(`   Hash: ${model.weightsHash}`);
+      if (model.description) {
+        console.log(`   Description: ${model.description}`);
+      }
+      console.log(`   Registered: ${new Date(Number(model.registrationTimestamp) * 1000).toLocaleString()}`);
+    });
+  }
+
+  return models;
 }
 
 export async function getModel(options: GetModelOpts) {
-  console.log("Fetching model", options.modelHash);
-  const validatedHash = validateHexHash(options.modelHash);
-  return await zkFairSDK.model.get(validatedHash);
+  let hashToUse: `0x${string}`;
+
+  if (options.modelHash && options.weightsFile) {
+    throw new Error("Provide either model hash or weights file, not both");
+  }
+
+  if (!options.modelHash && !options.weightsFile) {
+    throw new Error("Must provide either model hash or weights file path");
+  }
+
+  if (options.modelHash) {
+    hashToUse = validateHexHash(options.modelHash);
+    console.log(`🔍 Using provided model hash: ${hashToUse}`);
+  } else {
+    hashToUse = await computeFileHash(options.weightsFile!);
+    console.log(`🔍 Computed hash from weights file: ${hashToUse}`);
+  }
+
+  const model = await withSpinner("Fetching model details", async () => {
+    return await zkFairSDK.model.get(hashToUse);
+  }, "Model details retrieved");
+
+  console.log(`\n📋 Model Details:`);
+  console.log("================");
+  console.log(`Name: ${model.name}`);
+  console.log(`Author: ${model.author}`);
+  console.log(`Description: ${model.description || 'No description'}`);
+  console.log(`Status: ${modelStatusToString(model.status)}`);
+  console.log(`Weights Hash: ${model.weightsHash}`);
+  console.log(`Dataset Merkle Root: ${model.datasetMerkleRoot}`);
+  console.log(`Registration Time: ${new Date(Number(model.registrationTimestamp) * 1000).toLocaleString()}`);
+
+  if (model.verificationTimestamp && Number(model.verificationTimestamp) > 0) {
+    console.log(`Verification Time: ${new Date(Number(model.verificationTimestamp) * 1000).toLocaleString()}`);
+  }
+
+  if (model.proofHash && model.proofHash !== "0x0000000000000000000000000000000000000000000000000000000000000000") {
+    console.log(`Proof Hash: ${model.proofHash}`);
+  }
+
+  return model;
 }

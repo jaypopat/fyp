@@ -1,5 +1,3 @@
-#!/usr/bin/env bun
-
 import { run } from "@drizzle-team/brocli";
 import { model, proof, commit, verify } from "./commands";
 

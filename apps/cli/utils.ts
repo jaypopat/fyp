@@ -32,3 +32,11 @@ export function validateHexHash(hash: string) {
   }
   return hash as `0x${string}`;
 }
+export function modelStatusToString(statusNumeric: number): string {
+  const statusMap = ["REGISTERED", "VERIFIED", "FAILED"] as const;
+
+  if (statusNumeric >= 0 && statusNumeric < statusMap.length) {
+    return statusMap[statusNumeric]!;
+  }
+  return "UNKNOWN";
+}

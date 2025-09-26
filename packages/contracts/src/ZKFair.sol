@@ -132,17 +132,6 @@ contract ZKFair is Ownable {
     }
 
     /**
-     * @notice Get model ID by weights hash
-     * @param weightsHash The hash of the model weights
-     * @return modelId The model ID or 0 if not found
-     */
-    function getModelIdByHash(
-        bytes32 weightsHash
-    ) external view returns (uint256) {
-        return s_modelByHash[weightsHash];
-    }
-
-    /**
      * @notice Get proof verification status by weights hash
      * @param weightsHash The hash of the model weights
      * @return status ModelStatus enum value: 0=REGISTERED, 1=VERIFIED, 2=FAILED
@@ -190,6 +179,21 @@ contract ZKFair is Ownable {
     function getModel(
         uint256 modelId
     ) external view modelExists(modelId) returns (Model memory model) {
+        return s_models[modelId];
+    }
+
+    /**
+     * @notice Get model details by weights hash
+     * @param weightsHash The hash of the model weights
+     * @return model The model struct
+     */
+    function getModelByHash(
+        bytes32 weightsHash
+    ) external view returns (Model memory model) {
+        uint256 modelId = s_modelByHash[weightsHash];
+        if (modelId == 0) {
+            revert ZKFair__ModelNotFound();
+        }
         return s_models[modelId];
     }
 
