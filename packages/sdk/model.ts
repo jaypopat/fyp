@@ -1,13 +1,13 @@
-import { ContractClient } from "./client";
+import type { ContractClient } from "./client";
 
 export class ModelAPI {
-  constructor(private contracts: ContractClient) { }
+	constructor(private contracts: ContractClient) {}
 
-  async get(weightHash: `0x${string}`) {
-    return await this.contracts.getModelByHash(weightHash);
-  }
+	async get(weightHash: `0x${string}`) {
+		return await this.contracts.getModelByHash(weightHash);
+	}
 
-  async list() {
-    return await this.contracts.getModels();
-  }
+	async list() {
+		return await this.contracts.getModels();
+	}
 }
