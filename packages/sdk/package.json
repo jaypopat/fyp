@@ -10,7 +10,7 @@
 		"typescript": "^5"
 	},
 	"dependencies": {
-		"@aztec/bb.js": "^1.2.1",
+		"@aztec/bb.js": "^2.0.3",
 		"@noir-lang/noir_js": "^1.0.0-beta.11",
 		"@types/papaparse": "^5.3.16",
 		"@zkfair/contracts": "workspace:*",

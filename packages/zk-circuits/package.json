@@ -14,5 +14,8 @@
 		"target/**/*.json",
 		"target/**/*-vk",
 		"Nargo.toml"
-	]
+	],
+	"exports": {
+		"./circuit": "./target/zk_circuit.json"
+	}
 }

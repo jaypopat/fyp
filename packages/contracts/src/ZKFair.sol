@@ -153,23 +153,30 @@ contract ZKFair is Ownable {
      * @param publicInputs Public inputs for the proof
      */
     function verifyModel(
-        uint256 modelId,
-        bytes calldata proof,
-        bytes32[] calldata publicInputs
-    ) external modelExists(modelId) {
-        // Verify the ZK proof
-        bool proofValid = s_verifier.verify(proof, publicInputs);
-        bytes32 proofHash = keccak256(proof);
-        Model storage model = s_models[modelId];
-        if (proofValid) {
-            model.status = ModelStatus.VERIFIED;
-        } else {
-            model.status = ModelStatus.FAILED;
-        }
-        model.verificationTimestamp = block.timestamp;
-        model.proofHash = proofHash;
-        emit ModelVerified(modelId, proofValid, proofHash);
+    uint256 modelId,
+    bytes calldata proof,
+    bytes32[] calldata publicInputs
+) external modelExists(modelId) returns (bool) {
+    // Verify the ZK proof
+    bool proofValid = s_verifier.verify(proof, publicInputs);
+    bytes32 proofHash = keccak256(proof);
+    Model storage model = s_models[modelId];
+    
+    if (proofValid) {
+        model.status = ModelStatus.VERIFIED;
+    } else {
+        model.status = ModelStatus.FAILED;
     }
+    
+    model.verificationTimestamp = block.timestamp;
+    model.proofHash = proofHash;
+    
+    emit ModelVerified(modelId, proofValid, proofHash);
+    
+    // Return the verification result
+    return proofValid;
+}
+
 
     /**
      * @notice Get details of a specific model
