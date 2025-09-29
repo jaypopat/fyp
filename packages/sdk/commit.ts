@@ -12,7 +12,7 @@ export class CommitAPI {
   ): Promise<`0x${string}`> {
 
     const datasetRows = await parseCSV(dataSetPath);
-    let weights = await Bun.file(weightsPath).arrayBuffer();
+    const weights = (await Bun.file(weightsPath).json()).weights;
 
     const { saltsMap, dataSetMerkleRoot, weightsHash } =
       await this.getCommitments(datasetRows, new Uint8Array(weights), {
@@ -97,12 +97,6 @@ export class CommitAPI {
 
       // Store salts
       salts,
-
-      // Add timestamp
-      timestamp: Date.now(),
-
-      // Add version for future compatibility
-      version: "1.0.0",
     };
 
     const configPath = outputPath ?? "config.json";

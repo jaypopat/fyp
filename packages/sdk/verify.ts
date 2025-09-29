@@ -21,7 +21,6 @@ export class VerifyAPI {
       };
       const backend = new UltraHonkBackend(circuit.bytecode);
 
-      // im going to read the proof file with the public inputs and proof unitarray
       const isValid = await backend.verifyProof(proofData);
       if (isValid) {
         console.log(`Model "${config.metadata.name}" proof is mathematically sound`);
