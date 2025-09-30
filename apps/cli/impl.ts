@@ -2,20 +2,19 @@
 
 import type { TypeOf } from "@drizzle-team/brocli";
 import { SDK } from "@zkfair/sdk";
-import path from "path";
 import type {
-	commitOptions,
-	getModelOptions,
-	getProofStatusOptions,
-	proveModelBiasOptions,
-	verifyProofOptions,
+  commitOptions,
+  getModelOptions,
+  getProofStatusOptions,
+  proveModelBiasOptions,
+  verifyProofOptions,
 } from "./cli-args";
 
 import {
-	computeFileHash,
-	modelStatusToString,
-	validateHexHash,
-	withSpinner,
+  computeFileHash,
+  modelStatusToString,
+  validateHexHash,
+  withSpinner,
 } from "./utils";
 
 export type GetModelOpts = TypeOf<typeof getModelOptions>;
@@ -25,28 +24,28 @@ export type VerifyProofOpts = TypeOf<typeof verifyProofOptions>;
 export type CommitOpts = TypeOf<typeof commitOptions>;
 
 const zkFairSDK = new SDK({
-	rpcUrl: process.env.RPC_URL || "",
-	privateKey: process.env.PRIVATE_KEY || "",
-	contractAddress: process.env.CONTRACT_ADDRESS || "",
+  rpcUrl: process.env.RPC_URL || "",
+  privateKey: process.env.PRIVATE_KEY || "",
+  contractAddress: process.env.CONTRACT_ADDRESS || "",
 });
 
 /**
  * Checks if model exists by weights hash; returns model data or null
  */
 async function checkModelExists(weightsHash: `0x${string}`) {
-	return await withSpinner(
-		"Checking if model already exists",
-		async () => {
-			try {
-				const model = await zkFairSDK.model.get(weightsHash);
-				return model;
-			} catch (error) {
-				// Model doesn't exist - this is fine for registration
-				return null;
-			}
-		},
-		"Model existence check completed",
-	);
+  return await withSpinner(
+    "Checking if model already exists",
+    async () => {
+      try {
+        const model = await zkFairSDK.model.get(weightsHash);
+        return model;
+      } catch (error) {
+        // Model doesn't exist - this is fine for registration
+        return null;
+      }
+    },
+    "Model existence check completed",
+  );
 }
 
 /**
@@ -54,276 +53,275 @@ async function checkModelExists(weightsHash: `0x${string}`) {
  * Returns tx hash.
  */
 async function registerModel(params: {
-	weightsPath: string;
-	datasetPath: string;
-	schemaPath?: string;
-	modelMetadata: {
-		name: string;
-		description: string;
-		creator?: string;
-		version?: string;
-	};
-	outPath?: string;
+  weightsPath: string;
+  datasetPath: string;
+  schema: {
+    hashAlgo: "SHA256" | "BLAKE2b";
+    encodingAlgo: "JSON" | "MSGPACK";
+  };
+  modelMetadata: {
+    name: string;
+    description: string;
+    creator?: string;
+    version?: string;
+  };
+  outPath?: string;
 }): Promise<`0x${string}`> {
-	const weightsHash = await computeFileHash(params.weightsPath);
-	const existingModel = await checkModelExists(weightsHash);
+  const weightsHash = await computeFileHash(params.weightsPath);
+  const existingModel = await checkModelExists(weightsHash);
 
-	if (existingModel) {
-		console.log(`\n❌ Model already registered:`);
-		console.log(`   Name: ${existingModel.name}`);
-		console.log(`   Hash: ${weightsHash}`);
-		throw new Error("Model already registered");
-	}
+  if (existingModel) {
+    console.log(`\n❌ Model already registered:`);
+    console.log(`   Name: ${existingModel.name}`);
+    console.log(`   Hash: ${weightsHash}`);
+    throw new Error("Model already registered");
+  }
 
-	console.log("🚀 Registering new model...");
+  console.log("🚀 Registering new model...");
 
-	const txHash = await withSpinner(
-		"Reading model weights file",
-		async () => {
-			if (!(await Bun.file(params.weightsPath).exists())) {
-				throw new Error(`Model file not found: ${params.weightsPath}`);
-			}
-			let schemaJson: any;
-			if (params.schemaPath) {
-				try {
-					schemaJson = await Bun.file(params.schemaPath).json();
-				} catch (err) {
-					throw new Error(
-						`Invalid schema JSON at ${params.schemaPath}: ${(err as Error).message}`,
-					);
-				}
-			}
+  const txHash = await withSpinner(
+    "Reading model weights file",
+    async () => {
+      if (!(await Bun.file(params.weightsPath).exists())) {
+        throw new Error(`Model file not found: ${params.weightsPath}`);
+      }
 
-			const outPath =
-				params.outPath ?? path.join(process.cwd(), "commitment.json");
+      return await withSpinner(
+        "Submitting commitment to blockchain",
+        async () =>
+          await zkFairSDK.commit.makeCommitment(
+            params.datasetPath,
+            params.weightsPath,
+            {
+              model: {
+                name: params.modelMetadata.name ?? "",
+                description: params.modelMetadata.description ?? "",
+                creator: params.modelMetadata.creator ?? "",
+                version: params.modelMetadata.version ?? "1.0.0",
+              },
+              schema: {
+                cryptoAlgo: params.schema.hashAlgo,
+                encodingSchema: params.schema.encodingAlgo,
+              },
+              outPath: params.outPath,
+            },
+          ),
+        "Commitment transaction submitted",
+      );
+    },
+    "Weights file read successfully",
+  );
 
-			return await withSpinner(
-				"Submitting commitment to blockchain",
-				async () =>
-					await zkFairSDK.commit.makeCommitment(
-						params.datasetPath,
-						params.weightsPath,
-						{
-							model: {
-								name: params.modelMetadata.name ?? "",
-								description: params.modelMetadata.description ?? "",
-								creator: params.modelMetadata.creator ?? "",
-								version: params.modelMetadata.version ?? "1.0.0",
-							},
-							schema: schemaJson,
-							outPath,
-						},
-					),
-				"Commitment transaction submitted",
-			);
-		},
-		"Weights file read successfully",
-	);
+  console.log(`\n✅ Model Registration Successful!`);
+  console.log(`   Transaction Hash: ${txHash}`);
+  console.log(`   Model Hash: ${weightsHash}`);
+  console.log(`   Name: ${params.modelMetadata.name || "Unnamed Model"}`);
 
-	console.log(`\n✅ Model Registration Successful!`);
-	console.log(`   Transaction Hash: ${txHash}`);
-	console.log(`   Model Hash: ${weightsHash}`);
-	console.log(`   Name: ${params.modelMetadata.name || "Unnamed Model"}`);
-
-	return txHash;
+  return txHash;
 }
 
 export async function proveModelBias(opts: ProveModelBiasOpts) {
-	console.log("🔬 Starting model fairness proof process...");
-	console.log(`   Weights: ${opts.weights}`);
-	console.log(`   Dataset: ${opts.data}`);
-	console.log(`   Protected Attributes: ${opts.attributes}`);
+  console.log("🔬 Starting model fairness proof process...");
+  console.log(`   Weights: ${opts.weights}`);
+  console.log(`   Dataset: ${opts.data}`);
+  console.log(`   Protected Attributes: ${opts.attributes}`);
 
-	const _ = await registerModel({
-		weightsPath: opts.weights,
-		datasetPath: opts.data,
-		schemaPath: opts.schema,
-		modelMetadata: {
-			name: opts.name,
-			description: opts.description,
-		},
-		outPath: opts.out,
-	});
+  const _ = await registerModel({
+    weightsPath: opts.weights,
+    datasetPath: opts.data,
+    schema: {
+      encodingAlgo: opts.encoding ?? "MSGPACK",
+      hashAlgo: opts.crypto ?? "BLAKE2b",
+    },
+    modelMetadata: {
+      name: opts.name,
+      description: opts.description,
+    },
+    outPath: opts.out,
+  });
 
-	console.log(`\n🎯 Fairness Proof Process Complete!`);
-	console.log(`   Next steps: Generate ZK proof and submit for verification`);
+  console.log(`\n🎯 Fairness Proof Process Complete!`);
+  console.log(`   Next steps: Generate ZK proof and submit for verification`);
 
-	// generate a proof offchain
-	//let proof = zkFairSDK.proof.generateProof(opts.model, opts.data, opts.attribute);
-	// zkFairSDK.proof.submitProof(proof);
+  // generate a proof offchain
+  //let proof = zkFairSDK.proof.generateProof(opts.model, opts.data, opts.attribute);
+  // zkFairSDK.proof.submitProof(proof);
 
-	// let res = await zkFairSDK.verify.verifyProof(proof, publicInputs);
-	// if (res) {
-	//   console.log(`\n Fairness Proof Process Complete!`);
-	// }
-	// else {
-	//   console.log(`\n Your proof was not valid!`);
-	// }
+  // let res = await zkFairSDK.verify.verifyProof(proof, publicInputs);
+  // if (res) {
+  //   console.log(`\n Fairness Proof Process Complete!`);
+  // }
+  // else {
+  //   console.log(`\n Your proof was not valid!`);
+  // }
 }
 
 export async function commit(opts: CommitOpts) {
-	console.log("📦 Committing model and dataset...");
-	console.log(`   Weights: ${opts.weights}`);
-	console.log(`   Dataset: ${opts.data}`);
+  console.log("📦 Committing model and dataset...");
+  console.log(`   Weights: ${opts.weights}`);
+  console.log(`   Dataset: ${opts.data}`);
 
-	const txHash = await registerModel({
-		weightsPath: opts.weights,
-		datasetPath: opts.data,
-		schemaPath: opts.schema,
-		modelMetadata: { name: opts.name, description: opts.description },
-		outPath: opts.out,
-	});
+  const txHash = await registerModel({
+    weightsPath: opts.weights,
+    datasetPath: opts.data,
+    schema: {
+      encodingAlgo: opts.encoding ?? "MSGPACK",
+      hashAlgo: opts.crypto ?? "BLAKE2b",
+    },
+    modelMetadata: { name: opts.name, description: opts.description },
+    outPath: opts.out,
+  });
 
-	console.log(`\n✅ Commitment Complete!`);
-	return txHash;
+  console.log(`\n✅ Commitment Complete!`);
+  return txHash;
 }
 
 export async function getProofStatus(options: GetProofStatusOpts) {
-	if (!options.proofHash && !options.weights) {
-		throw new Error("Missing required option: pass --proofHash or --weights");
-	}
+  if (!options.proofHash && !options.weights) {
+    throw new Error("Missing required option: pass --proofHash or --weights");
+  }
 
-	const result = await withSpinner(
-		"Getting proof status",
-		async () => {
-			const weightsHash = options.proofHash
-				? validateHexHash(options.proofHash)
-				: await computeFileHash(options.weights!);
+  const result = await withSpinner(
+    "Getting proof status",
+    async () => {
+      const weightsHash = options.proofHash
+        ? validateHexHash(options.proofHash)
+        : await computeFileHash(options.weights!);
 
-			console.log(`Checking proof status for weights hash: ${weightsHash}`);
+      console.log(`Checking proof status for weights hash: ${weightsHash}`);
 
-			const status = await zkFairSDK.proof.getStatus?.(weightsHash);
-			return { status, weightsHash };
-		},
-		"Proof status retrieved",
-	);
+      const status = await zkFairSDK.proof.getStatus?.(weightsHash);
+      return { status, weightsHash };
+    },
+    "Proof status retrieved",
+  );
 
-	console.log(`\n📊 Proof Status Results:`);
-	console.log(`   Weights Hash: ${result.weightsHash}`);
-	console.log(`   Status: ${result.status}`);
+  console.log(`\n📊 Proof Status Results:`);
+  console.log(`   Weights Hash: ${result.weightsHash}`);
+  console.log(`   Status: ${result.status}`);
 
-	return result.status;
+  return result.status;
 }
 
 export async function verifyProof(options: VerifyProofOpts) {
-	const publicInputs: string[] = options.publicInputs.split(",");
+  const publicInputs: string[] = options.publicInputs.split(",");
 
-	let hashToVerify: `0x${string}`;
-	if (options.proofHash) {
-		hashToVerify = validateHexHash(options.proofHash);
-		console.log(`Using provided proof hash: ${hashToVerify}`);
-	} else if (options.weights) {
-		hashToVerify = await computeFileHash(options.weights);
-		console.log(`Computed weights hash from weights file: ${hashToVerify}`);
-	} else {
-		throw new Error("Must provide either weights file or proof hash.");
-	}
+  let hashToVerify: `0x${string}`;
+  if (options.proofHash) {
+    hashToVerify = validateHexHash(options.proofHash);
+    console.log(`Using provided proof hash: ${hashToVerify}`);
+  } else if (options.weights) {
+    hashToVerify = await computeFileHash(options.weights);
+    console.log(`Computed weights hash from weights file: ${hashToVerify}`);
+  } else {
+    throw new Error("Must provide either weights file or proof hash.");
+  }
 
-	console.log(`🔐 Starting proof verification...`);
-	console.log(`   Hash: ${hashToVerify}`);
-	console.log(`   Public Inputs: [${publicInputs.join(", ")}]`);
-	console.log(`   Mode: ${options.local ? "Local" : "On-chain"}`);
+  console.log(`🔐 Starting proof verification...`);
+  console.log(`   Hash: ${hashToVerify}`);
+  console.log(`   Public Inputs: [${publicInputs.join(", ")}]`);
+  console.log(`   Mode: ${options.local ? "Local" : "On-chain"}`);
 
-	await withSpinner(
-		"Verifying proof",
-		async () => {
-			await zkFairSDK.verify.verifyProof(options.local);
-		},
-		"Proof verified successfully",
-	);
+  await withSpinner(
+    "Verifying proof",
+    async () => {
+      await zkFairSDK.verify.verifyProof(options.local);
+    },
+    "Proof verified successfully",
+  );
 
-	console.log(`\n✅ Proof Verification Successful!`);
-	console.log(
-		`   The submitted proof is valid and the model meets fairness constraints.`,
-	);
+  console.log(`\n✅ Proof Verification Successful!`);
+  console.log(
+    `   The submitted proof is valid and the model meets fairness constraints.`,
+  );
 }
 
 export async function listModels() {
-	console.log("📋 Fetching all registered models...");
+  console.log("📋 Fetching all registered models...");
 
-	const models = await withSpinner(
-		"Loading models",
-		async () => {
-			return await zkFairSDK.model.list();
-		},
-		"Models loaded successfully",
-	);
+  const models = await withSpinner(
+    "Loading models",
+    async () => {
+      return await zkFairSDK.model.list();
+    },
+    "Models loaded successfully",
+  );
 
-	console.log(`\n📊 Found ${models.length} registered models:`);
-	console.log("==========================================");
+  console.log(`\n📊 Found ${models.length} registered models:`);
+  console.log("==========================================");
 
-	if (models.length === 0) {
-		console.log("   No models registered yet.");
-	} else {
-		models.forEach((model, index: number) => {
-			console.log(`\n${index + 1}. ${model.name || "Unnamed Model"}`);
-			console.log(`   Author: ${model.author}`);
-			console.log(`   Status: ${modelStatusToString(model.status)}`);
-			console.log(`   Hash: ${model.weightsHash}`);
-			if (model.description) {
-				console.log(`   Description: ${model.description}`);
-			}
-			console.log(
-				`   Registered: ${new Date(Number(model.registrationTimestamp) * 1000).toLocaleString()}`,
-			);
-		});
-	}
+  if (models.length === 0) {
+    console.log("   No models registered yet.");
+  } else {
+    models.forEach((model, index: number) => {
+      console.log(`\n${index + 1}. ${model.name || "Unnamed Model"}`);
+      console.log(`   Author: ${model.author}`);
+      console.log(`   Status: ${modelStatusToString(model.status)}`);
+      console.log(`   Hash: ${model.weightsHash}`);
+      if (model.description) {
+        console.log(`   Description: ${model.description}`);
+      }
+      console.log(
+        `   Registered: ${new Date(Number(model.registrationTimestamp) * 1000).toLocaleString()}`,
+      );
+    });
+  }
 
-	return models;
+  return models;
 }
 
 export async function getModel(options: GetModelOpts) {
-	let hashToUse: `0x${string}`;
+  let hashToUse: `0x${string}`;
 
-	if (options.modelHash && options.weightsFile) {
-		throw new Error("Provide either model hash or weights file, not both");
-	}
+  if (options.modelHash && options.weightsFile) {
+    throw new Error("Provide either model hash or weights file, not both");
+  }
 
-	if (!options.modelHash && !options.weightsFile) {
-		throw new Error("Must provide either model hash or weights file path");
-	}
+  if (!options.modelHash && !options.weightsFile) {
+    throw new Error("Must provide either model hash or weights file path");
+  }
 
-	if (options.modelHash) {
-		hashToUse = validateHexHash(options.modelHash);
-		console.log(`🔍 Using provided model hash: ${hashToUse}`);
-	} else {
-		hashToUse = await computeFileHash(options.weightsFile!);
-		console.log(`🔍 Computed hash from weights file: ${hashToUse}`);
-	}
+  if (options.modelHash) {
+    hashToUse = validateHexHash(options.modelHash);
+    console.log(`🔍 Using provided model hash: ${hashToUse}`);
+  } else {
+    hashToUse = await computeFileHash(options.weightsFile!);
+    console.log(`🔍 Computed hash from weights file: ${hashToUse}`);
+  }
 
-	const model = await withSpinner(
-		"Fetching model details",
-		async () => {
-			return await zkFairSDK.model.get(hashToUse);
-		},
-		"Model details retrieved",
-	);
+  const model = await withSpinner(
+    "Fetching model details",
+    async () => {
+      return await zkFairSDK.model.get(hashToUse);
+    },
+    "Model details retrieved",
+  );
 
-	console.log(`\n📋 Model Details:`);
-	console.log("================");
-	console.log(`Name: ${model.name}`);
-	console.log(`Author: ${model.author}`);
-	console.log(`Description: ${model.description || "No description"}`);
-	console.log(`Status: ${modelStatusToString(model.status)}`);
-	console.log(`Weights Hash: ${model.weightsHash}`);
-	console.log(`Dataset Merkle Root: ${model.datasetMerkleRoot}`);
-	console.log(
-		`Registration Time: ${new Date(Number(model.registrationTimestamp) * 1000).toLocaleString()}`,
-	);
+  console.log(`\n📋 Model Details:`);
+  console.log("================");
+  console.log(`Name: ${model.name}`);
+  console.log(`Author: ${model.author}`);
+  console.log(`Description: ${model.description || "No description"}`);
+  console.log(`Status: ${modelStatusToString(model.status)}`);
+  console.log(`Weights Hash: ${model.weightsHash}`);
+  console.log(`Dataset Merkle Root: ${model.datasetMerkleRoot}`);
+  console.log(
+    `Registration Time: ${new Date(Number(model.registrationTimestamp) * 1000).toLocaleString()}`,
+  );
 
-	if (model.verificationTimestamp && Number(model.verificationTimestamp) > 0) {
-		console.log(
-			`Verification Time: ${new Date(Number(model.verificationTimestamp) * 1000).toLocaleString()}`,
-		);
-	}
+  if (model.verificationTimestamp && Number(model.verificationTimestamp) > 0) {
+    console.log(
+      `Verification Time: ${new Date(Number(model.verificationTimestamp) * 1000).toLocaleString()}`,
+    );
+  }
 
-	if (
-		model.proofHash &&
-		model.proofHash !==
-			"0x0000000000000000000000000000000000000000000000000000000000000000"
-	) {
-		console.log(`Proof Hash: ${model.proofHash}`);
-	}
+  if (
+    model.proofHash &&
+    model.proofHash !==
+    "0x0000000000000000000000000000000000000000000000000000000000000000"
+  ) {
+    console.log(`Proof Hash: ${model.proofHash}`);
+  }
 
-	return model;
+  return model;
 }

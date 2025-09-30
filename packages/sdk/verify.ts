@@ -16,7 +16,7 @@ export class VerifyAPI {
 		if (local) {
 			console.log("Local verification of proof:");
 			const proofData = {
-				proof: new Uint8Array(config.proof.data),
+				proof: config.proof.data,
 				publicInputs: config.proof.publicInputs,
 			};
 			const backend = new UltraHonkBackend(circuit.bytecode);
