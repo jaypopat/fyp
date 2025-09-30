@@ -1,62 +1,39 @@
 import { UltraHonkBackend } from "@aztec/bb.js";
 import circuit from "@zkfair/zk-circuits/circuit";
 import type { ContractClient } from "./client";
+import { parseProofFile, parseCommitmentsFile } from "./artifacts";
+import { getArtifactDir } from "./utils";
+import { hexToBytes } from "./utils";
 
 export class VerifyAPI {
-	constructor(private contracts: ContractClient) {}
+	constructor(private contracts: ContractClient) { }
 
-	async verifyProof(local?: boolean): Promise<boolean> {
-		const config = await Bun.file("config.json").json();
-		if (!config.proof) {
-			throw new Error(
-				`No proof found for model "${config.metadata?.name || "Unknown"}". Run proof generation first.`,
-			);
-		}
+	async verifyProof(weightsHash: `0x${string}`, local?: boolean): Promise<boolean> {
+		const dir = getArtifactDir(weightsHash);
+		const [rawProof, rawCommitments] = await Promise.all([
+			Bun.file(`${dir}/proof.json`).json().catch(() => { throw new Error(`Missing proof.json in ${dir}. Run proof generation first.`); }),
+			Bun.file(`${dir}/commitments.json`).json(),
+		]);
+		const proofFile = parseProofFile(rawProof);
+		const commitments = parseCommitmentsFile(rawCommitments);
 
 		if (local) {
 			console.log("Local verification of proof:");
-			const proofData = {
-				proof: config.proof.data,
-				publicInputs: config.proof.publicInputs,
-			};
+			const proofBytes = hexToBytes(proofFile.proof);
 			const backend = new UltraHonkBackend(circuit.bytecode);
 
-			const isValid = await backend.verifyProof(proofData);
-			if (isValid) {
-				console.log(
-					`Model "${config.metadata.name}" proof is mathematically sound`,
-				);
-			} else {
-				console.log("Proof verification failed - proof may be corrupted");
-			}
+			const isValid = await backend.verifyProof({ proof: proofBytes, publicInputs: proofFile.publicInputs });
+			console.log(isValid ? "Proof is mathematically sound" : "Proof verification failed");
 			return isValid;
 		}
-		// onchain verification
+
 		console.log("Onchain verification of proof:");
-		// TODO: smart contract verify call
-		const proofBytes = new Uint8Array(config.proof.data);
-		const proofHex: `0x${string}` = `0x${Array.from(proofBytes)
-			.map((byte) => byte.toString(16).padStart(2, "0"))
-			.join("")}` as `0x${string}`;
 		const isValid = await this.contracts.verifyModel(
-			config.commitments?.weightsHash, // Model identifier
-			proofHex, // Raw proof data
-			config.proof.publicInputs, // Public inputs array
+			commitments.weightsHash,
+			proofFile.proof,
+			proofFile.publicInputs,
 		);
-
-		console.log(
-			`✅ On-chain verification result: ${isValid ? "VALID" : "INVALID"}`,
-		);
-
-		if (isValid) {
-			console.log(
-				`   Model "${config.metadata.name}" verified on-chain successfully`,
-			);
-			console.log("   Fairness attestation recorded on blockchain");
-		} else {
-			console.log("   ❌ On-chain verification failed");
-		}
-
+		console.log(`✅ On-chain verification result: ${isValid ? 'VALID' : 'INVALID'}`);
 		return isValid;
 	}
 }

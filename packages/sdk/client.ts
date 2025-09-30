@@ -53,7 +53,7 @@ export class ContractClient {
     });
   }
   async verifyModel(
-    modelId: bigint,
+    weightsHash: `0x${string}`,
     proof: `0x${string}`,
     publicInputs: `0x${string}`[],
   ) {
@@ -66,7 +66,7 @@ export class ContractClient {
       abi: zkFairAbi,
       functionName: "verifyModel",
       account: this.walletClient.account,
-      args: [modelId, proof, publicInputs],
+      args: [weightsHash, proof, publicInputs],
     });
 
     // Then execute the actual transaction
@@ -75,7 +75,7 @@ export class ContractClient {
       abi: zkFairAbi,
       functionName: "verifyModel",
       account: this.walletClient.account,
-      args: [modelId, proof, publicInputs],
+      args: [weightsHash, proof, publicInputs],
     });
 
     console.log(`Transaction hash: ${hash}`);

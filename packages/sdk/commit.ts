@@ -1,7 +1,9 @@
 import type { ContractClient } from "./client";
 import type { CommitOptions } from "./types";
-import { parseCSV } from "./utils";
+import { parseCSV, hashBytes } from "./utils";
+import { merkleRoot } from "./merkle";
 import { encode } from "@msgpack/msgpack";
+import { ensureArtifactDir } from "./utils";
 
 export class CommitAPI {
   constructor(private contracts: ContractClient) { }
@@ -20,6 +22,14 @@ export class CommitAPI {
         hashAlgo: options.schema.cryptoAlgo,
       });
 
+    // Existence check : attempt to fetch model by hash; if succeeds, throw
+    try {
+      await this.contracts.getModelByHash(weightsHash);
+      throw new Error("Model already registered");
+    } catch (_err) {
+      // If call reverts / fails we assume model does not exist and proceed.
+    }
+
     const hash = await this.contracts.createModelAndCommit(
       options.model.name,
       options.model.description,
@@ -27,21 +37,17 @@ export class CommitAPI {
       weightsHash,
     );
 
-    // write config file
-    await this.generateConfigFile(
-      {
-        dataset: dataSetPath,
-        weights: weightsPath,
-      },
+    // write config files
+    await this.generateConfigDirectory(
+      { dataset: dataSetPath, weights: weightsPath },
       options.model,
       options.schema,
       saltsMap,
       dataSetMerkleRoot,
       weightsHash,
-      options.outPath,
     );
 
-    return hash; // tx hash
+    return hash;
   }
 
   private async getCommitments(
@@ -57,19 +63,28 @@ export class CommitAPI {
     weightsHash: `0x${string}`;
   }> {
     const saltsMap: Record<number, string> = {};
+    // store row hashes as plain hex (no 0x) to reduce size; merkle builder will normalize
     const rowHashes: string[] = [];
 
     for (let i = 0; i < datasetRows.length; i++) {
-      const row = datasetRows[i]!;
+      const row = datasetRows[i];
+      if (!row) throw new Error(`Row index ${i} missing while hashing dataset`);
       const encodedRow = await this.encodeRow(row, options.encoding);
       const salt = this.generateSalt();
       const hashedRow = await this.hashRow(encodedRow, salt, options.hashAlgo);
+      if (hashedRow.length !== 64) {
+        throw new Error(`Row hash length invalid (expected 64 hex chars, got ${hashedRow.length}) at index ${i}`);
+      }
       saltsMap[i] = salt;
       rowHashes.push(hashedRow);
     }
+    const weightsHash = await this.hashWeights(weights, options.hashAlgo);
 
-    const weightsHash = await this.hashWeights(weights);
-    const dataSetMerkleRoot = await this.calculateMerkleRoot(rowHashes);
+    const dataSetMerkleRoot = await merkleRoot(rowHashes, options.hashAlgo);
+
+    if (!(dataSetMerkleRoot.startsWith("0x") && dataSetMerkleRoot.length === 66)) {
+      throw new Error(`Merkle root malformed: ${dataSetMerkleRoot}`);
+    }
 
     return {
       saltsMap,
@@ -78,34 +93,41 @@ export class CommitAPI {
     };
   }
 
-  private async generateConfigFile(
-    filePaths: {
-      dataset: string;
-      weights: string;
-    },
+  private async generateConfigDirectory(
+    filePaths: { dataset: string; weights: string },
     metadata: CommitOptions["model"],
     schema: CommitOptions["schema"],
     salts: Record<number, string>,
     dataSetMerkleRoot: `0x${string}`,
     weightsHash: `0x${string}`,
-    outputPath?: string,
   ) {
-    const data = {
-      filePaths,
-      commitments: { dataSetMerkleRoot, weightsHash },
-      metadata,
-      schema,
-      salts,
-    };
+    // Use weights hash (without 0x) for directory name for cleanliness.
+  const baseDir = await ensureArtifactDir(weightsHash);
 
-    const configPath = outputPath ?? "config.json";
-    await Bun.write(configPath, JSON.stringify(data, null, 2));
-    console.log(`✅ Config file generated: ${configPath} `);
+    await Promise.all([
+      Bun.write(`${baseDir}/salts.json`, JSON.stringify(salts, null, 2)),
+      Bun.write(`${baseDir}/metadata.json`, JSON.stringify(metadata, null, 2)),
+      Bun.write(
+        `${baseDir}/commitments.json`,
+        JSON.stringify({ datasetMerkleRoot: dataSetMerkleRoot, weightsHash }, null, 2),
+      ),
+      Bun.write(`${baseDir}/schema.json`, JSON.stringify(schema, null, 2)),
+      Bun.write(
+        `${baseDir}/paths.json`,
+        JSON.stringify({ dataset: filePaths.dataset, weights: filePaths.weights }, null, 2),
+      ),
+      Bun.write(
+        `${baseDir}/meta.json`,
+        JSON.stringify({ version: 1, createdAt: Date.now() }, null, 2),
+      ),
+    ]);
+    console.log(`✅ Config directory created at ${baseDir}`);
   }
 
-  private async hashWeights(weightsBuffer: Uint8Array): Promise<`0x${string} `> {
-    const hashBuffer = await crypto.subtle.digest("SHA-256", weightsBuffer);
-    return this.bufferToHashHex(hashBuffer);
+  private async hashWeights(weightsBuffer: Uint8Array, algo: CommitOptions["schema"]["cryptoAlgo"]): Promise<`0x${string}`> {
+    const plain = await hashBytes(weightsBuffer, algo);
+    if (plain.length !== 64) throw new Error("weights hash length invalid");
+    return (`0x${plain}`) as `0x${string}`;
   }
 
   private async encodeRow(
@@ -131,57 +153,14 @@ export class CommitAPI {
   private async hashRow(
     row: Uint8Array,
     salt: string,
-    hashAlgo?: CommitOptions["schema"]["cryptoAlgo"],
-  ): Promise<`0x${string}`> {
-    const algo = hashAlgo ?? "SHA-256";
-
-    // combine row bytes + salt bytes
+    hashAlgo: CommitOptions["schema"]["cryptoAlgo"],
+  ): Promise<string> { // plain hex leaf hash (row || salt)
     const saltBytes = new TextEncoder().encode(salt);
     const combined = new Uint8Array(row.length + saltBytes.length);
     combined.set(row, 0);
     combined.set(saltBytes, row.length);
-
-    const hashBuffer = await crypto.subtle.digest(algo, combined);
-    return this.bufferToHashHex(hashBuffer);
-  }
-
-  private async calculateMerkleRoot(hashes: string[]): Promise<`0x${string}`> {
-    if (hashes.length === 0) {
-      throw new Error("No hashes provided");
-    }
-
-    let level = hashes;
-
-    while (level.length > 1) {
-      const nextLevel: string[] = [];
-
-      for (let i = 0; i < level.length; i += 2) {
-        const left = level[i]!;
-        const right = i + 1 < level.length ? level[i + 1]! : left;
-
-        const combined = new Uint8Array(
-          Buffer.from(left, "hex").length + Buffer.from(right, "hex").length,
-        );
-        combined.set(Buffer.from(left, "hex"), 0);
-        combined.set(Buffer.from(right, "hex"), Buffer.from(left, "hex").length);
-
-        const hashBuffer = await crypto.subtle.digest("SHA-256", combined);
-        nextLevel.push(
-          Array.from(new Uint8Array(hashBuffer))
-            .map((b) => b.toString(16).padStart(2, "0"))
-            .join(""),
-        );
-      }
-
-      level = nextLevel;
-    }
-
-    return `0x${level[0]} ` as `0x${string}`;
-  }
-
-  private bufferToHashHex(buffer: ArrayBuffer): `0x${string} ` {
-    const hashArray = Array.from(new Uint8Array(buffer));
-    const hex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-    return `0x${hex} ` as `0x${string} `;
+    const plain = await hashBytes(combined, hashAlgo); // already plain 64
+    if (plain.length !== 64) throw new Error("row hash length invalid post hashing");
+    return plain;
   }
 }

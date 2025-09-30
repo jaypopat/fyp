@@ -3,37 +3,48 @@ import { type CompiledCircuit, Noir } from "@noir-lang/noir_js";
 import circuit from "@zkfair/zk-circuits/circuit";
 import type { ContractClient } from "./client";
 import { parseCSV } from "./utils";
+import { parsePathsFile } from "./artifacts";
+import { getArtifactDir } from "./utils";
 
 export class ProofAPI {
   constructor(private contracts: ContractClient) { }
 
-  async generateProof() {
-    const config = await Bun.file("config.json").json();
+  async generateProof(weightsHash: `0x${string}`): Promise<`0x${string}`> {
+    const dir = getArtifactDir(weightsHash);
 
-    // get the weights and dataset now
-    const weightsBuffer = await Bun.file(config.filePaths.weights).arrayBuffer();
-    const dataset = await parseCSV(config.filePaths.dataset);
-    const salts = config.salts;
-    // take the above and transform them into circuit inputs
+    const rawPaths = await Bun.file(`${dir}/paths.json`).json();
+    const paths = parsePathsFile(rawPaths);
+
+    // Load dataset & weights
+    const weights_data = await Bun.file(paths.weights).arrayBuffer();
+    const dataset = await parseCSV(paths.dataset);
+    const salts = await Bun.file(`${dir}/salts.json`).json() as Record<number, string>;
+
+    const input = {
+      weights: new Uint8Array(weights_data),
+      dataset: dataset,
+      salts: salts
+    };
 
     const noir = new Noir(circuit as CompiledCircuit);
-    const { witness } = await noir.execute({} as any);
+    const { witness } = await noir.execute(input as any); // TODO build the circuit so it takes the input as required
 
     const backend = new UltraHonkBackend(circuit.bytecode);
     const proofData = await backend.generateProof(witness);
 
-    const updatedConfig = {
-      ...config,
-      proof: {
-        data: proofData.proof,
-        publicInputs: proofData.publicInputs,
-        generatedAt: Date.now(),
-      },
-      status: "proof_generated",
-    };
+    const proofHex = `0x${Array.from(proofData.proof)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("")}` as `0x${string}`;
 
-    // 7. Write updated config back
-    await Bun.write("config.json", JSON.stringify(updatedConfig, null, 2));
+    const proofRecord = {
+      weightsHash,
+      generatedAt: Date.now(),
+      proof: proofHex,
+      publicInputs: proofData.publicInputs as `0x${string}`[],
+    };
+    await Bun.write(`${dir}/proof.json`, JSON.stringify(proofRecord, null, 2));
+
+    return proofHex;
   }
   async getStatus(weightsHash: `0x${string}`) {
     try {

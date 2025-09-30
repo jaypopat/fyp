@@ -147,35 +147,34 @@ contract ZKFair is Ownable {
     }
 
     /**
-     * @notice Submit a ZK proof to verify model fairness
-     * @param modelId The ID of the model to verify
+     * @notice Submit a ZK proof to verify model fairness using weightsHash directly
+     * @param weightsHash The hash of the model weights (identifier)
      * @param proof The ZK proof bytes
      * @param publicInputs Public inputs for the proof
      */
     function verifyModel(
-    uint256 modelId,
-    bytes calldata proof,
-    bytes32[] calldata publicInputs
-) external modelExists(modelId) returns (bool) {
-    // Verify the ZK proof
-    bool proofValid = s_verifier.verify(proof, publicInputs);
-    bytes32 proofHash = keccak256(proof);
-    Model storage model = s_models[modelId];
-    
-    if (proofValid) {
-        model.status = ModelStatus.VERIFIED;
-    } else {
-        model.status = ModelStatus.FAILED;
+        bytes32 weightsHash,
+        bytes calldata proof,
+        bytes32[] calldata publicInputs
+    ) external returns (bool) {
+        uint256 modelId = s_modelByHash[weightsHash];
+        if (modelId == 0) revert ZKFair__ModelNotFound();
+        bool proofValid = s_verifier.verify(proof, publicInputs);
+        bytes32 proofHash = keccak256(proof);
+        Model storage model = s_models[modelId];
+
+        if (proofValid) {
+            model.status = ModelStatus.VERIFIED;
+        } else {
+            model.status = ModelStatus.FAILED;
+        }
+
+        model.verificationTimestamp = block.timestamp;
+        model.proofHash = proofHash;
+
+        emit ModelVerified(modelId, proofValid, proofHash);
+        return proofValid;
     }
-    
-    model.verificationTimestamp = block.timestamp;
-    model.proofHash = proofHash;
-    
-    emit ModelVerified(modelId, proofValid, proofHash);
-    
-    // Return the verification result
-    return proofValid;
-}
 
 
     /**

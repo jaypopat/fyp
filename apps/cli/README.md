@@ -1,154 +1,209 @@
 # zkfair CLI
 
-A command-line tool for generating and verifying **zero-knowledge proofs of AI model fairness**—register models, commit datasets and weights, generate and submit proofs, and verify both on-chain or locally.
+Command-line interface for registering models, committing datasets & weights, generating/ submitting fairness proofs, and verifying them on-chain or locally.
 
-***
+---
+
+## ✨ Features
+- Register model + dataset commitments (on-chain)
+- Generate (WIP) & submit fairness proofs
+- Query model & proof status
+- Verify proofs locally (developer mode) or on-chain
+
+---
 
 ## 🚀 Quick Start
 
-```
-bun install         # Install dependencies
-bun run build       # Build the CLI
-./zkfair --help
+```bash
+bun install            # Install dependencies
+bun run build          # Compile to a native binary (./zkfair)
+./zkfair --help        # Top-level help
+./zkfair model --help  # Command group help
 ```
 
-***
+The build step emits a binary named `zkfair` in this directory.
 
-## 🛠️ Commands & Options
+---
+
+## ⚙️ Environment
+Create a `.env` (see `.env.example`):
+
+```
+RPC_URL=<your_json_rpc_endpoint>
+PRIVATE_KEY=<hex_private_key>
+CONTRACT_ADDRESS=<deployed_zkfair_contract>
+```
+
+All on-chain actions (commit, register) require these values. Local verification (`--local`) does not require RPC or private key.
+
+Load automatically via Bun (it reads `.env` on start) or export them in your shell.
+
+---
+
+## 🧭 Command Structure
+
+Grouped where multiple actions exist (`model`, `proof`), flattened where there is only one action (`commit`, `verify`).
+
+```
+zkfair model list
+zkfair model get <model-hash | --weights path>
+
+zkfair proof prove-model-bias   ...options
+zkfair proof status <proof-hash | weights-path>
+
+zkfair commit  ...options
+zkfair verify  <proof-hash | --weights path> <public-inputs>
+```
+
+> NOTE: The duplicated names (`commit commit`, `verify verify`) come from the current internal command grouping. This may be simplified later (e.g. exposing them directly) but reflects the present code in `commands/`.
+
+Run `--help` after any group or subcommand for contextual help.
+
+---
+
+## 🛠 Commands & Options
 
 ### model
 
-- **List all models**
-  ```
-  zkfair model list
-  ```
-- **Get model details**
-  ```
-  zkfair model get <model-hash>
-  zkfair model get --weights <weights.json>
-  ```
-  **Options:**
-  - `<model-hash>`: Hash of the model weights to retrieve
-  - `--weights, -w <path>`: Path to weights JSON file (alternative to hash)
+List all registered models:
+```bash
+zkfair model list
+```
 
-***
+Get a model (by hash or by recomputing from a weights file):
+```bash
+zkfair model get 0xabc123...
+zkfair model get --weights ./weights.bin
+```
+Options:
+- `model-hash` positional: On-chain weights commitment
+- `--weights, -w <path>`: Path to a weights file to hash locally
+
+---
 
 ### commit
 
-- **Commit dataset & model weights**
-  ```
-  zkfair commit --weights <weights.json> --data <dataset.csv> --schema <schema.json> --name "Model Name" --description "Desc" --out salts.json
-  ```
-  **Options:**
-  - `--weights, -w <path>` *(required)*: Model weights JSON file path
-  - `--data, -d <path>` *(required)*: Dataset file path
-  - `--schema, -s <path>`: Schema JSON (recommended)
-  - `--name, -n <string>` *(required)*: Model name
-  - `--description, -D <string>` *(required)*: Model description
-  - `--out, -o <path>` *(required)*: Output salts JSON
+Create on-chain commitments for a model’s weights + dataset:
+```bash
+zkfair commit \
+  --weights weights.bin \
+  --data dataset.csv \
+  --name "FairNet" \
+  --description "Binary classifier" \
+  --creator "researcher@example" \ # optional
+  --version 1.0.0 \              # optional (default 1.0.0)
+  --encoding MSGPACK \            # optional (default MSGPACK)
+  --crypto SHA-256                # optional (default SHA-256)
+```
+Options (see `cli-args.ts`):
+- `--weights, -w <path>` (required): Model weights binary
+- `--data, -d <path>` (required): Dataset file (CSV/JSON)
+- `--name, -n <string>` (required): Display name
+- `--description, -D <string>` (required)
+- `--creator, -C <string>` (optional): Creator / author identifier stored in metadata
+- `--version, -V <string>` (optional, default 1.0.0): Semantic model version stored in metadata
+- `--encoding, -e <MSGPACK|JSON>`: Dataset encoding (default MSGPACK)
+- `--crypto, -c <SHA-256|BLAKE2b>`: Hash algo (default SHA-256)
 
-***
+Returns: Transaction hash of the commitment registration.
+
+---
 
 ### proof
 
-- **Prove model bias**
-  ```
-  zkfair proof proveModelBias --weights <weights.json> --data <test.csv> --attributes gender,age --name "Model" --description "..." --out salts.json
-  ```
-  **Options:**
-    - `--weights, -w <path>` *(required)*: Model weights JSON file path
-    - `--data, -d <path>` *(required)*: Dataset file path
-    - `--attributes, -a <comma,list>` *(required)*: Protected attributes
-    - `--name, -n <string>` *(required)*: Model name
-    - `--description, -D <string>` *(required)*: Model description
-    - `--schema, -s <path>`: Dataset schema JSON (optional)
-    - `--out, -o <path>`: Output salts JSON file (optional)
+Generate & submit a model bias proof (currently registers model + commitments; proof generation is WIP placeholder in `impl.ts`):
+```bash
+zkfair proof prove-model-bias \
+  --weights weights.bin \
+  --data test.csv \
+  --attributes gender,age \
+  --name "FairNet" \
+  --description "Bias analysis run" \
+  --creator "researcher@example" \ # optional
+  --version 1.0.1 \              # optional (default 1.0.0)
+  --encoding MSGPACK \            # optional (default MSGPACK)
+  --crypto SHA-256 \              # optional (default SHA-256)
+  --out proof_salts.json
+```
+Options:
+- `--weights, -w <path>` (required)
+- `--data, -d <path>` (required)
+- `--attributes, -a <attr1,attr2,...>` (required): Protected attributes tested
+- `--name, -n <string>` (required)
+- `--description, -D <string>` (required)
+- `--creator, -C <string>` (optional)
+- `--version, -V <string>` (optional, default 1.0.0)
+- `--encoding, -e <MSGPACK|JSON>` (optional, default MSGPACK)
+- `--crypto, -c <SHA-256|BLAKE2b>` (optional, default SHA-256)
+- `--out, -o <path>` (optional): Where to write salts metadata (if implemented)
 
-- **Get proof status**
-  ```
-  zkfair proof status <proof-hash>
-  zkfair proof status <weights.json>
-  ```
-  **Options:**
-    - `<proof-hash>`: Proof hash to check
-    - `<weights.json>`: Weights JSON file to derive proof hash from
+Check proof status (by committed proof hash or recomputed weights hash):
+```bash
+zkfair proof status 0xproofhash...
+zkfair proof status ./weights.bin
+```
+Positional resolution logic (see `getProofStatus`):
+1. If first arg looks like a hex hash (`0x...`), it’s treated as a proof hash.
+2. Otherwise it’s treated as a local weights file whose hash will be computed.
 
-***
+Returns: Proof status enum (REGISTERED | VERIFIED | FAILED | UNKNOWN).
+
+---
 
 ### verify
 
-- **Verify a proof**
-  ```
-  zkfair verify --weights <weights.json> --public-inputs <inputs.json> --local
-  zkfair verify --proof-hash <hash> --public-inputs <val1,val2,...>
-  ```
-  **Options:**
-    - `--weights, -w <path>`: Model weights JSON file path
-    - `--proof-hash <hash>`: Specific proof hash to verify
-    - `--public-inputs <data>` *(required)*: Comma-separated values or JSON file path
-    - `--local`: Verify locally (optional; default is onchain)
-
-***
-
-## 💡 Example Workflow
-
+Verify a proof locally (dev) or on-chain:
+```bash
+zkfair verify 0xproofhash... input1,input2,input3
+zkfair verify --weights weights.bin "val1,val2,val3" --local
 ```
-# 1. Train model and export weights
-python train_model.py --dataset train.csv --output weights.json
+Options:
+- `proof-hash` positional (optional if `--weights` used)
+- `--weights, -w <path>`: Recompute hash from weights file instead of passing proof hash
+- `public-inputs` positional (required): Comma list OR path to JSON file (current implementation splits on commas; JSON expansion TBD)
+zkfair commit \
 
-# 2. Commit weights and dataset
-zkfair commit --weights weights.json --data train.csv --schema schema.json --name "FairNet" --description "A fair classification model" --out salts.json
+Output: Success / failure of on-chain (or local) verification.
 
-# 3. Prove fairness
-zkfair proof proveModelBias --weights weights.json --data test.csv --attributes gender,age --name "FairNet" --description "Bias testing" --out proof_salts.json
+---
 
-# 4. Get proof status
-zkfair proof status <proof-hash>
+## � Typical Workflow
 
-# 5. Verify proof
-zkfair verify --proof-hash <hash> --public-inputs inputs.json --local
+```bash
+# 1. Prepare model artifacts
+python train.py --out weights.bin
 
-# 6. List and view models
+# 2. Commit model + dataset
+zkfair commit commit \
+  --weights weights.bin \
+  --data train.csv \
+  --name "FairNet" \
+  --description "Initial registration"
+
+# 3. Run fairness proof (register + placeholder future proof)
+zkfair proof prove-model-bias \
+  --weights weights.bin \
+  --data test.csv \
+  --attributes gender,age \
+  --name "FairNet" \
+  --description "Bias evaluation"
+
+# 4. Inspect proof status
+zkfair proof status weights.bin
+
+# 5. Verify (on-chain)
+zkfair verify 0xproofhash... input1,input2,input3
+
+# 6. Explore models
 zkfair model list
-zkfair model get <model-hash>
+zkfair model get --weights weights.bin
 ```
 
-***
+---
 
-## 📄 Weights JSON Format
-
-The weights JSON file should contain the model parameters in this format:
-
+## 🆘 Help
+```bash
+./zkfair --help
+./zkfair model --help
+./zkfair proof prove-model-bias --help
 ```
-{
-  "metadata": {
-    "model_type": "RandomForestClassifier",
-    "framework": "scikit-learn",
-    "n_features": 10,
-    "n_classes": 2,
-    "feature_names": ["age", "income", "education", "..."]
-  },
-  "weights": {
-    "trees": [
-      {
-        "tree_id": 0,
-        "feature": [0, 1, -1, 2, -1, -1],
-        "threshold": [0.5, 1000, -2, 12, -2, -2],
-        "value": [[], [], [], [], [], []],
-        "children_left": [1, 2, -1, 4, -1, -1],
-        "children_right": [3, 5, -1, -1, -1, -1]
-      }
-    ]
-  }
-}
-```
-
-***
-
-## 🔎 Notes
-
-- **Salts**: Kept private (required for proof generation, not published on-chain)
-- **Commitments & Metadata**: Published on-chain for transparency
-- **Proof verification**: Supported both on-chain and offline (dev)
-- **Weights format**: JSON format allows easy integration with any ML framework
-- **All options**: Shown via `--help` on any command

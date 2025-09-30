@@ -10,12 +10,7 @@ import type {
   verifyProofOptions,
 } from "./cli-args";
 
-import {
-  computeFileHash,
-  modelStatusToString,
-  validateHexHash,
-  withSpinner,
-} from "./utils";
+import { computeFileHash, modelStatusToString, validateHexHash, withSpinner } from "./utils";
 
 export type GetModelOpts = TypeOf<typeof getModelOptions>;
 export type ProveModelBiasOpts = TypeOf<typeof proveModelBiasOptions>;
@@ -30,25 +25,6 @@ const zkFairSDK = new SDK({
 });
 
 /**
- * Checks if model exists by weights hash; returns model data or null
- */
-async function checkModelExists(weightsHash: `0x${string}`) {
-  return await withSpinner(
-    "Checking if model already exists",
-    async () => {
-      try {
-        const model = await zkFairSDK.model.get(weightsHash);
-        return model;
-      } catch (error) {
-        // Model doesn't exist - this is fine for registration
-        return null;
-      }
-    },
-    "Model existence check completed",
-  );
-}
-
-/**
  * Registers a new model if it doesn't already exist.
  * Returns tx hash.
  */
@@ -56,7 +32,7 @@ async function registerModel(params: {
   weightsPath: string;
   datasetPath: string;
   schema: {
-    hashAlgo: "SHA256" | "BLAKE2b";
+    hashAlgo: "SHA-256" | "BLAKE2b";
     encodingAlgo: "JSON" | "MSGPACK";
   };
   modelMetadata: {
@@ -65,18 +41,7 @@ async function registerModel(params: {
     creator?: string;
     version?: string;
   };
-  outPath?: string;
 }): Promise<`0x${string}`> {
-  const weightsHash = await computeFileHash(params.weightsPath);
-  const existingModel = await checkModelExists(weightsHash);
-
-  if (existingModel) {
-    console.log(`\n❌ Model already registered:`);
-    console.log(`   Name: ${existingModel.name}`);
-    console.log(`   Hash: ${weightsHash}`);
-    throw new Error("Model already registered");
-  }
-
   console.log("🚀 Registering new model...");
 
   const txHash = await withSpinner(
@@ -85,7 +50,6 @@ async function registerModel(params: {
       if (!(await Bun.file(params.weightsPath).exists())) {
         throw new Error(`Model file not found: ${params.weightsPath}`);
       }
-
       return await withSpinner(
         "Submitting commitment to blockchain",
         async () =>
@@ -103,7 +67,6 @@ async function registerModel(params: {
                 cryptoAlgo: params.schema.hashAlgo,
                 encodingSchema: params.schema.encodingAlgo,
               },
-              outPath: params.outPath,
             },
           ),
         "Commitment transaction submitted",
@@ -114,9 +77,7 @@ async function registerModel(params: {
 
   console.log(`\n✅ Model Registration Successful!`);
   console.log(`   Transaction Hash: ${txHash}`);
-  console.log(`   Model Hash: ${weightsHash}`);
   console.log(`   Name: ${params.modelMetadata.name || "Unnamed Model"}`);
-
   return txHash;
 }
 
@@ -126,24 +87,26 @@ export async function proveModelBias(opts: ProveModelBiasOpts) {
   console.log(`   Dataset: ${opts.data}`);
   console.log(`   Protected Attributes: ${opts.attributes}`);
 
-  const _ = await registerModel({
+  await registerModel({
     weightsPath: opts.weights,
     datasetPath: opts.data,
     schema: {
-      encodingAlgo: opts.encoding ?? "MSGPACK",
-      hashAlgo: opts.crypto ?? "BLAKE2b",
+      encodingAlgo: opts.encoding,
+      hashAlgo: opts.crypto,
     },
     modelMetadata: {
       name: opts.name,
       description: opts.description,
+      creator: opts.creator,
+      version: opts.version,
     },
-    outPath: opts.out,
   });
 
   console.log(`\n🎯 Fairness Proof Process Complete!`);
   console.log(`   Next steps: Generate ZK proof and submit for verification`);
 
   // generate a proof offchain
+
   //let proof = zkFairSDK.proof.generateProof(opts.model, opts.data, opts.attribute);
   // zkFairSDK.proof.submitProof(proof);
 
@@ -165,11 +128,10 @@ export async function commit(opts: CommitOpts) {
     weightsPath: opts.weights,
     datasetPath: opts.data,
     schema: {
-      encodingAlgo: opts.encoding ?? "MSGPACK",
-      hashAlgo: opts.crypto ?? "BLAKE2b",
+      encodingAlgo: opts.encoding,
+      hashAlgo: opts.crypto,
     },
-    modelMetadata: { name: opts.name, description: opts.description },
-    outPath: opts.out,
+    modelMetadata: { name: opts.name, description: opts.description, creator: opts.creator, version: opts.version },
   });
 
   console.log(`\n✅ Commitment Complete!`);
@@ -184,9 +146,13 @@ export async function getProofStatus(options: GetProofStatusOpts) {
   const result = await withSpinner(
     "Getting proof status",
     async () => {
-      const weightsHash = options.proofHash
-        ? validateHexHash(options.proofHash)
-        : await computeFileHash(options.weights!);
+      let weightsHash: `0x${string}`;
+      if (options.proofHash) {
+        weightsHash = validateHexHash(options.proofHash);
+      } else {
+        if (!options.weights) throw new Error("Provide --weights or --proofHash");
+        weightsHash = await computeFileHash(options.weights);
+      }
 
       console.log(`Checking proof status for weights hash: ${weightsHash}`);
 
@@ -225,7 +191,7 @@ export async function verifyProof(options: VerifyProofOpts) {
   await withSpinner(
     "Verifying proof",
     async () => {
-      await zkFairSDK.verify.verifyProof(options.local);
+      await zkFairSDK.verify.verifyProof(hashToVerify, options.local);
     },
     "Proof verified successfully",
   );
@@ -276,16 +242,15 @@ export async function getModel(options: GetModelOpts) {
   if (options.modelHash && options.weightsFile) {
     throw new Error("Provide either model hash or weights file, not both");
   }
-
   if (!options.modelHash && !options.weightsFile) {
     throw new Error("Must provide either model hash or weights file path");
   }
-
   if (options.modelHash) {
     hashToUse = validateHexHash(options.modelHash);
     console.log(`🔍 Using provided model hash: ${hashToUse}`);
   } else {
-    hashToUse = await computeFileHash(options.weightsFile!);
+    if (!options.weightsFile) throw new Error("weightsFile path missing");
+    hashToUse = await computeFileHash(options.weightsFile);
     console.log(`🔍 Computed hash from weights file: ${hashToUse}`);
   }
 

@@ -642,7 +642,7 @@ export const zkFairAbi = [
 	{
 		type: "function",
 		inputs: [
-			{ name: "modelId", internalType: "uint256", type: "uint256" },
+			{ name: "weightsHash", internalType: "bytes32", type: "bytes32" },
 			{ name: "proof", internalType: "bytes", type: "bytes" },
 			{ name: "publicInputs", internalType: "bytes32[]", type: "bytes32[]" },
 		],

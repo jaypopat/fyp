@@ -16,8 +16,6 @@ export type CommitOptions = {
   };
   schema: {
     encodingSchema: "MSGPACK" | "JSON";
-    cryptoAlgo: "BLAKE2b" | "SHA256";
-    salt?: string;
+    cryptoAlgo: "BLAKE2b" | "SHA-256";
   };
-  outPath?: string;
 };
