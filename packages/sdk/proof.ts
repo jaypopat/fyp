@@ -1,58 +1,60 @@
 import { UltraHonkBackend } from "@aztec/bb.js";
 import { type CompiledCircuit, Noir } from "@noir-lang/noir_js";
 import circuit from "@zkfair/zk-circuits/circuit";
-import type { ContractClient } from "./client";
-import { parseCSV } from "./utils";
 import { parsePathsFile } from "./artifacts";
-import { getArtifactDir } from "./utils";
+import type { ContractClient } from "./client";
+import { getArtifactDir, parseCSV } from "./utils";
 
 export class ProofAPI {
-  constructor(private contracts: ContractClient) { }
+	constructor(private contracts: ContractClient) {}
 
-  async generateProof(weightsHash: `0x${string}`): Promise<`0x${string}`> {
-    const dir = getArtifactDir(weightsHash);
+	async generateProof(weightsHash: `0x${string}`): Promise<`0x${string}`> {
+		const dir = getArtifactDir(weightsHash);
 
-    const rawPaths = await Bun.file(`${dir}/paths.json`).json();
-    const paths = parsePathsFile(rawPaths);
+		const rawPaths = await Bun.file(`${dir}/paths.json`).json();
+		const paths = parsePathsFile(rawPaths);
 
-    // Load dataset & weights
-    const weights_data = await Bun.file(paths.weights).arrayBuffer();
-    const dataset = await parseCSV(paths.dataset);
-    const salts = await Bun.file(`${dir}/salts.json`).json() as Record<number, string>;
+		// Load dataset & weights
+		const weights_data = await Bun.file(paths.weights).arrayBuffer();
+		const dataset = await parseCSV(paths.dataset);
+		const salts = (await Bun.file(`${dir}/salts.json`).json()) as Record<
+			number,
+			string
+		>;
 
-    const input = {
-      weights: new Uint8Array(weights_data),
-      dataset: dataset,
-      salts: salts
-    };
+		const input = {
+			weights: new Uint8Array(weights_data),
+			dataset: dataset,
+			salts: salts,
+		};
 
-    const noir = new Noir(circuit as CompiledCircuit);
-    const { witness } = await noir.execute(input as any); // TODO build the circuit so it takes the input as required
+		const noir = new Noir(circuit as CompiledCircuit);
+		const { witness } = await noir.execute(input as any); // TODO build the circuit so it takes the input as required
 
-    const backend = new UltraHonkBackend(circuit.bytecode);
-    const proofData = await backend.generateProof(witness);
+		const backend = new UltraHonkBackend(circuit.bytecode);
+		const proofData = await backend.generateProof(witness);
 
-    const proofHex = `0x${Array.from(proofData.proof)
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("")}` as `0x${string}`;
+		const proofHex = `0x${Array.from(proofData.proof)
+			.map((b) => b.toString(16).padStart(2, "0"))
+			.join("")}` as `0x${string}`;
 
-    const proofRecord = {
-      weightsHash,
-      generatedAt: Date.now(),
-      proof: proofHex,
-      publicInputs: proofData.publicInputs as `0x${string}`[],
-    };
-    await Bun.write(`${dir}/proof.json`, JSON.stringify(proofRecord, null, 2));
+		const proofRecord = {
+			weightsHash,
+			generatedAt: Date.now(),
+			proof: proofHex,
+			publicInputs: proofData.publicInputs as `0x${string}`[],
+		};
+		await Bun.write(`${dir}/proof.json`, JSON.stringify(proofRecord, null, 2));
 
-    return proofHex;
-  }
-  async getStatus(weightsHash: `0x${string}`) {
-    try {
-      const status = await this.contracts.getProofStatus(weightsHash);
-      return status;
-    } catch (error) {
-      console.error("Error fetching proof status:", error);
-      throw new Error("Failed to retrieve proof status from contract");
-    }
-  }
+		return proofHex;
+	}
+	async getStatus(weightsHash: `0x${string}`) {
+		try {
+			const status = await this.contracts.getProofStatus(weightsHash);
+			return status;
+		} catch (error) {
+			console.error("Error fetching proof status:", error);
+			throw new Error("Failed to retrieve proof status from contract");
+		}
+	}
 }

@@ -1,26 +1,28 @@
-import Papa from "papaparse";
-import { blake2b } from "@noble/hashes/blake2";
-import type { CommitOptions } from "./types";
+import { mkdir } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { mkdir } from "node:fs/promises";
+import { blake2b } from "@noble/hashes/blake2";
+import Papa from "papaparse";
+import type { hashAlgos } from "./types";
 
 export async function parseCSV(filePath: string): Promise<string[][]> {
 	const csvText = await Bun.file(filePath).text();
 	const parsed = Papa.parse<string[]>(csvText, { skipEmptyLines: true });
 	if (parsed.errors.length) {
-		throw new Error(`Error parsing CSV: ${parsed.errors.map(e => e.message).join(", ")}`);
+		throw new Error(
+			`Error parsing CSV: ${parsed.errors.map((e) => e.message).join(", ")}`,
+		);
 	}
 
 	return parsed.data;
 }
 
 export function bytesToHex(bytes: Uint8Array): `0x${string}` {
-	return `0x${[...bytes].map(b => b.toString(16).padStart(2, "0")).join("")}` as `0x${string}`;
+	return `0x${[...bytes].map((b) => b.toString(16).padStart(2, "0")).join("")}` as `0x${string}`;
 }
 
 export function bytesToPlainHex(bytes: Uint8Array): string {
-	return [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
+	return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 export function hexToBytes(hex: `0x${string}` | string): Uint8Array {
@@ -28,14 +30,16 @@ export function hexToBytes(hex: `0x${string}` | string): Uint8Array {
 	const clean = hex.slice(2);
 	if (clean.length % 2 !== 0) throw new Error("Invalid hex length");
 	const out = new Uint8Array(clean.length / 2);
-	for (let i = 0; i < out.length; i++) out[i] = Number.parseInt(clean.slice(i * 2, i * 2 + 2), 16);
+	for (let i = 0; i < out.length; i++)
+		out[i] = Number.parseInt(clean.slice(i * 2, i * 2 + 2), 16);
 	return out;
 }
 
 export async function hashBytes(
 	data: Uint8Array,
-	algo: CommitOptions["schema"]["cryptoAlgo"],
-): Promise<string> { // plain hex
+	algo: hashAlgos,
+): Promise<string> {
+	// plain hex
 	let out: Uint8Array;
 	if (algo === "SHA-256") {
 		const buf = await crypto.subtle.digest("SHA-256", data);
@@ -44,7 +48,8 @@ export async function hashBytes(
 		out = blake2b(data, { dkLen: 32 });
 	}
 	const hex = bytesToPlainHex(out).toLowerCase();
-	if (hex.length !== 64) throw new Error(`hashBytes produced invalid length ${hex.length}`);
+	if (hex.length !== 64)
+		throw new Error(`hashBytes produced invalid length ${hex.length}`);
 	return hex;
 }
 
@@ -53,7 +58,9 @@ export function getArtifactDir(weightsHash: `0x${string}`): string {
 	return path.join(home, ".zkfair", weightsHash.slice(2));
 }
 
-export async function ensureArtifactDir(weightsHash: `0x${string}`): Promise<string> {
+export async function ensureArtifactDir(
+	weightsHash: `0x${string}`,
+): Promise<string> {
 	const dir = getArtifactDir(weightsHash);
 	await mkdir(dir, { recursive: true });
 	return dir;
