@@ -1,4 +1,4 @@
-import type { CommitOptions, encodingSchemas, hashAlgos } from "./types";
+import type { encodingSchemas, hashAlgos } from "./types";
 
 export type Hex32 = `0x${string}`; // expected length 66 when validated
 

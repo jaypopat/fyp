@@ -1,33 +1,24 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.0;
 
 import "forge-std/Script.sol";
+import {HonkVerifier} from "../src/Verifier.sol";
 import "../src/ZKFair.sol";
-import "../src/Verifier.sol";
 
-contract SeedModels is Script {
-    ZKFair public zkFair;
+contract DeployAndSeed is Script {
+    function run() external {
+        // Start broadcasting transactions on Anvil or specified RPC
+        vm.startBroadcast();
 
-    function setUp() public {}
+        // Deploy Verifier contract
+        HonkVerifier verifier = new HonkVerifier();
 
-    function run() public {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        console.log("Verifier deployed at:", address(verifier));
 
-        vm.startBroadcast(deployerPrivateKey);
+        ZKFair zkfair = new ZKFair((verifier));
+        console.log("ZKFair deployed at:", address(zkfair));
 
-        // Deploy or connect to existing contract
-        address zkFairAddress = vm.envAddress("ZKFAIR_CONTRACT_ADDRESS");
-        zkFair = ZKFair(zkFairAddress);
-
-        // Seed multiple models
-        seedSampleModels();
-
-        vm.stopBroadcast();
-    }
-
-    function seedSampleModels() internal {
-        // Model 1: Loan Approval Model
-        zkFair.registerModel(
+        zkfair.registerModel(
             "Loan Approval Classifier",
             "ML model for predicting loan approvals with fairness constraints",
             0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef, // dataset merkle root
@@ -35,7 +26,7 @@ contract SeedModels is Script {
         );
 
         // Model 2: Hiring Recommendation Model
-        zkFair.registerModel(
+        zkfair.registerModel(
             "Hiring Recommendation System",
             "AI system for candidate screening with bias mitigation",
             0x2345678901bcdef12345678901bcdef12345678901bcdef12345678901bcdef1, // dataset merkle root
@@ -43,7 +34,7 @@ contract SeedModels is Script {
         );
 
         // Model 3: Credit Scoring Model
-        zkFair.registerModel(
+        zkfair.registerModel(
             "Credit Risk Assessment",
             "Neural network for credit risk evaluation ensuring demographic parity",
             0x3456789012cdef123456789012cdef123456789012cdef123456789012cdef12, // dataset merkle root
@@ -51,5 +42,7 @@ contract SeedModels is Script {
         );
 
         console.log("Seeded 3 sample models successfully");
+
+        vm.stopBroadcast();
     }
 }

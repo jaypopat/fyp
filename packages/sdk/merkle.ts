@@ -1,4 +1,4 @@
-import type { CommitOptions, hashAlgos } from "./types";
+import type { hashAlgos } from "./types";
 import { hashBytes, hexToBytes } from "./utils";
 
 // Internal node domain separation prefix (leaves are treated as already-digested values)

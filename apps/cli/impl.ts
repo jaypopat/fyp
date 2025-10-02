@@ -2,6 +2,7 @@
 
 import type { TypeOf } from "@drizzle-team/brocli";
 import { SDK } from "@zkfair/sdk";
+import path from "path";
 import type {
 	commitOptions,
 	getModelOptions,
@@ -24,7 +25,7 @@ export type VerifyProofOpts = TypeOf<typeof verifyProofOptions>;
 export type CommitOpts = TypeOf<typeof commitOptions>;
 
 const zkFairSDK = new SDK({
-	rpcUrl: process.env.RPC_URL || "",
+	rpcUrl: process.env.RPC_URL,
 	privateKey: process.env.PRIVATE_KEY || "",
 	contractAddress: process.env.CONTRACT_ADDRESS || "",
 });
@@ -49,18 +50,24 @@ async function registerModel(params: {
 }): Promise<`0x${string}`> {
 	console.log("🚀 Registering new model...");
 
+	const absWeightsPath = path.resolve(params.weightsPath);
+	const absDatasetPath = path.resolve(params.datasetPath);
+
 	const txHash = await withSpinner(
 		"Reading model weights file",
 		async () => {
-			if (!(await Bun.file(params.weightsPath).exists())) {
-				throw new Error(`Model file not found: ${params.weightsPath}`);
+			if (!(await Bun.file(absWeightsPath).exists())) {
+				throw new Error(`Model file not found: ${absWeightsPath}`);
+			}
+			if (!(await Bun.file(absDatasetPath).exists())) {
+				throw new Error(`Dataset file not found: ${absDatasetPath}`);
 			}
 			return await withSpinner(
 				"Submitting commitment to blockchain",
 				async () =>
 					await zkFairSDK.commit.makeCommitment(
-						params.datasetPath,
-						params.weightsPath,
+						absDatasetPath,
+						absWeightsPath,
 						{
 							model: {
 								name: params.modelMetadata.name ?? "",

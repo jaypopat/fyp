@@ -7,12 +7,12 @@ import { VerifyAPI } from "./verify";
 
 export class SDK {
 	public model: ModelAPI;
-	public contracts: ContractClient;
+	private contracts: ContractClient;
 	public proof: ProofAPI;
 	public commit: CommitAPI;
 	public verify: VerifyAPI;
 
-	constructor(options: ZkFairOptions) {
+	constructor(options?: ZkFairOptions) {
 		this.contracts = new ContractClient(options);
 
 		this.model = new ModelAPI(this.contracts);

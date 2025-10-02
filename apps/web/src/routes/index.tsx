@@ -1,346 +1,330 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
-	flexRender,
-	getCoreRowModel,
-	getFilteredRowModel,
-	getPaginationRowModel,
-	getSortedRowModel,
-	useReactTable,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
 } from "@tanstack/react-table";
+import { BrowserSDK } from "@zkfair/sdk/browser";
+import { getModelStatusBadge } from "@/lib/model-status";
+import {
+  normalizeModels,
+  type SDKModel,
+  type SDKModelRaw,
+} from "@/lib/sdk-types";
 import { ArrowUpDown, ExternalLink, Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
+import { Card } from "@/components/ui/card";
 
 export const Route = createFileRoute("/")({
-	component: HomeComponent,
+  loader: async () => {
+    const sdk = new BrowserSDK({
+      contractAddress: import.meta.env.VITE_CONTRACT_ADDRESS,
+    });
+    const rawModels = (await sdk.model.list()) as readonly SDKModelRaw[];
+    const models = normalizeModels(rawModels);
+    return { models };
+  },
+  component: HomeComponent,
 });
 
-// Mock data - replace with your SDK calls
-const mockModels = [
-	{
-		id: "0x1234567890abcdef",
-		name: "Credit Risk Model v2.1",
-		description: "Loan approval prediction model",
-		owner: "0xABC...DEF",
-		registeredAt: new Date("2024-01-15"),
-		lastAudit: new Date("2024-03-01"),
-		status: "verified" as const,
-		riskLevel: "high" as const,
-		demographicParityGap: 0.03,
-		equalityOpportunityGap: 0.04,
-		auditCount: 12,
-	},
-	{
-		id: "0xfedcba0987654321",
-		name: "Hiring Screening AI",
-		description: "Resume screening and candidate evaluation",
-		owner: "0x123...456",
-		registeredAt: new Date("2024-02-20"),
-		lastAudit: new Date("2024-03-15"),
-		status: "pending_audit" as const,
-		riskLevel: "medium" as const,
-		demographicParityGap: 0.02,
-		equalityOpportunityGap: 0.05,
-		auditCount: 8,
-	},
-	{
-		id: "0xabcdef1234567890",
-		name: "Insurance Premium Calculator",
-		description: "Auto insurance risk assessment model",
-		owner: "0x789...ABC",
-		registeredAt: new Date("2024-03-10"),
-		lastAudit: new Date("2024-03-20"),
-		status: "non_compliant" as const,
-		riskLevel: "low" as const,
-		demographicParityGap: 0.08,
-		equalityOpportunityGap: 0.07,
-		auditCount: 3,
-	},
-];
-
-type ModelData = (typeof mockModels)[0];
-
-function getStatusBadge(status: ModelData["status"]) {
-	switch (status) {
-		case "verified":
-			return (
-				<Badge variant="default" className="bg-green-500">
-					Verified
-				</Badge>
-			);
-		case "pending_audit":
-			return <Badge variant="secondary">Pending Audit</Badge>;
-		case "non_compliant":
-			return <Badge variant="destructive">Non-Compliant</Badge>;
-		default:
-			return <Badge variant="outline">Unknown</Badge>;
-	}
-}
-
-function getRiskLevelBadge(riskLevel: ModelData["riskLevel"]) {
-	switch (riskLevel) {
-		case "high":
-			return (
-				<Badge variant="destructive" className="bg-red-500">
-					High Risk
-				</Badge>
-			);
-		case "medium":
-			return (
-				<Badge variant="secondary" className="bg-yellow-500">
-					Medium Risk
-				</Badge>
-			);
-		case "low":
-			return <Badge variant="outline">Low Risk</Badge>;
-		default:
-			return <Badge variant="outline">Unknown</Badge>;
-	}
-}
-
 function HomeComponent() {
-	const [globalFilter, setGlobalFilter] = useState("");
+  const { models } = Route.useLoaderData();
+  const [globalFilter, setGlobalFilter] = useState("");
 
-	const columns: ColumnDef<ModelData>[] = useMemo(
-		() => [
-			{
-				accessorKey: "name",
-				header: ({ column }) => (
-					<Button
-						variant="ghost"
-						onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-						className="h-auto p-0 font-semibold"
-					>
-						Model Name
-						<ArrowUpDown className="ml-2 h-4 w-4" />
-					</Button>
-				),
-				cell: ({ row }) => (
-					<div>
-						<div className="font-medium">{row.getValue("name")}</div>
-						<div className="text-muted-foreground text-sm">
-							{row.original.description}
-						</div>
-					</div>
-				),
-			},
-			{
-				accessorKey: "owner",
-				header: "Owner",
-				cell: ({ row }) => (
-					<code className="rounded bg-muted px-2 py-1 text-sm">
-						{row.getValue("owner")}
-					</code>
-				),
-			},
-			{
-				accessorKey: "status",
-				header: "Status",
-				cell: ({ row }) => getStatusBadge(row.getValue("status")),
-			},
-			{
-				accessorKey: "riskLevel",
-				header: "Risk Level",
-				cell: ({ row }) => getRiskLevelBadge(row.getValue("riskLevel")),
-			},
-			{
-				accessorKey: "demographicParityGap",
-				header: ({ column }) => (
-					<Button
-						variant="ghost"
-						onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-						className="h-auto p-0 font-semibold"
-					>
-						DP Gap
-						<ArrowUpDown className="ml-2 h-4 w-4" />
-					</Button>
-				),
-				cell: ({ row }) => {
-					const gap = row.getValue("demographicParityGap") as number;
-					const percentage = (gap * 100).toFixed(1);
-					return (
-						<span className={gap > 0.05 ? "text-red-600" : "text-green-600"}>
-							{percentage}%
-						</span>
-					);
-				},
-			},
-			{
-				accessorKey: "lastAudit",
-				header: ({ column }) => (
-					<Button
-						variant="ghost"
-						onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-						className="h-auto p-0 font-semibold"
-					>
-						Last Audit
-						<ArrowUpDown className="ml-2 h-4 w-4" />
-					</Button>
-				),
-				cell: ({ row }) => {
-					const date = row.getValue("lastAudit") as Date;
-					return date.toLocaleDateString();
-				},
-			},
-			{
-				accessorKey: "auditCount",
-				header: "Total Audits",
-				cell: ({ row }) => (
-					<span className="font-mono">{row.getValue("auditCount")}</span>
-				),
-			},
-			{
-				id: "actions",
-				header: "Actions",
-				cell: ({ row }) => (
-					<Link
-						to="/model/$modelId"
-						params={{ modelId: row.original.id }}
-						className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-					>
-						View Details
-						<ExternalLink className="h-3 w-3" />
-					</Link>
-				),
-			},
-		],
-		[],
-	);
+  const columns: ColumnDef<SDKModel>[] = useMemo(
+    () => [
+      {
+        accessorKey: "name",
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="h-auto p-0 hover:bg-transparent"
+          >
+            Model Details
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
+        cell: ({ row }) => (
+          <div className="space-y-2 min-w-[280px]">
+            <Link
+              to="/model/$modelId"
+              params={{ modelId: row.original.weightsHash }}
+              className="font-semibold text-foreground hover:text-primary transition-colors"
+            >
+              {row.original.name}
+            </Link>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              {row.original.description}
+            </p>
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-muted-foreground">Author:</span>
+              <code className="rounded bg-muted px-1.5 py-0.5 font-mono">
+                {(row.original.author as string).slice(0, 6)}...
+                {(row.original.author as string).slice(-4)}
+              </code>
+            </div>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "status",
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="h-auto p-0 hover:bg-transparent"
+          >
+            Status
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
+        cell: ({ row }) => (
+          <div className="flex items-center">
+            {getModelStatusBadge(row.original.status)}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "weightsHash",
+        header: "Weights Hash",
+        cell: ({ row }) => {
+          const hash = row.getValue("weightsHash") as string;
+          return (
+            <code className="block rounded bg-muted px-2 py-1 font-mono text-xs">
+              {hash.slice(0, 10)}...{hash.slice(-8)}
+            </code>
+          );
+        },
+      },
+      {
+        accessorKey: "datasetMerkleRoot",
+        header: "Dataset Root",
+        cell: ({ row }) => {
+          const root = row.getValue("datasetMerkleRoot") as string;
+          return (
+            <code className="block rounded bg-muted px-2 py-1 font-mono text-xs">
+              {root.slice(0, 10)}...{root.slice(-8)}
+            </code>
+          );
+        },
+      },
+      {
+        accessorKey: "registrationTimestamp",
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="h-auto p-0 hover:bg-transparent"
+          >
+            Registered
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
+        cell: ({ row }) => {
+          const timestamp = row.getValue("registrationTimestamp") as number;
+          const date = new Date(timestamp * 1000);
+          return (
+            <div className="text-sm font-medium text-foreground">
+              {date.toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </div>
+          );
+        },
+      },
+      {
+        id: "actions",
+        header: "",
+        cell: ({ row }) => (
+          <Link
+            to="/model/$modelId"
+            params={{ modelId: row.original.weightsHash }}
+            className="inline-flex items-center gap-1.5 text-primary text-sm hover:text-primary/80 transition-colors whitespace-nowrap"
+          >
+            View Details
+            <ExternalLink className="h-3.5 w-3.5" />
+          </Link>
+        ),
+      },
+    ],
+    []
+  );
 
-	const table = useReactTable({
-		data: mockModels,
-		columns,
-		getCoreRowModel: getCoreRowModel(),
-		getPaginationRowModel: getPaginationRowModel(),
-		getSortedRowModel: getSortedRowModel(),
-		getFilteredRowModel: getFilteredRowModel(),
-		globalFilterFn: "includesString",
-		state: {
-			globalFilter,
-		},
-		onGlobalFilterChange: setGlobalFilter,
-	});
+  const table = useReactTable({
+    data: models,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    globalFilterFn: "includesString",
+    state: {
+      globalFilter,
+    },
+    onGlobalFilterChange: setGlobalFilter,
+    initialState: {
+      pagination: {
+        pageSize: 10,
+      },
+    },
+  });
 
-	return (
-		<div className="container mx-auto px-4 py-8">
-			<div className="mb-8">
-				<h1 className="mb-2 font-bold text-3xl text-foreground">
-					ZK AI Fairness Registry
-				</h1>
-				<p className="text-muted-foreground">
-					Explore registered AI models and their fairness verification status
-				</p>
-			</div>
+  return (
+    <div className="min-h-screen w-full px-6 py-12">
+      <div className="mx-auto max-w-[1600px]">
+        {/* Header */}
+        <div className="mb-10">
+          <h1 className="mb-3 font-bold text-4xl tracking-tight text-foreground">
+            ZK AI Fairness Registry
+          </h1>
+          <p className="text-lg text-muted-foreground">
+            Explore verified AI models and their fairness compliance status
+          </p>
+        </div>
 
-			{/* Search and Filters */}
-			<div className="mb-6 flex items-center gap-4">
-				<div className="relative max-w-sm flex-1">
-					<Search className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
-					<Input
-						placeholder="Search models..."
-						value={globalFilter ?? ""}
-						onChange={(event) => setGlobalFilter(event.target.value)}
-						className="pl-10"
-					/>
-				</div>
-				<div className="text-muted-foreground text-sm">
-					{table.getFilteredRowModel().rows.length} of {mockModels.length}{" "}
-					models
-				</div>
-			</div>
+        {/* Search Bar */}
+        <Card className="mb-6 p-4 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search models by name or description..."
+                value={globalFilter ?? ""}
+                onChange={(event) => setGlobalFilter(event.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="text-muted-foreground text-sm">
+              <span className="font-medium text-foreground">
+                {table.getFilteredRowModel().rows.length}
+              </span>{" "}
+              {table.getFilteredRowModel().rows.length === 1
+                ? "model"
+                : "models"}
+            </div>
+          </div>
+        </Card>
 
-			{/* Table */}
-			<div className="rounded-md border">
-				<Table>
-					<TableHeader>
-						{table.getHeaderGroups().map((headerGroup) => (
-							<TableRow key={headerGroup.id}>
-								{headerGroup.headers.map((header) => (
-									<TableHead key={header.id} className="font-semibold">
-										{header.isPlaceholder
-											? null
-											: flexRender(
-													header.column.columnDef.header,
-													header.getContext(),
-												)}
-									</TableHead>
-								))}
-							</TableRow>
-						))}
-					</TableHeader>
-					<TableBody>
-						{table.getRowModel().rows?.length ? (
-							table.getRowModel().rows.map((row) => (
-								<TableRow key={row.id} className="hover:bg-muted/50">
-									{row.getVisibleCells().map((cell) => (
-										<TableCell key={cell.id}>
-											{flexRender(
-												cell.column.columnDef.cell,
-												cell.getContext(),
-											)}
-										</TableCell>
-									))}
-								</TableRow>
-							))
-						) : (
-							<TableRow>
-								<TableCell
-									colSpan={columns.length}
-									className="h-24 text-center"
-								>
-									No models found.
-								</TableCell>
-							</TableRow>
-						)}
-					</TableBody>
-				</Table>
-			</div>
+        {/* Table */}
+        <Card className="overflow-hidden shadow-sm">
+          <div className="w-full overflow-x-auto">
+            <Table>
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow
+                    key={headerGroup.id}
+                    className="hover:bg-transparent border-b"
+                  >
+                    {headerGroup.headers.map((header) => (
+                      <TableHead key={header.id} className="font-semibold">
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {table.getRowModel().rows?.length ? (
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      className="transition-colors hover:bg-muted/50"
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id} className="py-4">
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-32 text-center"
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <Search className="h-8 w-8 text-muted-foreground" />
+                        <p className="text-muted-foreground text-sm">
+                          No models found matching your search
+                        </p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
 
-			{/* Pagination */}
-			<div className="flex items-center justify-between space-x-2 py-4">
-				<div className="text-muted-foreground text-sm">
-					Showing{" "}
-					{table.getState().pagination.pageIndex *
-						table.getState().pagination.pageSize +
-						1}{" "}
-					to{" "}
-					{Math.min(
-						(table.getState().pagination.pageIndex + 1) *
-							table.getState().pagination.pageSize,
-						table.getFilteredRowModel().rows.length,
-					)}{" "}
-					of {table.getFilteredRowModel().rows.length} results
-				</div>
-				<div className="space-x-2">
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => table.previousPage()}
-						disabled={!table.getCanPreviousPage()}
-					>
-						Previous
-					</Button>
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => table.nextPage()}
-						disabled={!table.getCanNextPage()}
-					>
-						Next
-					</Button>
-				</div>
-			</div>
-		</div>
-	);
+        {/* Pagination */}
+        <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-muted-foreground text-sm">
+            Showing{" "}
+            <span className="font-medium text-foreground">
+              {table.getState().pagination.pageIndex *
+                table.getState().pagination.pageSize +
+                1}
+            </span>{" "}
+            to{" "}
+            <span className="font-medium text-foreground">
+              {Math.min(
+                (table.getState().pagination.pageIndex + 1) *
+                  table.getState().pagination.pageSize,
+                table.getFilteredRowModel().rows.length
+              )}
+            </span>{" "}
+            of{" "}
+            <span className="font-medium text-foreground">
+              {table.getFilteredRowModel().rows.length}
+            </span>{" "}
+            results
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

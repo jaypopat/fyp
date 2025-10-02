@@ -1,12 +1,11 @@
 import type { Chain } from "viem/chains";
 
-export type ZkFairOptions = {
+export type ZkFairOptions = Partial<{
 	rpcUrl: string;
-	network?: "local" | "sepolia" | "custom";
-	contractAddress?: string; // optional contract address
-	privateKey?: string; // optional private key
-	chain?: Chain;
-};
+	contractAddress: string;
+	privateKey: string;
+	chain: Chain;
+}>;
 export type CommitOptions = {
 	model: {
 		name: string;

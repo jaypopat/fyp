@@ -9,6 +9,7 @@ import Loader from "@/components/loader";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "../index.css";
+import Header from "@/components/header";
 
 export type RouterAppContext = Record<string, never>;
 
@@ -49,7 +50,7 @@ function RootComponent() {
 				storageKey="vite-ui-theme"
 			>
 				<div className="grid h-svh grid-rows-[auto_1fr]">
-					{/*<Header />*/}
+					<Header />
 					{isFetching ? <Loader /> : <Outlet />}
 				</div>
 				<Toaster richColors />
