@@ -45,7 +45,6 @@ async function registerModel(params: {
 		name: string;
 		description: string;
 		creator?: string;
-		version?: string;
 	};
 }): Promise<`0x${string}`> {
 	console.log("🚀 Registering new model...");
@@ -73,7 +72,6 @@ async function registerModel(params: {
 								name: params.modelMetadata.name ?? "",
 								description: params.modelMetadata.description ?? "",
 								creator: params.modelMetadata.creator ?? "",
-								version: params.modelMetadata.version ?? "1.0.0",
 							},
 							schema: {
 								cryptoAlgo: params.schema.hashAlgo,
@@ -110,7 +108,6 @@ export async function proveModelBias(opts: ProveModelBiasOpts) {
 			name: opts.name,
 			description: opts.description,
 			creator: opts.creator,
-			version: opts.version,
 		},
 	});
 
@@ -147,7 +144,6 @@ export async function commit(opts: CommitOpts) {
 			name: opts.name,
 			description: opts.description,
 			creator: opts.creator,
-			version: opts.version,
 		},
 	});
 
@@ -301,7 +297,7 @@ export async function getModel(options: GetModelOpts) {
 	if (
 		model.proofHash &&
 		model.proofHash !==
-			"0x0000000000000000000000000000000000000000000000000000000000000000"
+		"0x0000000000000000000000000000000000000000000000000000000000000000"
 	) {
 		console.log(`Proof Hash: ${model.proofHash}`);
 	}

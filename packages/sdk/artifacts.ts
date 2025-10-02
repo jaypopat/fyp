@@ -34,7 +34,6 @@ export interface MetadataFile {
 	name: string;
 	description: string;
 	creator?: string;
-	version?: string;
 }
 export interface MetaFile {
 	version: number;

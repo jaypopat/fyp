@@ -91,7 +91,6 @@ zkfair commit \
   --name "FairNet" \
   --description "Binary classifier" \
   --creator "researcher@example" \ # optional
-  --version 1.0.0 \              # optional (default 1.0.0)
   --encoding MSGPACK \            # optional (default MSGPACK)
   --crypto SHA-256                # optional (default SHA-256)
 ```
@@ -101,7 +100,6 @@ Options (see `cli-args.ts`):
 - `--name, -n <string>` (required): Display name
 - `--description, -D <string>` (required)
 - `--creator, -C <string>` (optional): Creator / author identifier stored in metadata
-- `--version, -V <string>` (optional, default 1.0.0): Semantic model version stored in metadata
 - `--encoding, -e <MSGPACK|JSON>`: Dataset encoding (default MSGPACK)
 - `--crypto, -c <SHA-256|BLAKE2b>`: Hash algo (default SHA-256)
 
@@ -120,7 +118,6 @@ zkfair proof prove-model-bias \
   --name "FairNet" \
   --description "Bias analysis run" \
   --creator "researcher@example" \ # optional
-  --version 1.0.1 \              # optional (default 1.0.0)
   --encoding MSGPACK \            # optional (default MSGPACK)
   --crypto SHA-256 \              # optional (default SHA-256)
   --out proof_salts.json
@@ -132,7 +129,6 @@ Options:
 - `--name, -n <string>` (required)
 - `--description, -D <string>` (required)
 - `--creator, -C <string>` (optional)
-- `--version, -V <string>` (optional, default 1.0.0)
 - `--encoding, -e <MSGPACK|JSON>` (optional, default MSGPACK)
 - `--crypto, -c <SHA-256|BLAKE2b>` (optional, default SHA-256)
 - `--out, -o <path>` (optional): Where to write salts metadata (if implemented)

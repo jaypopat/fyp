@@ -9,7 +9,6 @@ export type ZkFairOptions = Partial<{
 export type CommitOptions = {
 	model: {
 		name: string;
-		version: string;
 		description: string;
 		creator: string;
 	};

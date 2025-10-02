@@ -22,6 +22,7 @@
 			"cache": true
 		},
 		"@zkfair/zk-circuits#build": {
+			"inputs": ["src/**/*.nr", "Nargo.toml"],
 			"outputs": ["target/**"],
 			"cache": true
 		},

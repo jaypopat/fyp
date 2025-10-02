@@ -37,10 +37,6 @@ const modelMetadataOptions = {
 	creator: string("creator")
 		.alias("C")
 		.desc("Creator / author identifier (string, stored in metadata)"),
-	version: string("version")
-		.alias("V")
-		.default("1.0.0")
-		.desc("Semantic model version (e.g. 1.0.0)"),
 } as const;
 
 export const proveModelBiasOptions = {

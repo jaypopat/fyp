@@ -127,10 +127,6 @@ export class CommitAPI {
 					2,
 				),
 			),
-			Bun.write(
-				`${baseDir}/meta.json`,
-				JSON.stringify({ version: 1, createdAt: Date.now() }, null, 2),
-			),
 		]);
 		console.log(`✅ Config directory created at ${baseDir}`);
 	}
