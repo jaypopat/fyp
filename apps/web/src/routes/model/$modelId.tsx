@@ -1,13 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
 import { BrowserSDK } from "@zkfair/sdk/browser";
 import { ArrowLeft, Check, Copy } from "lucide-react";
-import { getModelStatusBadge } from "@/lib/model-status";
-import {
-	normalizeModel,
-	type SDKModel,
-	type SDKModelRaw,
-} from "@/lib/sdk-types";
+import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -15,7 +10,12 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { getModelStatusBadge } from "@/lib/model-status";
+import {
+	normalizeModel,
+	type SDKModel,
+	type SDKModelRaw,
+} from "@/lib/sdk-types";
 
 export const Route = createFileRoute("/model/$modelId")({
 	loader: async ({ params }) => {
@@ -27,7 +27,9 @@ export const Route = createFileRoute("/model/$modelId")({
 		const sdk = new BrowserSDK({
 			contractAddress: import.meta.env.VITE_CONTRACT_ADDRESS,
 		});
-		const model = (await sdk.model.get(modelId as `0x${string}`)) as SDKModelRaw;
+		const model = (await sdk.model.get(
+			modelId as `0x${string}`,
+		)) as SDKModelRaw;
 		const normalized = normalizeModel(model);
 
 		return { model: normalized } satisfies { model: SDKModel };
@@ -60,7 +62,9 @@ function ModelDetailComponent() {
 		);
 	}
 
-	const registrationLabel = new Date(model.registrationTimestamp * 1000).toLocaleString();
+	const registrationLabel = new Date(
+		model.registrationTimestamp * 1000,
+	).toLocaleString();
 	const verificationLabel = model.verificationTimestamp
 		? new Date(model.verificationTimestamp * 1000).toLocaleString()
 		: "Not verified";
@@ -95,13 +99,15 @@ function ModelDetailComponent() {
 								<span>Back to models</span>
 							</Link>
 						</Button>
-						<CardTitle className="text-3xl font-semibold leading-tight text-foreground">
+						<CardTitle className="font-semibold text-3xl text-foreground leading-tight">
 							{model.name}
 						</CardTitle>
 						<CardDescription className="space-y-1">
 							<span className="text-muted-foreground text-sm">
 								Registered by{" "}
-								<code className="rounded bg-muted px-2 py-1 text-sm">{model.author}</code>
+								<code className="rounded bg-muted px-2 py-1 text-sm">
+									{model.author}
+								</code>
 							</span>
 							<span className="block text-muted-foreground text-sm">
 								Model ID: {modelId}
@@ -118,7 +124,7 @@ function ModelDetailComponent() {
 			<div className="grid gap-6 md:grid-cols-2">
 				<Card>
 					<CardHeader>
-						<CardTitle className="text-lg font-semibold text-foreground">
+						<CardTitle className="font-semibold text-foreground text-lg">
 							Model Metadata
 						</CardTitle>
 						<CardDescription>Hashes and dataset commitments</CardDescription>
@@ -148,10 +154,12 @@ function ModelDetailComponent() {
 
 				<Card>
 					<CardHeader>
-						<CardTitle className="text-lg font-semibold text-foreground">
+						<CardTitle className="font-semibold text-foreground text-lg">
 							Lifecycle
 						</CardTitle>
-						<CardDescription>Key registration and verification milestones</CardDescription>
+						<CardDescription>
+							Key registration and verification milestones
+						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-4">
 						<LifecycleRow label="Registered" value={registrationLabel} />
@@ -180,7 +188,13 @@ type HashFieldProps = {
 	fallback?: string;
 };
 
-function HashField({ label, value, copied, onCopy, fallback = "—" }: HashFieldProps) {
+function HashField({
+	label,
+	value,
+	copied,
+	onCopy,
+	fallback = "—",
+}: HashFieldProps) {
 	return (
 		<div className="space-y-1">
 			<p className="text-muted-foreground text-sm">{label}</p>
@@ -199,7 +213,11 @@ function HashField({ label, value, copied, onCopy, fallback = "—" }: HashField
 						onClick={() => onCopy(value)}
 						aria-label={`Copy ${label}`}
 					>
-						{copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+						{copied ? (
+							<Check className="h-4 w-4" />
+						) : (
+							<Copy className="h-4 w-4" />
+						)}
 					</Button>
 				) : null}
 			</div>
@@ -217,7 +235,9 @@ function LifecycleRow({ label, value, muted = false }: LifecycleRowProps) {
 	return (
 		<div className="space-y-1">
 			<p className="text-muted-foreground text-sm">{label}</p>
-			<p className={`${muted ? "text-muted-foreground" : "text-foreground"} text-sm`}>
+			<p
+				className={`${muted ? "text-muted-foreground" : "text-foreground"} text-sm`}
+			>
 				{value}
 			</p>
 		</div>
