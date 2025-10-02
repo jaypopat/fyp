@@ -7,14 +7,18 @@ import type { hashAlgos } from "./types";
 
 export async function parseCSV(filePath: string): Promise<string[][]> {
 	const csvText = await Bun.file(filePath).text();
-	const parsed = Papa.parse<string[]>(csvText, { skipEmptyLines: true });
+	const parsed = Papa.parse<string[]>(csvText, {
+		skipEmptyLines: true,
+		header: false,
+	});
 	if (parsed.errors.length) {
 		throw new Error(
 			`Error parsing CSV: ${parsed.errors.map((e) => e.message).join(", ")}`,
 		);
 	}
 
-	return parsed.data;
+	const [_header, ...dataRows] = parsed.data;
+	return dataRows;
 }
 
 export function bytesToHex(bytes: Uint8Array): `0x${string}` {
