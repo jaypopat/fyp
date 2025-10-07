@@ -83,27 +83,46 @@ Options:
 
 ### commit
 
-Create on-chain commitments for a model's weights + dataset:
+Create on-chain commitments for a model's weights + dataset.
+
+**Option 1: Using Directory Convention (Recommended)**
+```bash
+zkfair commit --dir ./examples/adult-income
+```
+
+The CLI expects the directory to contain:
+- `weights.bin` - Model weights (required)
+- `dataset.csv` - Training dataset (required)
+- `fairness_threshold.json` - Fairness configuration (required)
+- `model.json` (optional) - Model metadata (name, description, creator)
+
+**Note:** Salt generation is handled automatically by the CLI. A deterministic master salt is generated from your model files and cached in `~/.zkfair/<weights-hash>/` for proof generation. The same model files will always produce the same commitment.
+
+**Option 2: Using Explicit Paths**
 ```bash
 zkfair commit \
   --weights weights.bin \
   --data dataset.csv \
-  --fairness-threshold fairness.json \
-  --name "FairNet" \
-  --description "Binary classifier" \
-  --creator "researcher@example" \ # optional
-  --encoding MSGPACK \            # optional (default MSGPACK)
-  --crypto SHA-256                # optional (default SHA-256)
+  --fairness-threshold fairness_threshold.json \
+  --name "Adult Income Predictor" \
+  --description "Binary classifier for income prediction" \
+  --creator "researcher@example" \
+  --encoding MSGPACK \
+  --crypto SHA-256
 ```
-Options (see `cli-args.ts`):
-- `--weights, -w <path>` (required): Model weights binary
-- `--data, -d <path>` (required): Dataset file (CSV/JSON)
-- `--fairness-threshold, -f <path>` (required): Path to fairness configuration JSON file
-- `--name, -n <string>` (required): Display name
-- `--description, -D <string>` (required)
-- `--creator, -C <string>` (optional): Creator / author identifier stored in metadata
+
+Options:
+- `--dir <path>`: Directory containing all model files (recommended)
+- `--weights, -w <path>`: Model weights binary (required if not using --dir)
+- `--data, -d <path>`: Dataset file CSV (required if not using --dir)
+- `--fairness-threshold, -f <path>`: Fairness configuration JSON (required if not using --dir)
+- `--name, -n <string>`: Display name (overrides model.json)
+- `--description, -D <string>`: Model description (overrides model.json)
+- `--creator, -C <string>`: Creator identifier (overrides model.json, optional)
 - `--encoding, -e <MSGPACK|JSON>`: Dataset encoding (default MSGPACK)
-- `--crypto, -c <SHA-256|BLAKE2b>`: Hash algo (default SHA-256)
+- `--crypto, -c <SHA-256|BLAKE2b>`: Hash algorithm (default SHA-256)
+
+**Note:** You must use either `--dir` OR all of `--weights`, `--data`, and `--fairness-threshold`. CLI flags for name/description/creator override values from `model.json` if present.
 
 Returns: Transaction hash of the commitment registration.
 
@@ -111,31 +130,44 @@ Returns: Transaction hash of the commitment registration.
 
 ### proof
 
-Generate & submit a model bias proof (currently registers model + commitments; proof generation is WIP placeholder in `impl.ts`):
+Generate & submit a model bias proof (currently registers model + commitments; proof generation is WIP placeholder in `impl.ts`).
+
+**Option 1: Using Directory Convention (Recommended)**
+```bash
+zkfair proof prove-model-bias \
+  --dir ./examples/heart-disease \
+  --attributes sex
+```
+
+**Option 2: Using Explicit Paths**
 ```bash
 zkfair proof prove-model-bias \
   --weights weights.bin \
-  --data test.csv \
-  --fairness-threshold fairness.json \
-  --attributes gender,age \
-  --name "FairNet" \
-  --description "Bias analysis run" \
-  --creator "researcher@example" \ # optional
-  --encoding MSGPACK \            # optional (default MSGPACK)
-  --crypto SHA-256 \              # optional (default SHA-256)
+  --data dataset.csv \
+  --fairness-threshold fairness_threshold.json \
+  --attributes sex,age \
+  --name "Heart Disease Model" \
+  --description "Fairness analysis for heart disease predictor" \
+  --creator "researcher@example" \
+  --encoding MSGPACK \
+  --crypto SHA-256 \
   --out proof_salts.json
 ```
+
 Options:
-- `--weights, -w <path>` (required)
-- `--data, -d <path>` (required)
-- `--fairness-threshold, -f <path>` (required): Path to fairness configuration JSON file
+- `--dir <path>`: Directory containing all model files (recommended)
+- `--weights, -w <path>`: Model weights (required if not using --dir)
+- `--data, -d <path>`: Dataset file (required if not using --dir)
+- `--fairness-threshold, -f <path>`: Fairness config JSON (required if not using --dir)
 - `--attributes, -a <attr1,attr2,...>` (required): Protected attributes tested
-- `--name, -n <string>` (required)
-- `--description, -D <string>` (required)
-- `--creator, -C <string>` (optional)
+- `--name, -n <string>`: Display name (overrides model.json)
+- `--description, -D <string>`: Model description (overrides model.json)
+- `--creator, -C <string>`: Creator identifier (overrides model.json, optional)
 - `--encoding, -e <MSGPACK|JSON>` (optional, default MSGPACK)
 - `--crypto, -c <SHA-256|BLAKE2b>` (optional, default SHA-256)
 - `--out, -o <path>` (optional): Where to write salts metadata (if implemented)
+
+**Note:** You must use either `--dir` OR all of `--weights`, `--data`, and `--fairness-threshold`.
 
 Check proof status (by committed proof hash or recomputed weights hash):
 ```bash
@@ -143,8 +175,8 @@ zkfair proof status 0xproofhash...
 zkfair proof status ./weights.bin
 ```
 Positional resolution logic (see `getProofStatus`):
-1. If first arg looks like a hex hash (`0x...`), it’s treated as a proof hash.
-2. Otherwise it’s treated as a local weights file whose hash will be computed.
+1. If first arg looks like a hex hash (`0x...`), it's treated as a proof hash.
+2. Otherwise it's treated as a local weights file whose hash will be computed.
 
 Returns: Proof status enum (REGISTERED | VERIFIED | FAILED | UNKNOWN).
 
@@ -173,37 +205,29 @@ Output: Success / failure of on-chain (or local) verification.
 ## 📋 Typical Workflow
 
 ```bash
-# 1. Prepare model artifacts and fairness config
-python train.py
-# This should generate weights.bin and fairness.json
+# 1. Train your model and generate required files
+cd examples/adult-income
+python main.py
+# Generates: weights.bin, dataset.csv, fairness_threshold.json, model.json
 
-# 2. Commit model + dataset
-zkfair commit \
-  --weights weights.bin \
-  --data train.csv \
-  --fairness-threshold fairness.json \
-  --name "FairNet" \
-  --description "Initial registration"
+# 2. Commit model (master salt auto-generated, cached in ~/.zkfair/)
+cd ../..
+zkfair commit --dir ./examples/adult-income
 
-# 3. Run fairness proof (register + placeholder future proof)
+# 3. Run fairness proof
 zkfair proof prove-model-bias \
-  --weights weights.bin \
-  --data test.csv \
-  --fairness-threshold fairness.json \
-  --attributes gender,age \
-  --name "FairNet" \
-  --description "Bias evaluation"
+  --dir ./examples/adult-income \
+  --attributes sex
 
 # 4. Inspect proof status
-zkfair proof status weights.bin
+zkfair proof status ./examples/adult-income/weights.bin
 
-# 5. Verify (on-chain)
+# 5. Verify on-chain
 zkfair verify 0xproofhash... input1,input2,input3
 
 # 6. Explore models
 zkfair model list
-zkfair model get --weights weights.bin
-```
+zkfair model get --weights ./examples/adult-income/weights.bin
 ```
 
 ---

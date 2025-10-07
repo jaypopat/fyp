@@ -8,18 +8,22 @@ export const getModelOptions = {
 };
 
 const datasetAndHashOptions = {
+	// NEW: Simple directory option
+	dir: string("dir")
+		.alias("D")
+		.desc("Directory containing model files (weights.bin, dataset.csv, fairness_threshold.json, model.json)"),
+
+	// Fallback to explicit paths (for power users or custom layouts)
 	weights: string("weights")
-		.required()
 		.alias("w")
 		.desc("Path to model weights bin file"),
 	data: string("data")
-		.required()
 		.alias("d")
 		.desc("Path to dataset file (CSV/JSON)"),
 	fairnessThreshold: string("fairness-threshold")
-		.required()
 		.alias("f")
-		.desc("Path to fairness threshold file"),
+		.desc("Path to fairness threshold JSON file"),
+
 	encoding: string("encoding")
 		.alias("e")
 		.enum("MSGPACK", "JSON")
@@ -29,28 +33,32 @@ const datasetAndHashOptions = {
 		.alias("c")
 		.enum("SHA-256", "BLAKE2b")
 		.default("SHA-256")
-		.desc("Cryptographic hash algorithm (default SHA-256)"),
+		.desc("Cryptographic hash algorithm"),
 } as const;
 
 const modelMetadataOptions = {
-	name: string("name").required().alias("n").desc("Human-readable model name"),
+	name: string("name")
+		.alias("n")
+		.desc("Human-readable model name (or specify in model.json)"),
 	description: string("description")
-		.required()
-		.alias("D")
-		.desc("Description of the model"),
+		.alias("desc")
+		.desc("Description of the model (or specify in model.json)"),
 	creator: string("creator")
 		.alias("C")
-		.desc("Creator / author identifier (string, stored in metadata)"),
+		.desc("Creator / author identifier (or specify in model.json)"),
+} as const;
+
+export const commitOptions = {
+	...datasetAndHashOptions,
+	...modelMetadataOptions,
 } as const;
 
 export const proveModelBiasOptions = {
 	...datasetAndHashOptions,
 	...modelMetadataOptions,
-
 	attributes: string("attributes")
-		.required()
 		.alias("a")
-		.desc("Comma-separated list of protected attributes"),
+		.desc("Comma-separated list of protected attributes (or specify in fairness_threshold.json)"),
 } as const;
 
 export const getProofStatusOptions = {
@@ -70,8 +78,3 @@ export const verifyProofOptions = {
 		.desc("Comma-separated public inputs OR path to JSON file"),
 	local: boolean("local").desc("Verify proof locally instead of onchain (DEV)"),
 };
-
-export const commitOptions = {
-	...datasetAndHashOptions,
-	...modelMetadataOptions,
-} as const;

@@ -31,6 +31,104 @@ const zkFairSDK = new SDK({
 	contractAddress: process.env.CONTRACT_ADDRESS || "",
 });
 
+interface ModelFiles {
+	weightsPath: string;
+	datasetPath: string;
+	fairnessThresholdPath: string;
+	modelMetadata: {
+		name: string;
+		description: string;
+		creator?: string;
+	};
+}
+
+/**
+ * Discovers model files from either a directory or explicit paths.
+ * If --dir is provided, looks for weights.bin, dataset.csv, fairness_threshold.json, and optionally model.json
+ * If explicit paths are provided, uses those directly.
+ * CLI metadata flags override model.json metadata.
+ */
+async function discoverModelFiles(opts: {
+	dir?: string;
+	weights?: string;
+	data?: string;
+	fairnessThreshold?: string;
+	name?: string;
+	description?: string;
+	creator?: string;
+}): Promise<ModelFiles> {
+	// Validate that either dir OR explicit paths are provided
+	if (opts.dir) {
+		// Directory mode: discover files in the directory
+		if (opts.weights || opts.data || opts.fairnessThreshold) {
+			throw new Error(
+				"Cannot use --dir with explicit file paths. Use either --dir OR (--weights, --data, --fairness-threshold).",
+			);
+		}
+
+		const dirPath = path.resolve(opts.dir);
+		if (!(await Bun.file(dirPath).exists())) {
+			throw new Error(`Directory not found: ${dirPath}`);
+		}
+
+		const weightsPath = path.join(dirPath, "weights.bin");
+		const datasetPath = path.join(dirPath, "dataset.csv");
+		const fairnessThresholdPath = path.join(dirPath, "fairness_threshold.json");
+		const modelJsonPath = path.join(dirPath, "model.json");
+
+		// Check required files exist
+		if (!(await Bun.file(weightsPath).exists())) {
+			throw new Error(`weights.bin not found in directory: ${dirPath}`);
+		}
+		if (!(await Bun.file(datasetPath).exists())) {
+			throw new Error(`dataset.csv not found in directory: ${dirPath}`);
+		}
+		if (!(await Bun.file(fairnessThresholdPath).exists())) {
+			throw new Error(
+				`fairness_threshold.json not found in directory: ${dirPath}`,
+			);
+		}
+
+		// Load model.json if it exists
+		let modelJson: { name?: string; description?: string; creator?: string } =
+			{};
+		if (await Bun.file(modelJsonPath).exists()) {
+			modelJson = await Bun.file(modelJsonPath).json();
+		}
+
+		// CLI flags override model.json
+		return {
+			weightsPath,
+			datasetPath,
+			fairnessThresholdPath,
+			modelMetadata: {
+				name: opts.name || modelJson.name || "Unnamed Model",
+				description:
+					opts.description || modelJson.description || "No description",
+				creator: opts.creator || modelJson.creator,
+			},
+		};
+	}
+
+	// Explicit paths mode: require all three paths
+	if (!opts.weights || !opts.data || !opts.fairnessThreshold) {
+		throw new Error(
+			"Must provide either --dir OR all of (--weights, --data, --fairness-threshold)",
+		);
+	}
+
+	return {
+		weightsPath: opts.weights,
+		datasetPath: opts.data,
+		fairnessThresholdPath: opts.fairnessThreshold,
+		modelMetadata: {
+			name: opts.name || "Unnamed Model",
+			description: opts.description || "No description",
+			creator: opts.creator,
+		},
+	};
+}
+
 /**
  * Registers a new model if it doesn't already exist.
  * Returns tx hash.
@@ -56,7 +154,7 @@ async function registerModel(params: {
 	const absFairnessThresholdPath = path.resolve(params.fairnessThresholdPath);
 
 	const txHash = await withSpinner(
-		"Reading model weights file",
+		"Reading model files",
 		async () => {
 			if (!(await Bun.file(absWeightsPath).exists())) {
 				throw new Error(`Model file not found: ${absWeightsPath}`);
@@ -70,7 +168,7 @@ async function registerModel(params: {
 				);
 			}
 
-      const fairnessConfig = await Bun.file(absFairnessThresholdPath).json() as FairnessFile;
+			const fairnessConfig = await Bun.file(absFairnessThresholdPath).json() as FairnessFile;
 
 			return await withSpinner(
 				"Submitting commitment to blockchain",
@@ -99,7 +197,7 @@ async function registerModel(params: {
 				"Commitment transaction submitted",
 			);
 		},
-		"Weights file read successfully",
+		"Model files read successfully",
 	);
 
 	console.log(`\n✅ Model Registration Successful!`);
@@ -110,23 +208,30 @@ async function registerModel(params: {
 
 export async function proveModelBias(opts: ProveModelBiasOpts) {
 	console.log("🔬 Starting model fairness proof process...");
-	console.log(`   Weights: ${opts.weights}`);
-	console.log(`   Dataset: ${opts.data}`);
+
+	const modelFiles = await discoverModelFiles({
+		dir: opts.dir,
+		weights: opts.weights,
+		data: opts.data,
+		fairnessThreshold: opts.fairnessThreshold,
+		name: opts.name,
+		description: opts.description,
+		creator: opts.creator,
+	});
+
+	console.log(`   Weights: ${modelFiles.weightsPath}`);
+	console.log(`   Dataset: ${modelFiles.datasetPath}`);
 	console.log(`   Protected Attributes: ${opts.attributes}`);
 
 	await registerModel({
-		weightsPath: opts.weights,
-		datasetPath: opts.data,
-		fairnessThresholdPath: opts.fairnessThreshold,
+		weightsPath: modelFiles.weightsPath,
+		datasetPath: modelFiles.datasetPath,
+		fairnessThresholdPath: modelFiles.fairnessThresholdPath,
 		schema: {
 			encodingAlgo: opts.encoding,
 			hashAlgo: opts.crypto,
 		},
-		modelMetadata: {
-			name: opts.name,
-			description: opts.description,
-			creator: opts.creator,
-		},
+		modelMetadata: modelFiles.modelMetadata,
 	});
 
 	console.log(`\n🎯 Fairness Proof Process Complete!`);
@@ -148,22 +253,29 @@ export async function proveModelBias(opts: ProveModelBiasOpts) {
 
 export async function commit(opts: CommitOpts) {
 	console.log("📦 Committing model and dataset...");
-	console.log(`   Weights: ${opts.weights}`);
-	console.log(`   Dataset: ${opts.data}`);
+
+	const modelFiles = await discoverModelFiles({
+		dir: opts.dir,
+		weights: opts.weights,
+		data: opts.data,
+		fairnessThreshold: opts.fairnessThreshold,
+		name: opts.name,
+		description: opts.description,
+		creator: opts.creator,
+	});
+
+	console.log(`   Weights: ${modelFiles.weightsPath}`);
+	console.log(`   Dataset: ${modelFiles.datasetPath}`);
 
 	const txHash = await registerModel({
-		weightsPath: opts.weights,
-		fairnessThresholdPath: opts.fairnessThreshold,
-		datasetPath: opts.data,
+		weightsPath: modelFiles.weightsPath,
+		fairnessThresholdPath: modelFiles.fairnessThresholdPath,
+		datasetPath: modelFiles.datasetPath,
 		schema: {
 			encodingAlgo: opts.encoding,
 			hashAlgo: opts.crypto,
 		},
-		modelMetadata: {
-			name: opts.name,
-			description: opts.description,
-			creator: opts.creator,
-		},
+		modelMetadata: modelFiles.modelMetadata,
 	});
 
 	console.log(`\n✅ Commitment Complete!`);
@@ -316,7 +428,7 @@ export async function getModel(options: GetModelOpts) {
 	if (
 		model.proofHash &&
 		model.proofHash !==
-			"0x0000000000000000000000000000000000000000000000000000000000000000"
+		"0x0000000000000000000000000000000000000000000000000000000000000000"
 	) {
 		console.log(`Proof Hash: ${model.proofHash}`);
 	}

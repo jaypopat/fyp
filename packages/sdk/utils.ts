@@ -1,4 +1,3 @@
-import { mkdir } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { blake2b } from "@noble/hashes/blake2";
@@ -60,12 +59,4 @@ export async function hashBytes(
 export function getArtifactDir(weightsHash: `0x${string}`): string {
 	const home = os.homedir();
 	return path.join(home, ".zkfair", weightsHash.slice(2));
-}
-
-export async function ensureArtifactDir(
-	weightsHash: `0x${string}`,
-): Promise<string> {
-	const dir = getArtifactDir(weightsHash);
-	await mkdir(dir, { recursive: true });
-	return dir;
 }

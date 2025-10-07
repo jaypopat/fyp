@@ -1,11 +1,12 @@
 import { encode } from "@msgpack/msgpack";
+import { mkdir } from "node:fs/promises";
 import type { ContractClient } from "./client";
 import { merkleRoot } from "./merkle";
 import type { CommitOptions, encodingSchemas, hashAlgos } from "./types";
-import { ensureArtifactDir, hashBytes, parseCSV } from "./utils";
+import { hashBytes, parseCSV, getArtifactDir } from "./utils";
 
 export class CommitAPI {
-	constructor(private contracts: ContractClient) {}
+	constructor(private contracts: ContractClient) { }
 
 	async makeCommitment(
 		dataSetPath: string,
@@ -15,11 +16,22 @@ export class CommitAPI {
 		const datasetRows = await parseCSV(dataSetPath);
 		const weights = await Bun.file(weightsPath).arrayBuffer();
 
-		const { saltsMap, dataSetMerkleRoot, weightsHash } =
-			await this.getCommitments(datasetRows, new Uint8Array(weights), {
+		// Generate deterministic master salt from model files
+		const masterSalt = await this.generateMasterSalt(
+			weightsPath,
+			dataSetPath,
+			options.model,
+		);
+
+		const { saltsMap, dataSetMerkleRoot, weightsHash } = await this.getCommitments(
+			datasetRows,
+			new Uint8Array(weights),
+			masterSalt,
+			{
 				encoding: options.schema.encodingSchema,
 				hashAlgo: options.schema.cryptoAlgo,
-			});
+			},
+		);
 
 		// Attempt to register the model - if it already exists, provide a clear error
 		let hash: `0x${string}`;
@@ -44,12 +56,13 @@ export class CommitAPI {
 			throw err;
 		}
 
-		// write config files
+		// Store artifacts in ~/.zkfair/<weights-hash>/
 		await this.generateConfigDirectory(
 			{ dataset: dataSetPath, weights: weightsPath },
 			options.model,
 			options.schema,
 			options.fairness,
+			masterSalt,
 			saltsMap,
 			dataSetMerkleRoot,
 			weightsHash,
@@ -58,9 +71,50 @@ export class CommitAPI {
 		return hash;
 	}
 
+	/**
+	 * Generate deterministic master salt from model files.
+	 * This ensures same model files always produce the same commitment.
+	 * 
+	 * master_salt = HASH(weights_hash || dataset_hash || metadata_json)
+	 */
+	private async generateMasterSalt(
+		weightsPath: string,
+		datasetPath: string,
+		metadata: CommitOptions["model"],
+	): Promise<string> {
+		// Hash the weights file
+		const weightsBuffer = await Bun.file(weightsPath).arrayBuffer();
+		const weightsHash = await hashBytes(new Uint8Array(weightsBuffer), "SHA-256");
+
+		// Hash the dataset file
+		const datasetBuffer = await Bun.file(datasetPath).arrayBuffer();
+		const datasetHash = await hashBytes(new Uint8Array(datasetBuffer), "SHA-256");
+
+		// Hash the metadata (for determinism based on model identity)
+		const metadataString = JSON.stringify({
+			name: metadata.name,
+			description: metadata.description,
+			creator: metadata.creator,
+		});
+		const metadataHash = await hashBytes(
+			new TextEncoder().encode(metadataString),
+			"SHA-256",
+		);
+
+		// Combine all hashes to create master salt
+		const combined = `${weightsHash}:${datasetHash}:${metadataHash}`;
+		const masterSalt = await hashBytes(
+			new TextEncoder().encode(combined),
+			"SHA-256",
+		);
+
+		return masterSalt;
+	}
+
 	private async getCommitments(
 		datasetRows: string[][],
 		weights: Uint8Array,
+		masterSalt: string,
 		options: {
 			encoding: encodingSchemas;
 			hashAlgo: hashAlgos;
@@ -70,25 +124,31 @@ export class CommitAPI {
 		dataSetMerkleRoot: `0x${string}`;
 		weightsHash: `0x${string}`;
 	}> {
-		const saltsMap: Record<number, string> = {};
-		// store row hashes as plain hex (no 0x) to reduce size; merkle builder will normalize
-		const rowHashes: string[] = [];
+		const weightsHash = await this.hashWeights(weights, options.hashAlgo);
 
+		// Derive per-row salts from master salt
+		const saltsMap = await this.deriveSalts(
+			masterSalt,
+			datasetRows.length,
+			weightsHash,
+			options.hashAlgo,
+		);
+
+		const rowHashes: string[] = [];
 		for (let i = 0; i < datasetRows.length; i++) {
 			const row = datasetRows[i];
 			if (!row) throw new Error(`Row index ${i} missing while hashing dataset`);
 			const encodedRow = await this.encodeRow(row, options.encoding);
-			const salt = this.generateSalt();
+			const salt = saltsMap[i];
+			if (!salt) throw new Error(`Salt missing for row ${i}`);
 			const hashedRow = await this.hashRow(encodedRow, salt, options.hashAlgo);
 			if (hashedRow.length !== 64) {
 				throw new Error(
 					`Row hash length invalid (expected 64 hex chars, got ${hashedRow.length}) at index ${i}`,
 				);
 			}
-			saltsMap[i] = salt;
 			rowHashes.push(hashedRow);
 		}
-		const weightsHash = await this.hashWeights(weights, options.hashAlgo);
 
 		const dataSetMerkleRoot = await merkleRoot(rowHashes, options.hashAlgo);
 
@@ -105,32 +165,53 @@ export class CommitAPI {
 		};
 	}
 
+	/**
+	 * Derive per-row salts from master salt using:
+	 * row_salt[i] = HASH(master_salt || ":" || row_index || ":" || weightsHash)
+	 */
+	private async deriveSalts(
+		masterSalt: string,
+		rowCount: number,
+		weightsHash: `0x${string}`,
+		hashAlgo: hashAlgos,
+	): Promise<Record<number, string>> {
+		const salts: Record<number, string> = {};
+		for (let i = 0; i < rowCount; i++) {
+			const input = `${masterSalt}:${i}:${weightsHash}`;
+			const inputBytes = new TextEncoder().encode(input);
+			salts[i] = await hashBytes(inputBytes, hashAlgo);
+		}
+		return salts;
+	}
+
 	private async generateConfigDirectory(
 		filePaths: { dataset: string; weights: string },
 		metadata: CommitOptions["model"],
 		schema: CommitOptions["schema"],
 		fairnessConfig: CommitOptions["fairness"],
+		masterSalt: string,
 		salts: Record<number, string>,
 		dataSetMerkleRoot: `0x${string}`,
 		weightsHash: `0x${string}`,
 	) {
-		// Use weights hash (without 0x) for directory name for cleanliness.
-		const baseDir = await ensureArtifactDir(weightsHash);
+		const dir = getArtifactDir(weightsHash);
+		await mkdir(dir, { recursive: true });
 
 		await Promise.all([
-			Bun.write(`${baseDir}/salts.json`, JSON.stringify(salts, null, 2)),
-			Bun.write(`${baseDir}/metadata.json`, JSON.stringify(metadata, null, 2)),
+			Bun.write(`${dir}/master_salt.txt`, masterSalt),
+			Bun.write(`${dir}/salts.json`, JSON.stringify(salts, null, 2)),
+			Bun.write(`${dir}/metadata.json`, JSON.stringify(metadata, null, 2)),
 			Bun.write(
-				`${baseDir}/commitments.json`,
+				`${dir}/commitments.json`,
 				JSON.stringify(
 					{ datasetMerkleRoot: dataSetMerkleRoot, weightsHash },
 					null,
 					2,
 				),
 			),
-			Bun.write(`${baseDir}/schema.json`, JSON.stringify(schema, null, 2)),
+			Bun.write(`${dir}/schema.json`, JSON.stringify(schema, null, 2)),
 			Bun.write(
-				`${baseDir}/paths.json`,
+				`${dir}/paths.json`,
 				JSON.stringify(
 					{ dataset: filePaths.dataset, weights: filePaths.weights },
 					null,
@@ -138,11 +219,11 @@ export class CommitAPI {
 				),
 			),
 			Bun.write(
-				`${baseDir}/fairness.json`,
+				`${dir}/fairness.json`,
 				JSON.stringify(fairnessConfig, null, 2),
 			),
 		]);
-		console.log(`✅ Config directory created at ${baseDir}`);
+		console.log(`✅ Artifacts saved to ${dir}`);
 	}
 
 	private async hashWeights(
@@ -164,14 +245,6 @@ export class CommitAPI {
 			case "JSON":
 				return new TextEncoder().encode(JSON.stringify(row));
 		}
-	}
-
-	private generateSalt(length = 32): string {
-		const array = new Uint8Array(length);
-		crypto.getRandomValues(array);
-		return Array.from(array)
-			.map((b) => b.toString(16).padStart(2, "0"))
-			.join("");
 	}
 
 	private async hashRow(
