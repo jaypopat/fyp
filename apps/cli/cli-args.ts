@@ -16,6 +16,10 @@ const datasetAndHashOptions = {
 		.required()
 		.alias("d")
 		.desc("Path to dataset file (CSV/JSON)"),
+	fairnessThreshold: string("fairness-threshold")
+		.required()
+		.alias("f")
+		.desc("Path to fairness threshold file"),
 	encoding: string("encoding")
 		.alias("e")
 		.enum("MSGPACK", "JSON")

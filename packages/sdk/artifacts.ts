@@ -35,6 +35,11 @@ export interface MetadataFile {
 	description: string;
 	creator?: string;
 }
+export interface FairnessFile {
+	metric: "demographic_parity" | "equalized_odds";
+	targetDisparity: number;
+	protectedAttribute: string;
+}
 export interface MetaFile {
 	version: number;
 	createdAt: number;

@@ -17,6 +17,7 @@ import {
 	validateHexHash,
 	withSpinner,
 } from "./utils";
+import type { FairnessFile } from "../../packages/sdk/artifacts";
 
 export type GetModelOpts = TypeOf<typeof getModelOptions>;
 export type ProveModelBiasOpts = TypeOf<typeof proveModelBiasOptions>;
@@ -37,6 +38,7 @@ const zkFairSDK = new SDK({
 async function registerModel(params: {
 	weightsPath: string;
 	datasetPath: string;
+	fairnessThresholdPath: string;
 	schema: {
 		hashAlgo: "SHA-256" | "BLAKE2b";
 		encodingAlgo: "JSON" | "MSGPACK";
@@ -51,6 +53,7 @@ async function registerModel(params: {
 
 	const absWeightsPath = path.resolve(params.weightsPath);
 	const absDatasetPath = path.resolve(params.datasetPath);
+	const absFairnessThresholdPath = path.resolve(params.fairnessThresholdPath);
 
 	const txHash = await withSpinner(
 		"Reading model weights file",
@@ -61,6 +64,14 @@ async function registerModel(params: {
 			if (!(await Bun.file(absDatasetPath).exists())) {
 				throw new Error(`Dataset file not found: ${absDatasetPath}`);
 			}
+			if (!(await Bun.file(absFairnessThresholdPath).exists())) {
+				throw new Error(
+					`Fairness threshold file not found: ${absFairnessThresholdPath}`,
+				);
+			}
+
+      const fairnessConfig = await Bun.file(absFairnessThresholdPath).json() as FairnessFile;
+
 			return await withSpinner(
 				"Submitting commitment to blockchain",
 				async () =>
@@ -76,6 +87,12 @@ async function registerModel(params: {
 							schema: {
 								cryptoAlgo: params.schema.hashAlgo,
 								encodingSchema: params.schema.encodingAlgo,
+							},
+							fairness: {
+								metric: fairnessConfig.metric || "demographic_parity",
+								targetDisparity: fairnessConfig.targetDisparity || 0.05,
+								protectedAttribute:
+									fairnessConfig.protectedAttribute || "unknown",
 							},
 						},
 					),
@@ -100,6 +117,7 @@ export async function proveModelBias(opts: ProveModelBiasOpts) {
 	await registerModel({
 		weightsPath: opts.weights,
 		datasetPath: opts.data,
+		fairnessThresholdPath: opts.fairnessThreshold,
 		schema: {
 			encodingAlgo: opts.encoding,
 			hashAlgo: opts.crypto,
@@ -135,6 +153,7 @@ export async function commit(opts: CommitOpts) {
 
 	const txHash = await registerModel({
 		weightsPath: opts.weights,
+		fairnessThresholdPath: opts.fairnessThreshold,
 		datasetPath: opts.data,
 		schema: {
 			encodingAlgo: opts.encoding,
@@ -297,7 +316,7 @@ export async function getModel(options: GetModelOpts) {
 	if (
 		model.proofHash &&
 		model.proofHash !==
-		"0x0000000000000000000000000000000000000000000000000000000000000000"
+			"0x0000000000000000000000000000000000000000000000000000000000000000"
 	) {
 		console.log(`Proof Hash: ${model.proofHash}`);
 	}

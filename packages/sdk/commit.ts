@@ -21,26 +21,35 @@ export class CommitAPI {
 				hashAlgo: options.schema.cryptoAlgo,
 			});
 
-		// Existence check : attempt to fetch model by hash; if succeeds, throw
+		// Attempt to register the model - if it already exists, provide a clear error
+		let hash: `0x${string}`;
 		try {
-			await this.contracts.getModelByHash(weightsHash);
-			throw new Error("Model already registered");
-		} catch (_err) {
-			// If call reverts / fails we assume model does not exist and proceed.
+			hash = await this.contracts.createModelAndCommit(
+				options.model.name,
+				options.model.description,
+				dataSetMerkleRoot,
+				weightsHash,
+			);
+		} catch (err) {
+			// Check if this is the "model already exists" error from the contract
+			if (
+				err instanceof Error &&
+				err.message.includes("ZKFair__ModelAlreadyExists")
+			) {
+				throw new Error(
+					`Model with weights hash ${weightsHash} is already registered. Use a different model or check existing commitments.`,
+				);
+			}
+			// Re-throw any other error
+			throw err;
 		}
-
-		const hash = await this.contracts.createModelAndCommit(
-			options.model.name,
-			options.model.description,
-			dataSetMerkleRoot,
-			weightsHash,
-		);
 
 		// write config files
 		await this.generateConfigDirectory(
 			{ dataset: dataSetPath, weights: weightsPath },
 			options.model,
 			options.schema,
+			options.fairness,
 			saltsMap,
 			dataSetMerkleRoot,
 			weightsHash,
@@ -100,6 +109,7 @@ export class CommitAPI {
 		filePaths: { dataset: string; weights: string },
 		metadata: CommitOptions["model"],
 		schema: CommitOptions["schema"],
+		fairnessConfig: CommitOptions["fairness"],
 		salts: Record<number, string>,
 		dataSetMerkleRoot: `0x${string}`,
 		weightsHash: `0x${string}`,
@@ -126,6 +136,10 @@ export class CommitAPI {
 					null,
 					2,
 				),
+			),
+			Bun.write(
+				`${baseDir}/fairness.json`,
+				JSON.stringify(fairnessConfig, null, 2),
 			),
 		]);
 		console.log(`✅ Config directory created at ${baseDir}`);

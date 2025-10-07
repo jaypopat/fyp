@@ -4,3 +4,4 @@ node_modules
 .env
 .ropeproject
 examples/**/weights.bin
+examples/**/fairness_threshold.json

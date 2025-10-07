@@ -1,6 +1,6 @@
 # zkfair CLI
 
-Command-line interface for registering models, committing datasets & weights, generating/ submitting fairness proofs, and verifying them on-chain or locally.
+Command-line interface for registering models, committing datasets & weights, generating fairness proofs, and verifying them on-chain or locally.
 
 ---
 
@@ -83,11 +83,12 @@ Options:
 
 ### commit
 
-Create on-chain commitments for a model’s weights + dataset:
+Create on-chain commitments for a model's weights + dataset:
 ```bash
 zkfair commit \
   --weights weights.bin \
   --data dataset.csv \
+  --fairness-threshold fairness.json \
   --name "FairNet" \
   --description "Binary classifier" \
   --creator "researcher@example" \ # optional
@@ -97,6 +98,7 @@ zkfair commit \
 Options (see `cli-args.ts`):
 - `--weights, -w <path>` (required): Model weights binary
 - `--data, -d <path>` (required): Dataset file (CSV/JSON)
+- `--fairness-threshold, -f <path>` (required): Path to fairness configuration JSON file
 - `--name, -n <string>` (required): Display name
 - `--description, -D <string>` (required)
 - `--creator, -C <string>` (optional): Creator / author identifier stored in metadata
@@ -114,6 +116,7 @@ Generate & submit a model bias proof (currently registers model + commitments; p
 zkfair proof prove-model-bias \
   --weights weights.bin \
   --data test.csv \
+  --fairness-threshold fairness.json \
   --attributes gender,age \
   --name "FairNet" \
   --description "Bias analysis run" \
@@ -125,6 +128,7 @@ zkfair proof prove-model-bias \
 Options:
 - `--weights, -w <path>` (required)
 - `--data, -d <path>` (required)
+- `--fairness-threshold, -f <path>` (required): Path to fairness configuration JSON file
 - `--attributes, -a <attr1,attr2,...>` (required): Protected attributes tested
 - `--name, -n <string>` (required)
 - `--description, -D <string>` (required)
@@ -157,7 +161,7 @@ Options:
 - `proof-hash` positional (optional if `--weights` used)
 - `--weights, -w <path>`: Recompute hash from weights file instead of passing proof hash
 - `public-inputs` positional (required): Comma list OR path to JSON file (current implementation splits on commas; JSON expansion TBD)
-zkfair commit \
+- `--local`: Verify proof locally instead of on-chain (DEV mode)
 
 Output: Success / failure of on-chain (or local) verification.
 
@@ -166,13 +170,18 @@ Output: Success / failure of on-chain (or local) verification.
 ## � Typical Workflow
 
 ```bash
-# 1. Prepare model artifacts
-python train.py --out weights.bin
+## 📋 Typical Workflow
+
+```bash
+# 1. Prepare model artifacts and fairness config
+python train.py
+# This should generate weights.bin and fairness.json
 
 # 2. Commit model + dataset
-zkfair commit commit \
+zkfair commit \
   --weights weights.bin \
   --data train.csv \
+  --fairness-threshold fairness.json \
   --name "FairNet" \
   --description "Initial registration"
 
@@ -180,6 +189,7 @@ zkfair commit commit \
 zkfair proof prove-model-bias \
   --weights weights.bin \
   --data test.csv \
+  --fairness-threshold fairness.json \
   --attributes gender,age \
   --name "FairNet" \
   --description "Bias evaluation"
@@ -193,6 +203,7 @@ zkfair verify 0xproofhash... input1,input2,input3
 # 6. Explore models
 zkfair model list
 zkfair model get --weights weights.bin
+```
 ```
 
 ---
