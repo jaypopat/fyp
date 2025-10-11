@@ -2,6 +2,7 @@ import os from "node:os";
 import path from "node:path";
 import { blake2b } from "@noble/hashes/blake2";
 import Papa from "papaparse";
+import type { Hex } from "viem";
 import type { hashAlgos } from "./types";
 
 export async function parseCSV(filePath: string): Promise<string[][]> {
@@ -20,15 +21,15 @@ export async function parseCSV(filePath: string): Promise<string[][]> {
 	return dataRows;
 }
 
-export function bytesToHex(bytes: Uint8Array): `0x${string}` {
-	return `0x${[...bytes].map((b) => b.toString(16).padStart(2, "0")).join("")}` as `0x${string}`;
+export function bytesToHex(bytes: Uint8Array): Hex {
+	return `0x${[...bytes].map((b) => b.toString(16).padStart(2, "0")).join("")}` as Hex;
 }
 
 export function bytesToPlainHex(bytes: Uint8Array): string {
 	return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export function hexToBytes(hex: `0x${string}` | string): Uint8Array {
+export function hexToBytes(hex: Hex | string): Uint8Array {
 	if (!hex.startsWith("0x")) throw new Error("Hex string must start with 0x");
 	const clean = hex.slice(2);
 	if (clean.length % 2 !== 0) throw new Error("Invalid hex length");
@@ -56,7 +57,7 @@ export async function hashBytes(
 	return hex;
 }
 
-export function getArtifactDir(weightsHash: `0x${string}`): string {
+export function getArtifactDir(weightsHash: Hex): string {
 	const home = os.homedir();
 	return path.join(home, ".zkfair", weightsHash.slice(2));
 }

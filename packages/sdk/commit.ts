@@ -1,20 +1,26 @@
-import { encode } from "@msgpack/msgpack";
 import { mkdir } from "node:fs/promises";
+import { encode } from "@msgpack/msgpack";
+import type { Hex } from "viem";
+import type { FairnessFile } from "./artifacts";
 import type { ContractClient } from "./client";
 import { merkleRoot } from "./merkle";
 import type { CommitOptions, encodingSchemas, hashAlgos } from "./types";
-import { hashBytes, parseCSV, getArtifactDir } from "./utils";
+import { getArtifactDir, hashBytes, parseCSV } from "./utils";
 
 export class CommitAPI {
-	constructor(private contracts: ContractClient) { }
+	constructor(private contracts: ContractClient) {}
 
 	async makeCommitment(
 		dataSetPath: string,
 		weightsPath: string,
+		fairnessThresholdPath: string,
 		options: CommitOptions,
-	): Promise<`0x${string}`> {
+	): Promise<Hex> {
 		const datasetRows = await parseCSV(dataSetPath);
 		const weights = await Bun.file(weightsPath).arrayBuffer();
+		const fairnessThreshold = (await Bun.file(
+			fairnessThresholdPath,
+		).json()) as FairnessFile;
 
 		// Generate deterministic master salt from model files
 		const masterSalt = await this.generateMasterSalt(
@@ -23,24 +29,27 @@ export class CommitAPI {
 			options.model,
 		);
 
-		const { saltsMap, dataSetMerkleRoot, weightsHash } = await this.getCommitments(
-			datasetRows,
-			new Uint8Array(weights),
-			masterSalt,
-			{
-				encoding: options.schema.encodingSchema,
-				hashAlgo: options.schema.cryptoAlgo,
-			},
-		);
+		const { saltsMap, dataSetMerkleRoot, weightsHash } =
+			await this.getCommitments(
+				datasetRows,
+				new Uint8Array(weights),
+				masterSalt,
+				{
+					encoding: options.schema.encodingSchema,
+					hashAlgo: options.schema.cryptoAlgo,
+				},
+			);
 
 		// Attempt to register the model - if it already exists, provide a clear error
-		let hash: `0x${string}`;
+		let hash: Hex;
 		try {
+			// TODO modify fn to take in threshold too
 			hash = await this.contracts.createModelAndCommit(
 				options.model.name,
 				options.model.description,
 				dataSetMerkleRoot,
 				weightsHash,
+				// fairnessThreshold
 			);
 		} catch (err) {
 			// Check if this is the "model already exists" error from the contract
@@ -58,10 +67,13 @@ export class CommitAPI {
 
 		// Store artifacts in ~/.zkfair/<weights-hash>/
 		await this.generateConfigDirectory(
-			{ dataset: dataSetPath, weights: weightsPath },
+			{
+				dataset: dataSetPath,
+				weights: weightsPath,
+				fairnessThreshold: fairnessThresholdPath,
+			},
 			options.model,
 			options.schema,
-			options.fairness,
 			masterSalt,
 			saltsMap,
 			dataSetMerkleRoot,
@@ -74,7 +86,7 @@ export class CommitAPI {
 	/**
 	 * Generate deterministic master salt from model files.
 	 * This ensures same model files always produce the same commitment.
-	 * 
+	 *
 	 * master_salt = HASH(weights_hash || dataset_hash || metadata_json)
 	 */
 	private async generateMasterSalt(
@@ -84,11 +96,17 @@ export class CommitAPI {
 	): Promise<string> {
 		// Hash the weights file
 		const weightsBuffer = await Bun.file(weightsPath).arrayBuffer();
-		const weightsHash = await hashBytes(new Uint8Array(weightsBuffer), "SHA-256");
+		const weightsHash = await hashBytes(
+			new Uint8Array(weightsBuffer),
+			"SHA-256",
+		);
 
 		// Hash the dataset file
 		const datasetBuffer = await Bun.file(datasetPath).arrayBuffer();
-		const datasetHash = await hashBytes(new Uint8Array(datasetBuffer), "SHA-256");
+		const datasetHash = await hashBytes(
+			new Uint8Array(datasetBuffer),
+			"SHA-256",
+		);
 
 		// Hash the metadata (for determinism based on model identity)
 		const metadataString = JSON.stringify({
@@ -121,8 +139,8 @@ export class CommitAPI {
 		},
 	): Promise<{
 		saltsMap: Record<number, string>;
-		dataSetMerkleRoot: `0x${string}`;
-		weightsHash: `0x${string}`;
+		dataSetMerkleRoot: Hex;
+		weightsHash: Hex;
 	}> {
 		const weightsHash = await this.hashWeights(weights, options.hashAlgo);
 
@@ -172,7 +190,7 @@ export class CommitAPI {
 	private async deriveSalts(
 		masterSalt: string,
 		rowCount: number,
-		weightsHash: `0x${string}`,
+		weightsHash: Hex,
 		hashAlgo: hashAlgos,
 	): Promise<Record<number, string>> {
 		const salts: Record<number, string> = {};
@@ -185,14 +203,13 @@ export class CommitAPI {
 	}
 
 	private async generateConfigDirectory(
-		filePaths: { dataset: string; weights: string },
+		filePaths: { dataset: string; weights: string; fairnessThreshold: string },
 		metadata: CommitOptions["model"],
 		schema: CommitOptions["schema"],
-		fairnessConfig: CommitOptions["fairness"],
 		masterSalt: string,
 		salts: Record<number, string>,
-		dataSetMerkleRoot: `0x${string}`,
-		weightsHash: `0x${string}`,
+		dataSetMerkleRoot: Hex,
+		weightsHash: Hex,
 	) {
 		const dir = getArtifactDir(weightsHash);
 		await mkdir(dir, { recursive: true });
@@ -213,14 +230,14 @@ export class CommitAPI {
 			Bun.write(
 				`${dir}/paths.json`,
 				JSON.stringify(
-					{ dataset: filePaths.dataset, weights: filePaths.weights },
+					{
+						dataset: filePaths.dataset,
+						weights: filePaths.weights,
+						fairnessThreshold: filePaths.fairnessThreshold,
+					},
 					null,
 					2,
 				),
-			),
-			Bun.write(
-				`${dir}/fairness.json`,
-				JSON.stringify(fairnessConfig, null, 2),
 			),
 		]);
 		console.log(`✅ Artifacts saved to ${dir}`);
@@ -229,10 +246,10 @@ export class CommitAPI {
 	private async hashWeights(
 		weightsBuffer: Uint8Array,
 		algo: hashAlgos,
-	): Promise<`0x${string}`> {
+	): Promise<Hex> {
 		const plain = await hashBytes(weightsBuffer, algo);
 		if (plain.length !== 64) throw new Error("weights hash length invalid");
-		return `0x${plain}` as `0x${string}`;
+		return `0x${plain}` as Hex;
 	}
 
 	private async encodeRow(

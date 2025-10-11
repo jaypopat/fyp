@@ -1,5 +1,6 @@
 import { UltraHonkBackend } from "@aztec/bb.js";
 import circuit from "@zkfair/zk-circuits/circuit";
+import type { Hex } from "viem";
 import { parseCommitmentsFile, parseProofFile } from "./artifacts";
 import type { ContractClient } from "./client";
 import { getArtifactDir, hexToBytes } from "./utils";
@@ -7,10 +8,7 @@ import { getArtifactDir, hexToBytes } from "./utils";
 export class VerifyAPI {
 	constructor(private contracts: ContractClient) {}
 
-	async verifyProof(
-		weightsHash: `0x${string}`,
-		local?: boolean,
-	): Promise<boolean> {
+	async verifyProof(weightsHash: Hex, local?: boolean): Promise<boolean> {
 		const dir = getArtifactDir(weightsHash);
 		const [rawProof, rawCommitments] = await Promise.all([
 			Bun.file(`${dir}/proof.json`)

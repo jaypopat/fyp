@@ -3,6 +3,7 @@
 import type { TypeOf } from "@drizzle-team/brocli";
 import { SDK } from "@zkfair/sdk";
 import path from "path";
+import type { FairnessFile } from "../../packages/sdk/artifacts";
 import type {
 	commitOptions,
 	getModelOptions,
@@ -10,14 +11,12 @@ import type {
 	proveModelBiasOptions,
 	verifyProofOptions,
 } from "./cli-args";
-
 import {
 	computeFileHash,
 	modelStatusToString,
 	validateHexHash,
 	withSpinner,
 } from "./utils";
-import type { FairnessFile } from "../../packages/sdk/artifacts";
 
 export type GetModelOpts = TypeOf<typeof getModelOptions>;
 export type ProveModelBiasOpts = TypeOf<typeof proveModelBiasOptions>;
@@ -168,7 +167,9 @@ async function registerModel(params: {
 				);
 			}
 
-			const fairnessConfig = await Bun.file(absFairnessThresholdPath).json() as FairnessFile;
+			const targetDisparity = (
+				(await Bun.file(absFairnessThresholdPath).json()) as FairnessFile
+			).targetDisparity;
 
 			return await withSpinner(
 				"Submitting commitment to blockchain",
@@ -185,12 +186,6 @@ async function registerModel(params: {
 							schema: {
 								cryptoAlgo: params.schema.hashAlgo,
 								encodingSchema: params.schema.encodingAlgo,
-							},
-							fairness: {
-								metric: fairnessConfig.metric || "demographic_parity",
-								targetDisparity: fairnessConfig.targetDisparity || 0.05,
-								protectedAttribute:
-									fairnessConfig.protectedAttribute || "unknown",
 							},
 						},
 					),
@@ -221,7 +216,6 @@ export async function proveModelBias(opts: ProveModelBiasOpts) {
 
 	console.log(`   Weights: ${modelFiles.weightsPath}`);
 	console.log(`   Dataset: ${modelFiles.datasetPath}`);
-	console.log(`   Protected Attributes: ${opts.attributes}`);
 
 	await registerModel({
 		weightsPath: modelFiles.weightsPath,
@@ -428,7 +422,7 @@ export async function getModel(options: GetModelOpts) {
 	if (
 		model.proofHash &&
 		model.proofHash !==
-		"0x0000000000000000000000000000000000000000000000000000000000000000"
+			"0x0000000000000000000000000000000000000000000000000000000000000000"
 	) {
 		console.log(`Proof Hash: ${model.proofHash}`);
 	}

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import type { Hex } from "viem";
 import { createMerkleProof, merkleRoot, verifyMerkleProof } from "../merkle";
 import { hashBytes } from "../utils";
 
@@ -43,12 +44,7 @@ describe("Merkle Root & Proofs", () => {
 		);
 		const leaf = leaves[targetIndex];
 		if (!leaf) throw new Error("Test leaf missing");
-		const ok = await verifyMerkleProof(
-			leaf,
-			root as `0x${string}`,
-			proof,
-			"SHA-256",
-		);
+		const ok = await verifyMerkleProof(leaf, root as Hex, proof, "SHA-256");
 		expect(ok).toBeTrue();
 		console.log(
 			`[test] inclusion even ok=${ok} root=${root} proofSteps=${proof.length}`,
@@ -65,12 +61,7 @@ describe("Merkle Root & Proofs", () => {
 		);
 		const leaf = leaves[targetIndex];
 		if (!leaf) throw new Error("Test leaf missing");
-		const ok = await verifyMerkleProof(
-			leaf,
-			root as `0x${string}`,
-			proof,
-			"SHA-256",
-		);
+		const ok = await verifyMerkleProof(leaf, root as Hex, proof, "SHA-256");
 		expect(ok).toBeTrue();
 		console.log(
 			`[test] inclusion odd ok=${ok} root=${root} proofSteps=${proof.length}`,
@@ -98,12 +89,7 @@ describe("Merkle Root & Proofs", () => {
 		first.sibling = `0x${flipped}`;
 		const leaf = leaves[targetIndex];
 		if (!leaf) throw new Error("Test leaf missing");
-		const ok = await verifyMerkleProof(
-			leaf,
-			root as `0x${string}`,
-			bad,
-			"SHA-256",
-		);
+		const ok = await verifyMerkleProof(leaf, root as Hex, bad, "SHA-256");
 		expect(ok).toBeFalse();
 		console.log(`[test] tamper expectedFail ok=${ok} root=${root}`);
 	});

@@ -16,11 +16,6 @@ export type CommitOptions = {
 		encodingSchema: "MSGPACK" | "JSON";
 		cryptoAlgo: "BLAKE2b" | "SHA-256";
 	};
-	fairness: {
-		metric: "demographic_parity" | "equalized_odds";
-		targetDisparity: number;
-		protectedAttribute: string;
-	};
 };
 export type hashAlgos = CommitOptions["schema"]["cryptoAlgo"];
 export type encodingSchemas = CommitOptions["schema"]["encodingSchema"];

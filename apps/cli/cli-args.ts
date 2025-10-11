@@ -11,15 +11,13 @@ const datasetAndHashOptions = {
 	// NEW: Simple directory option
 	dir: string("dir")
 		.alias("D")
-		.desc("Directory containing model files (weights.bin, dataset.csv, fairness_threshold.json, model.json)"),
+		.desc(
+			"Directory containing model files (weights.bin, dataset.csv, fairness_threshold.json, model.json)",
+		),
 
 	// Fallback to explicit paths (for power users or custom layouts)
-	weights: string("weights")
-		.alias("w")
-		.desc("Path to model weights bin file"),
-	data: string("data")
-		.alias("d")
-		.desc("Path to dataset file (CSV/JSON)"),
+	weights: string("weights").alias("w").desc("Path to model weights bin file"),
+	data: string("data").alias("d").desc("Path to dataset file (CSV/JSON)"),
 	fairnessThreshold: string("fairness-threshold")
 		.alias("f")
 		.desc("Path to fairness threshold JSON file"),
@@ -56,9 +54,6 @@ export const commitOptions = {
 export const proveModelBiasOptions = {
 	...datasetAndHashOptions,
 	...modelMetadataOptions,
-	attributes: string("attributes")
-		.alias("a")
-		.desc("Comma-separated list of protected attributes (or specify in fairness_threshold.json)"),
 } as const;
 
 export const getProofStatusOptions = {

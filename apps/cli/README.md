@@ -136,7 +136,6 @@ Generate & submit a model bias proof (currently registers model + commitments; p
 ```bash
 zkfair proof prove-model-bias \
   --dir ./examples/heart-disease \
-  --attributes sex
 ```
 
 **Option 2: Using Explicit Paths**
@@ -145,7 +144,6 @@ zkfair proof prove-model-bias \
   --weights weights.bin \
   --data dataset.csv \
   --fairness-threshold fairness_threshold.json \
-  --attributes sex,age \
   --name "Heart Disease Model" \
   --description "Fairness analysis for heart disease predictor" \
   --creator "researcher@example" \
@@ -217,7 +215,6 @@ zkfair commit --dir ./examples/adult-income
 # 3. Run fairness proof
 zkfair proof prove-model-bias \
   --dir ./examples/adult-income \
-  --attributes sex
 
 # 4. Inspect proof status
 zkfair proof status ./examples/adult-income/weights.bin

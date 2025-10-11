@@ -1,9 +1,10 @@
+import type { Hex } from "viem";
 import type { ContractClient } from "./client";
 
 export class ModelAPI {
 	constructor(private contracts: ContractClient) {}
 
-	async get(weightHash: `0x${string}`) {
+	async get(weightHash: Hex) {
 		return await this.contracts.getModelByHash(weightHash);
 	}
 

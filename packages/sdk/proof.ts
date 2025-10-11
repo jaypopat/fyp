@@ -1,14 +1,15 @@
 import { UltraHonkBackend } from "@aztec/bb.js";
 import { type CompiledCircuit, Noir } from "@noir-lang/noir_js";
 import circuit from "@zkfair/zk-circuits/circuit";
-import { parsePathsFile } from "./artifacts";
+import type { Hex } from "viem";
+import { type FairnessThresholdFile, parsePathsFile } from "./artifacts";
 import type { ContractClient } from "./client";
 import { getArtifactDir, parseCSV } from "./utils";
 
 export class ProofAPI {
 	constructor(private contracts: ContractClient) {}
 
-	async generateProof(weightsHash: `0x${string}`): Promise<`0x${string}`> {
+	async generateProof(weightsHash: Hex): Promise<Hex> {
 		const dir = getArtifactDir(weightsHash);
 
 		const rawPaths = await Bun.file(`${dir}/paths.json`).json();
@@ -17,15 +18,25 @@ export class ProofAPI {
 		// Load dataset & weights
 		const weights_data = await Bun.file(paths.weights).arrayBuffer();
 		const dataset = await parseCSV(paths.dataset);
+		const threshold = (await Bun.file(
+			paths.threshold,
+		).json()) as FairnessThresholdFile;
+
 		const salts = (await Bun.file(`${dir}/salts.json`).json()) as Record<
 			number,
 			string
 		>;
+		const fairness = (await Bun.file(`${dir}/fairness.json`).json()) as {
+			metric: string;
+			targetDisparity: number;
+			protectedAttribute: string;
+		};
 
 		const input = {
 			weights: new Uint8Array(weights_data),
 			dataset: dataset,
 			salts: salts,
+			threshold: threshold,
 		};
 
 		const noir = new Noir(circuit as CompiledCircuit);
@@ -36,19 +47,19 @@ export class ProofAPI {
 
 		const proofHex = `0x${Array.from(proofData.proof)
 			.map((b) => b.toString(16).padStart(2, "0"))
-			.join("")}` as `0x${string}`;
+			.join("")}` as Hex;
 
 		const proofRecord = {
 			weightsHash,
 			generatedAt: Date.now(),
 			proof: proofHex,
-			publicInputs: proofData.publicInputs as `0x${string}`[],
+			publicInputs: proofData.publicInputs as Hex[],
 		};
 		await Bun.write(`${dir}/proof.json`, JSON.stringify(proofRecord, null, 2));
 
 		return proofHex;
 	}
-	async getStatus(weightsHash: `0x${string}`) {
+	async getStatus(weightsHash: Hex) {
 		try {
 			const status = await this.contracts.getProofStatus(weightsHash);
 			return status;

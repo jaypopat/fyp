@@ -1,3 +1,4 @@
+import type { Hex } from "viem";
 import type { hashAlgos } from "./types";
 import { hashBytes, hexToBytes } from "./utils";
 
@@ -11,8 +12,8 @@ function concat(a: Uint8Array, b: Uint8Array): Uint8Array {
 	return out;
 }
 
-function ensure0x(h: string): `0x${string}` {
-	return (h.startsWith("0x") ? h : `0x${h}`) as `0x${string}`;
+function ensure0x(h: string): Hex {
+	return (h.startsWith("0x") ? h : `0x${h}`) as Hex;
 }
 
 // Returns plain 64-hex (no 0x) for internal nodes
@@ -25,7 +26,7 @@ async function hashNode(left: string, right: string, algo: hashAlgos) {
 export async function merkleRoot(
 	leaves: string[],
 	algo: hashAlgos,
-): Promise<`0x${string}`> {
+): Promise<Hex> {
 	if (leaves.length === 0) throw new Error("No leaves provided");
 	for (let i = 0; i < leaves.length; i++) {
 		const leaf = leaves[i];
@@ -58,7 +59,7 @@ export async function merkleRoot(
 
 export async function verifyMerkleProof(
 	leaf: string,
-	root: `0x${string}`,
+	root: Hex,
 	proof: { sibling: string; position: "left" | "right" }[],
 	algo: hashAlgos,
 ): Promise<boolean> {
@@ -78,7 +79,7 @@ export async function createMerkleProof(
 	index: number,
 	algo: hashAlgos,
 ): Promise<{
-	root: `0x${string}`;
+	root: Hex;
 	proof: { sibling: string; position: "left" | "right" }[];
 }> {
 	if (leaves.length === 0) throw new Error("No leaves provided");
