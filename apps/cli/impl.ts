@@ -3,6 +3,7 @@
 import type { TypeOf } from "@drizzle-team/brocli";
 import { SDK } from "@zkfair/sdk";
 import path from "path";
+import type { Hash, Hex } from "viem";
 import { anvil, sepolia } from "viem/chains";
 import type {
 	commitOptions,
@@ -25,18 +26,17 @@ export type GetProofStatusOpts = TypeOf<typeof getProofStatusOptions>;
 export type VerifyProofOpts = TypeOf<typeof verifyProofOptions>;
 export type CommitOpts = TypeOf<typeof commitOptions>;
 
-type Hash = `0x${string}`;
-
 const isOnChain = process.env.ONCHAIN === "true";
 const zkFairSDK = new SDK({
 	rpcUrl: (isOnChain ? process.env.ONCHAIN_RPC_URL : process.env.RPC_URL) || "",
 	contractAddress:
-		(isOnChain
-			? process.env.ONCHAIN_CONTRACT_ADDRESS
-			: process.env.CONTRACT_ADDRESS) || "",
+		((isOnChain
+			? (process.env.ONCHAIN_CONTRACT_ADDRESS as Hash)
+			: process.env.CONTRACT_ADDRESS) as Hash) || "",
 	privateKey:
-		(isOnChain ? process.env.ONCHAIN_PRIVATE_KEY : process.env.PRIVATE_KEY) ||
-		"",
+		(isOnChain
+			? (process.env.ONCHAIN_PRIVATE_KEY as Hex)
+			: (process.env.PRIVATE_KEY as Hex)) || "",
 	chain: isOnChain ? sepolia : anvil,
 });
 

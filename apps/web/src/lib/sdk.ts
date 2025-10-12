@@ -20,7 +20,7 @@ export function createSDK() {
 	const chain = chainId === "11155111" ? sepolia : anvil;
 
 	return new BrowserSDK({
-		contractAddress: contractAddress as Hash,
+		contractAddress,
 		rpcUrl,
 		chain,
 	});

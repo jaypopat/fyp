@@ -8,7 +8,7 @@
 		},
 		"lander#build": {
 			"dependsOn": ["^build"],
-			"outputs": ["dist/**"],
+			"outputs": ["dist/**", ".vercel/**"],
 			"cache": true
 		},
 		"web#build": {

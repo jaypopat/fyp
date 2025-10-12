@@ -1,9 +1,10 @@
+import type { Hash, Hex } from "viem";
 import type { Chain } from "viem/chains";
 
 export type ZkFairOptions = {
 	rpcUrl: string;
-	contractAddress: string;
-	privateKey: string;
+	contractAddress: Hash;
+	privateKey?: Hex;
 	chain?: Chain;
 };
 export type CommitOptions = {

@@ -2,7 +2,7 @@ import { ContractClient } from "./client";
 import { ModelAPI } from "./model";
 import type { ZkFairOptions } from "./types";
 
-export type BrowserSDKOptions = Required<Omit<ZkFairOptions, "privateKey">>;
+export type BrowserSDKOptions = Omit<ZkFairOptions, "privateKey">;
 
 export class BrowserSDK {
 	public readonly model: ModelAPI;

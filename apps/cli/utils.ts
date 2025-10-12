@@ -1,8 +1,7 @@
 import crypto from "crypto";
 import ora from "ora";
 import path from "path";
-
-type Hash = `0x${string}`;
+import type { Hash } from "viem";
 
 export async function computeFileHash(filePath: string): Promise<Hash> {
 	return await withSpinner(
@@ -13,7 +12,7 @@ export async function computeFileHash(filePath: string): Promise<Hash> {
 				.createHash("sha256")
 				.update(new Uint8Array(buffer))
 				.digest();
-			const hash = ("0x" + Buffer.from(hashBuffer).toString("hex")) as Hash;
+			const hash = `0x${Buffer.from(hashBuffer).toString("hex")}` as Hash;
 			return hash;
 		},
 		`Computed hash for ${filePath}`,
