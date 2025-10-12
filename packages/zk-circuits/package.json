@@ -3,19 +3,23 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"compile": "nargo compile",
-		"generate-vks": "bb write_vk -b ./target/zk_circuit.json -o ./target --oracle_hash keccak",
+		"compile": "nargo build --workspace",
+		"generate-training-vk": "bb write_vk -b ./target/training.json -o ./target/training_vk --oracle_hash keccak",
+		"generate-fairness-vk": "bb write_vk -b ./target/fairness_audit.json -o ./target/fairness_audit_vk --oracle_hash keccak",
+		"generate-vks": "bun run generate-training-vk && bun run generate-fairness-vk",
 		"build": "bun run compile && bun run generate-vks",
-		"dev": "bun run build && nargo test"
+		"dev": "bun run build && nargo test --workspace"
 	},
-
 	"files": [
-		"src/**/*.nr",
+		"common/src/**/*.nr",
+		"training/src/**/*.nr",
+		"fairness_audit/src/**/*.nr",
 		"target/**/*.json",
 		"target/**/*-vk",
 		"Nargo.toml"
 	],
 	"exports": {
-		"./circuit": "./target/zk_circuit.json"
+		"./training": "./target/training.json",
+		"./fairness_audit": "./target/fairness_audit.json"
 	}
 }
