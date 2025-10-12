@@ -1,6 +1,6 @@
 import { encode } from "@msgpack/msgpack";
 import type { Hash } from "viem";
-import type { ContractClient } from "./client";
+import type { ContractClient } from "./contract";
 import { merkleRoot } from "./merkle";
 import type { encodingSchemas, hashAlgos } from "./types";
 import { hashBytes } from "./utils";

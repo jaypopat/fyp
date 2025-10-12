@@ -1,34 +1,872 @@
 ---
-title: Introduction
-description: Your favourite docs framework.
-icon: Rocket
+title: Complete System Architecture
+description: End-to-end flow of the decentralized OATH fairness verification system
 ---
 
-Hey there! Fumadocs is a docs framework built for Next.js, but do you know it also works on Tanstack Start?
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
-## Heading
+# Complete System Architecture
 
-Hello World!
+This guide walks through the entire OATH (Zero-Knowledge Proofs of Fairness) system, from initial setup to ongoing audits.
+
+## System Overview
+
+The OATH system consists of four main participants working together to ensure ML model fairness:
 
 <Cards>
-  <Card
-    title="Learn more about Tanstack Start"
-    href="https://tanstack.com/start"
-  />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.vercel.app" />
+  <Card title="Provider" description="Operates the ML model and serves predictions to clients" />
+  <Card title="Clients" description="End users who query the model and store proof of responses" />
+  <Card title="Auditors" description="Independent verifiers who check model fairness" />
+  <Card title="Blockchain" description="Immutable ledger storing commitments and audit results" />
 </Cards>
 
-### CodeBlock
+## Architecture Diagram
 
-```ts
-console.log('Hello World');
+```
+graph TB
+    C[Clients] -->|Queries| P[Provider ML Service]
+    P -->|Predictions + IT-MAC| C
+    C -->|Hash Commitments| B[Blockchain]
+    P -->|Merkle Roots| B
+    P -->|Full Batch Data| DB[(Provider Database)]
+    A[Auditor Pool] -->|Retrieve Data| DB
+    A -->|Verify & Submit Results| B
+    B -->|Triggers| A
+    C -->|Challenges| B
 ```
 
-#### Table
+---
 
-| Head                            | Description                         |
-| ------------------------------- | ----------------------------------- |
-| `hello`                         | Hello World                         |
-| very **important**              | Hey                                 |
-| _Surprisingly_                  | Fumadocs                            |
-| very long text that looks weird | hello world hello world hello world |
+## Phase 0: System Initialization
+
+<Callout type="info">
+This phase happens once during system deployment.
+</Callout>
+
+<Steps>
+
+### Auditor Registration
+
+Auditors stake tokens and register on-chain to join the verification pool.
+
+```
+// Auditor stakes tokens to join
+await auditorRegistry.registerAuditor({
+  publicKey: auditorPublicKey,
+  stake: parseEther("10"), // 10 ETH minimum stake
+  credentials: "PhD ML + Cryptography background"
+});
+```
+
+**Requirements:**
+- Minimum stake: 10 ETH
+- Public key for secure communication
+- Community/DAO approval vote
+- Technical expertise verification
+
+### Smart Contract Deployment
+
+Core smart contracts are deployed to handle the system:
+
+| Contract | Purpose |
+|----------|---------|
+| `ModelRegistry` | Tracks certified models and their metadata |
+| `AuditorPool` | Manages auditor registration, stakes, and reputation |
+| `QueryBatching` | Handles Merkle root commitments and batch metadata |
+| `DisputeResolution` | Manages challenges and conflict resolution |
+| `FairnessCertificates` | Issues and revokes fairness certificates |
+
+### Infrastructure Setup
+
+<Tabs items={['Blockchain', 'Storage', 'Oracles']}>
+  <Tab value="Blockchain">
+    **Recommended:** Ethereum L2 (Arbitrum, Optimism) or high-throughput chain (Polygon)
+    
+    - Lower transaction costs (100-1000x cheaper than mainnet)
+    - Faster block times
+    - EVM compatibility
+  </Tab>
+  <Tab value="Storage">
+    **Optional but Recommended:** IPFS + Filecoin
+    
+    - Decentralized data availability
+    - Content-addressed storage
+    - Redundant replication
+  </Tab>
+  <Tab value="Oracles">
+    **Required:** Chainlink VRF + Automation
+    
+    - Verifiable randomness for audit sampling
+    - Automated audit triggering
+    - Trustless off-chain computation
+  </Tab>
+</Tabs>
+
+</Steps>
+
+---
+
+## Phase 1: Model Certification
+
+<Callout type="warn">
+This phase occurs once per model before it can serve production traffic.
+</Callout>
+
+<Steps>
+
+### Provider Trains Model
+
+The ML service provider trains their model and prepares for certification.
+
+```
+# Provider trains their model
+model = train_model(training_data)
+
+# Compute model weights hash
+model_weights_hash = hash_model_parameters(model.parameters())
+
+# Output: 0xabc123... (cryptographic fingerprint of model)
+```
+
+### IT-MAC Key Ceremony
+
+Provider and selected auditors run a Multi-Party Computation (MPC) ceremony to generate and distribute cryptographic keys.
+
+```
+import { ITMACSetup } from '@yourproject/itmac';
+
+// Initialize setup ceremony
+const setup = new ITMACSetup();
+
+const result = await setup.setupModelKeys({
+  modelId: 123,
+  modelWeightsHash: '0xabc123...',
+  auditors: [
+    '0x1111...auditor1',
+    '0x2222...auditor2',
+    '0x3333...auditor3',
+    '0x4444...auditor4',
+    '0x5555...auditor5'
+  ],
+  threshold: 3 // Need 3-of-5 auditors for verification
+});
+
+// Result contains:
+// - providerKeyShare: Provider's secret key (keep secure!)
+// - auditorKeyShares: Map of auditor addresses to their keys
+// - publicCommitment: Posted to blockchain for verification
+```
+
+**What Happens:**
+1. Master IT-MAC key generated using secure randomness
+2. Key split using Shamir Secret Sharing (threshold cryptography)
+3. Provider receives `providerKeyShare[0]`
+4. Each auditor receives `auditorKeyShare[i]`
+5. Public commitment posted on-chain (proves keys were generated correctly)
+
+<Callout type="warn">
+**Security Critical:** Key shares must be stored securely and never shared. Loss of keys requires complete re-certification.
+</Callout>
+
+### On-Chain Registration
+
+Provider registers the certified model on the blockchain.
+
+```
+import { ModelRegistry } from '@yourproject/contracts';
+
+await modelRegistry.registerModel({
+  modelId: 123,
+  modelWeightsHash: '0xabc123...',
+  keyCommitment: result.publicCommitment,
+  authorizedAuditors: auditorAddresses,
+  stake: parseEther("100"), // 100 ETH stake locked
+  metadata: {
+    name: "Fair Hiring Algorithm v2",
+    version: "2.1.0",
+    trainingDate: "2025-01-15",
+    fairnessMetric: "Demographic Parity",
+    threshold: 0.05 // 5% maximum fairness gap
+  }
+});
+
+// Emits: ModelRegistered(modelId, provider, timestamp)
+```
+
+**On-Chain Record:**
+- Model ID and weights hash
+- IT-MAC key commitment
+- Authorized auditor list
+- Provider's locked stake
+- Fairness threshold (θ)
+
+### Training Verification (Optional)
+
+<Callout type="info">
+**Optional but Recommended:** Proves the model was trained correctly on properly-sampled data.
+</Callout>
+
+```
+// Generate ZKP of correct training process
+const trainingProof = await generateTrainingZKP({
+  model: model,
+  trainingData: trainingData,
+  samplingMethod: "stratified",
+  convergenceMetrics: convergenceData
+});
+
+// Submit proof on-chain
+await modelRegistry.submitTrainingProof(modelId, trainingProof);
+
+// Model status changes: "Pending" → "Certified" ✓
+```
+
+</Steps>
+
+**Result:** Model is now certified and ready to serve production traffic with fairness guarantees.
+
+---
+
+## Phase 2: Query Serving (Continuous)
+
+<Callout type="success">
+This phase runs continuously for all production traffic. Happens thousands to millions of times per day.
+</Callout>
+
+### Per-Query Flow
+
+<Steps>
+
+### Client Sends Query
+
+```
+import { ClientITMAC } from '@yourproject/itmac';
+
+const client = new ClientITMAC();
+
+// 1. Client prepares query
+const query = {
+  applicantData: {
+    experience: 5,
+    education: "Bachelor's",
+    skills: ["Python", "ML"]
+  }
+};
+
+// 2. Generate client's random contribution
+const clientRandom = client.generateRandomCoins();
+
+// 3. Send to provider
+const response = await fetch('https://provider.com/api/predict', {
+  method: 'POST',
+  body: JSON.stringify({ query, clientRandom })
+});
+```
+
+### Provider Processes Request
+
+```
+import { ProviderITMAC } from '@yourproject/itmac';
+
+const provider = new ProviderITMAC();
+await provider.loadKeyShare(providerKeyShare);
+
+// 1. Coin-flip protocol (prevents manipulation)
+const randomCoins = await provider.coinFlip(
+  clientRandom,
+  providerRandom
+);
+
+// 2. Run model inference
+const prediction = await model.predict(query.applicantData);
+// prediction: 1 (hire) or 0 (reject)
+
+// 3. Generate IT-MAC authentication tag
+const authenticated = await provider.authenticateQuery({
+  queryId: generateId(),
+  modelId: 123,
+  input: query.applicantData,
+  prediction: prediction,
+  timestamp: Date.now(),
+  randomCoins: randomCoins
+});
+
+// 4. Return to client
+return {
+  prediction: prediction,
+  macTag: authenticated.macTag,
+  providerSignature: authenticated.providerSignature,
+  randomCoins: randomCoins
+};
+```
+
+### Client Verifies & Stores
+
+```
+// 1. Verify provider's signature
+const isValid = await client.verifyProviderSignature(
+  response,
+  providerPublicKey
+);
+
+if (!isValid) {
+  throw new Error("Invalid provider signature!");
+}
+
+// 2. Compute hash commitment
+const commitment = await client.computeCommitment({
+  queryId: response.queryId,
+  input: query.applicantData,
+  prediction: response.prediction,
+  timestamp: response.timestamp,
+  randomCoins: response.randomCoins
+});
+
+// 3. Store FULL query locally (for potential disputes)
+await localStorage.setItem(`query_${response.queryId}`, JSON.stringify({
+  fullQuery: query.applicantData,
+  prediction: response.prediction,
+  macTag: response.macTag,
+  providerSignature: response.providerSignature,
+  randomCoins: response.randomCoins,
+  commitment: commitment,
+  timestamp: response.timestamp
+}));
+
+// 4. Submit commitment to batching system
+await batchingAPI.submitCommitment(commitment);
+```
+
+### Provider Batches Commitments
+
+```
+import { QueriesAPI } from '@yourproject/sdk';
+
+const queriesAPI = new QueriesAPI(
+  contracts,
+  1000, // Batch threshold: 1000 queries
+  "MSGPACK", // Encoding
+  "SHA-256" // Hash algorithm
+);
+
+// Log query (automatically batches)
+queriesAPI.logQuery({
+  id: response.queryId,
+  query: originalQuery,
+  timestamp: response.timestamp,
+  modelId: 123,
+  modelWeightsHash: '0xabc123...',
+  input: query.applicantData,
+  prediction: response.prediction
+});
+
+// When 1000 queries accumulated, automatically:
+// 1. Build Merkle tree from all commitments
+// 2. Post Merkle root to blockchain (1 transaction)
+// 3. Store full batch in database/IPFS
+```
+
+### Batch Submission to Blockchain
+
+```
+// This happens automatically when threshold reached
+
+const leaves = commitments.map(c => c.hash);
+const merkleRoot = await buildMerkleTree(leaves);
+
+// Single blockchain transaction for 1000 queries
+await queryBatching.submitBatch({
+  modelId: 123,
+  merkleRoot: merkleRoot,
+  batchSize: 1000,
+  timestamp: Date.now(),
+  dataLocation: "https://provider.com/api/batch/xyz" // or IPFS CID
+});
+
+// Cost: ~$0.50 for 1000 queries
+// vs $500+ if each query was a separate transaction
+```
+
+</Steps>
+
+### Efficiency Gains
+
+<Callout type="success">
+**Key Innovation:** Only ONE blockchain transaction per 1000+ queries, achieving client-facing performance comparable to standard ML-as-a-Service.
+</Callout>
+
+| Metric | Per-Query Cost | Batched Cost (1000 queries) |
+|--------|----------------|------------------------------|
+| Gas Cost | ~$0.50 | ~$0.50 total ($0.0005 per query) |
+| Latency | +5-10 seconds | +50ms (hash computation only) |
+| Storage | 32 bytes on-chain | 32 bytes total (Merkle root) |
+
+---
+
+## Phase 3: Periodic Auditing
+
+<Callout type="info">
+Audits are triggered automatically based on time (monthly) or volume (every 100k queries).
+</Callout>
+
+<Steps>
+
+### Audit Trigger
+
+```
+// Automatic trigger via Chainlink Automation
+// OR manual trigger by governance/regulator
+
+await fairnessCertificates.triggerAudit({
+  modelId: 123,
+  batchPeriod: "2025-01", // January 2025 batches
+  reason: "SCHEDULED_MONTHLY_AUDIT"
+});
+
+// Emits: AuditRequested(modelId, batchId, timestamp)
+```
+
+### Random Sample Selection
+
+```
+// Smart contract uses Chainlink VRF for verifiable randomness
+const totalQueries = await queryBatching.getBatchSize(modelId, batchId);
+// totalQueries: 10,000
+
+const sampleSize = 100; // OATH only needs constant sample size!
+
+// Request verifiable random numbers
+const randomSeed = await chainlinkVRF.requestRandomWords({
+  numWords: sampleSize,
+  keyHash: vrfKeyHash,
+  callbackGasLimit: 500000
+});
+
+// Generate sample indices (deterministic from seed)
+const sampleIndices = generateIndices(randomSeed, totalQueries, sampleSize);
+// sampleIndices: [42, 137, 891, 2341, 5678, ...]
+
+// Emit event for auditors
+emit AuditParametersSet(modelId, batchId, sampleIndices);
+```
+
+<Callout type="info">
+**Why Random Sampling Works:** OATH's probabilistic audit provides statistical guarantees. Even checking 100 out of 10,000 queries detects unfairness with >99% probability.
+</Callout>
+
+### Auditor Verification Process
+
+Multiple independent auditors (e.g., 5 nodes) perform verification in parallel.
+
+```
+import { AuditorITMAC } from '@yourproject/itmac';
+
+const auditor = new AuditorITMAC('auditor-001');
+await auditor.loadKeyShare(auditorKeyShare);
+
+// Listen for audit events
+blockchain.on('AuditParametersSet', async (event) => {
+  const { modelId, batchId, sampleIndices } = event;
+  
+  // 1. Retrieve batch data
+  const batch = await retrieveBatchData(batchId);
+  // From: Provider API, IPFS, or decentralized storage
+  
+  // 2. Verify each sampled query
+  for (const idx of sampleIndices) {
+    const query = batch.queries[idx];
+    
+    // 2a. Verify IT-MAC authenticity
+    const macValid = await auditor.verifyQuery(query);
+    if (!macValid.isValid) {
+      await reportFraud(modelId, idx, "IT-MAC verification failed");
+      return; // Audit fails immediately
+    }
+    
+    // 2b. Verify Merkle inclusion
+    const merkleProof = batch.merkleProofs[idx];
+    const included = await auditor.verifyMerkleInclusion(
+      query,
+      merkleProof,
+      batch.merkleRoot,
+      idx
+    );
+    if (!included) {
+      await reportFraud(modelId, idx, "Not in committed batch");
+      return;
+    }
+  }
+  
+  // 3. Compute fairness statistics
+  const { gap, groupARate, groupBRate } = auditor.computeFairnessGap(
+    batch.queries.filter((_, i) => sampleIndices.includes(i)),
+    "race" // sensitive attribute
+  );
+  
+  // 4. Check against threshold
+  const threshold = 0.05; // 5% maximum gap
+  const passed = gap <= threshold;
+  
+  console.log(`Fairness Gap: ${gap.toFixed(4)}`);
+  console.log(`Group A positive rate: ${groupARate.toFixed(4)}`);
+  console.log(`Group B positive rate: ${groupBRate.toFixed(4)}`);
+  console.log(`Result: ${passed ? 'PASS ✓' : 'FAIL ✗'}`);
+  
+  // 5. Generate ZKP (proves fairness without revealing model weights)
+  const zkProof = await generateFairnessZKP({
+    queries: sampledQueries,
+    fairnessGap: gap,
+    threshold: threshold,
+    modelCommitment: modelWeightsHash
+  });
+  
+  // 6. Submit individual result
+  await submitAuditResult(modelId, {
+    auditorId: 'auditor-001',
+    passed: passed,
+    fairnessGap: gap,
+    zkProof: zkProof,
+    signature: await signResult(result)
+  });
+});
+```
+
+### Consensus & Settlement
+
+```
+// Multiple auditors submit results
+// Smart contract aggregates and requires 2/3 consensus (Byzantine fault tolerance)
+
+contract FairnessCertificates {
+  struct AuditResult {
+    bool passed;
+    uint256 fairnessGap;
+    bytes zkProof;
+    address auditor;
+    bytes signature;
+  }
+  
+  mapping(uint256 => AuditResult[]) public auditResults;
+  
+  function finalizeAudit(uint256 modelId) external {
+    AuditResult[] memory results = auditResults[modelId];
+    require(results.length >= requiredAuditors, "Not enough auditors");
+    
+    // Count votes
+    uint256 passCount = 0;
+    uint256 failCount = 0;
+    
+    for (uint i = 0; i < results.length; i++) {
+      if (results[i].passed) passCount++;
+      else failCount++;
+    }
+    
+    // Require 2/3 majority
+    bool consensusPass = passCount >= (results.length * 2) / 3;
+    
+    if (consensusPass) {
+      // Issue fairness certificate (NFT)
+      _mintCertificate(modelId);
+      
+      // Return provider's stake
+      _returnStake(modelId);
+      
+      // Reward auditors
+      _distributeRewards(results);
+      
+      emit AuditPassed(modelId, block.timestamp);
+    } else {
+      // Slash provider's stake
+      _slashStake(modelId, providerStake / 2);
+      
+      // Mark model as non-compliant
+      _revokeModel(modelId);
+      
+      // Trigger investigation
+      emit AuditFailed(modelId, fairnessGap, block.timestamp);
+    }
+  }
+}
+```
+
+### Audit Result Storage
+
+```
+// Final result permanently recorded on blockchain
+
+interface AuditCertificate {
+  modelId: number;
+  batchId: string;
+  result: "PASS" | "FAIL";
+  fairnessGap: number;
+  threshold: number;
+  auditorConsensus: string[]; // Auditor signatures
+  zkProof: bytes;
+  timestamp: number;
+  certificateNFT?: string; // If passed
+}
+
+// Publicly queryable
+const certificate = await fairnessCertificates.getCertificate(modelId, batchId);
+```
+
+</Steps>
+
+---
+
+## Phase 4: Challenge Period
+
+<Callout type="warn">
+After audit results are posted, a 7-day challenge window opens for disputes.
+</Callout>
+
+<Steps>
+
+### Anyone Can Challenge
+
+```
+// Client notices their query was excluded or misrepresented
+import { ClientITMAC } from '@yourproject/itmac';
+
+const client = new ClientITMAC();
+
+// Retrieve locally stored query
+const storedQuery = JSON.parse(
+  localStorage.getItem('query_12345')
+);
+
+// Download batch from blockchain/IPFS
+const batch = await fetchBatch(batchId);
+
+// Check if my query is included
+const myCommitment = storedQuery.commitment;
+const isIncluded = await verifyMerkleInclusion(
+  myCommitment,
+  batch.merkleTree,
+  batch.merkleRoot
+);
+
+if (!isIncluded) {
+  // MY QUERY WAS EXCLUDED!
+  // Submit challenge
+  await disputeResolution.submitChallenge({
+    modelId: 123,
+    batchId: batchId,
+    queryId: storedQuery.queryId,
+    evidence: {
+      fullQuery: storedQuery.fullQuery,
+      prediction: storedQuery.prediction,
+      macTag: storedQuery.macTag,
+      providerSignature: storedQuery.providerSignature,
+      commitment: storedQuery.commitment
+    },
+    stake: parseEther("5") // 5 ETH challenge stake
+  });
+}
+```
+
+### Dispute Resolution
+
+```
+contract DisputeResolution {
+  function resolveChallenge(uint256 challengeId) external {
+    Challenge memory challenge = challenges[challengeId];
+    
+    // 1. Verify challenger's evidence
+    bool macValid = verifyITMAC(
+      challenge.evidence.macTag,
+      challenge.evidence.query
+    );
+    
+    if (!macValid) {
+      // Challenger provided invalid evidence
+      _slashChallenger(challengeId);
+      return;
+    }
+    
+    // 2. Check if query was in provider's batch
+    bool wasIncluded = verifyInBatch(
+      challenge.evidence.commitment,
+      challenge.batchId
+    );
+    
+    if (!wasIncluded && macValid) {
+      // CHALLENGER IS CORRECT!
+      // Provider excluded a legitimate query
+      
+      // Slash provider
+      _slashProvider(challenge.modelId, 50 ether);
+      
+      // Slash original auditors (missed the exclusion)
+      _slashAuditors(challenge.modelId, 10 ether);
+      
+      // Reward challenger
+      _rewardChallenger(challengeId, 65 ether);
+      
+      // Revoke fairness certificate
+      _revokeCertificate(challenge.modelId);
+      
+      emit ChallengeSuccessful(challengeId);
+    } else {
+      // Challenger was wrong
+      _slashChallenger(challengeId);
+      emit ChallengeFailed(challengeId);
+    }
+  }
+}
+```
+
+### Escalated Audit
+
+If challenge is upheld, trigger deeper investigation with new auditor set.
+
+```
+// Select NEW auditors (not from original audit)
+const newAuditors = await selectRandomAuditors(
+  excludeOriginalAuditors: true,
+  count: 7
+);
+
+// Perform more intensive audit
+await triggerEscalatedAudit({
+  modelId: challenge.modelId,
+  batchId: challenge.batchId,
+  sampleSize: 500, // 5x larger sample
+  auditors: newAuditors
+});
+```
+
+</Steps>
+
+---
+
+## Security Properties
+
+<Tabs items={['Cryptographic', 'Economic', 'Decentralization']}>
+  <Tab value="Cryptographic">
+    ### Cryptographic Security
+    
+    | Property | Mechanism | Guarantee |
+    |----------|-----------|-----------|
+    | **Authenticity** | IT-MACs | Queries cannot be forged (information-theoretic) |
+    | **Integrity** | Merkle Trees | Tampering detected via hash mismatch |
+    | **Non-Repudiation** | Digital Signatures | Provider cannot deny serving predictions |
+    | **Confidentiality** | Zero-Knowledge Proofs | Model weights remain secret from auditors |
+    | **Fairness Verification** | ZKP of Statistics | Proves demographic parity without revealing data |
+  </Tab>
+  <Tab value="Economic">
+    ### Economic Security
+    
+    | Attack | Cost to Attacker | Detection Probability | Rational? |
+    |--------|------------------|----------------------|-----------|
+    | Exclude biased queries | Lose 100 ETH stake | ~100% (any client can challenge) | ❌ No |
+    | Modify predictions | Lose 100 ETH stake | ~100% (commitment mismatch) | ❌ No |
+    | Withhold data | Lose availability bond | 100% (automated slash) | ❌ No |
+    | Bribe auditors | Cost: 50+ ETH/auditor | High (public signatures) | ❌ No |
+    | False challenge | Lose 5 ETH stake | 100% (evidence verified) | ❌ No |
+    
+    **Economic Equilibrium:** Honest behavior is the dominant strategy.
+  </Tab>
+  <Tab value="Decentralization">
+    ### Decentralization Properties
+    
+    - **No Single Point of Failure:** Multiple auditors verify independently
+    - **Byzantine Fault Tolerance:** System secure with up to 1/3 malicious auditors
+    - **Public Verifiability:** Anyone can verify audit results on blockchain
+    - **Censorship Resistance:** Challenges cannot be blocked
+    - **Trustless Coordination:** Smart contracts enforce rules automatically
+    - **Permissionless Challenges:** Any party can dispute audit results
+  </Tab>
+</Tabs>
+
+---
+
+## Performance Characteristics
+
+### Scalability
+
+<Callout type="success">
+**OATH achieves 1343x performance improvement over previous ZKPoF methods.**
+</Callout>
+
+| Operation | Latency | Cost | Frequency |
+|-----------|---------|------|-----------|
+| Client query | +50ms | Free | Per query |
+| IT-MAC generation | ~10ms | Free | Per query |
+| Merkle batching | ~1s | $0.50 | Per 1000 queries |
+| Audit verification | ~5min | $5 | Monthly |
+| ZKP generation | ~30min | Off-chain | Monthly |
+
+### Storage Requirements
+
+| Component | Size | Location |
+|-----------|------|----------|
+| Hash commitment | 32 bytes | On-chain (per batch) |
+| Full query data | ~1KB | Provider DB / IPFS |
+| IT-MAC tag | 32 bytes | Provider DB / IPFS |
+| Merkle proof | ~320 bytes | Provider DB / IPFS |
+| ZKP | ~200 bytes | On-chain (per audit) |
+
+---
+
+## Key Innovations
+
+<Cards>
+  <Card 
+    title="Probabilistic Auditing" 
+    description="Only verify constant number of samples, not all queries. Achieves statistical fairness guarantees efficiently."
+  />
+  <Card 
+    title="IT-MAC Authentication" 
+    description="Information-theoretic security means even quantum computers cannot forge query data."
+  />
+  <Card 
+    title="Merkle Batching" 
+    description="1000x cost reduction by committing to many queries with a single blockchain transaction."
+  />
+  <Card 
+    title="Deferred Verification" 
+    description="Separate inference (fast) from auditing (thorough), enabling real-time ML serving with strong guarantees."
+  />
+</Cards>
+
+---
+
+## Next Steps
+
+<Steps>
+
+### For Providers
+
+1. [Register as a provider](/docs/provider/registration)
+2. [Certify your model](/docs/provider/certification)
+3. [Integrate IT-MAC SDK](/docs/provider/integration)
+4. [Deploy production service](/docs/provider/deployment)
+
+### For Clients
+
+1. [Install client SDK](/docs/client/installation)
+2. [Query certified models](/docs/client/usage)
+3. [Store proofs locally](/docs/client/storage)
+4. [Submit challenges](/docs/client/challenges)
+
+### For Auditors
+
+1. [Apply to auditor pool](/docs/auditor/application)
+2. [Stake tokens](/docs/auditor/staking)
+3. [Run auditor node](/docs/auditor/node-setup)
+4. [Perform audits](/docs/auditor/verification)
+
+</Steps>
+
+---
+
+## Additional Resources
+
+- [OATH Paper (arXiv:2410.02777)](https://arxiv.org/abs/2410.02777)
+- [IT-MAC Package Documentation](/docs/itmac)
+- [Smart Contract Reference](/docs/contracts)
+- [Security Model](/docs/security)
+- [Economic Parameters](/docs/economics)

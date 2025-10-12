@@ -3,7 +3,7 @@ import { type CompiledCircuit, Noir } from "@noir-lang/noir_js";
 import circuit from "@zkfair/zk-circuits/circuit";
 import type { Hash } from "viem";
 import { type FairnessThresholdFile, parsePathsFile } from "./artifacts";
-import type { ContractClient } from "./client";
+import type { ContractClient } from "./contract";
 import { getArtifactDir, parseCSV } from "./utils";
 
 export class ProofAPI {

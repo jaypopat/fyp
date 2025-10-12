@@ -1,5 +1,5 @@
-import { ContractClient } from "./client";
 import { CommitAPI } from "./commit";
+import { ContractClient } from "./contract";
 import { ModelAPI } from "./model";
 import { ProofAPI } from "./proof";
 import { QueriesAPI } from "./queries";
