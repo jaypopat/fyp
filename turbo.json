@@ -12,7 +12,7 @@
 			"cache": true
 		},
 		"web#build": {
-			"dependsOn": ["^build"],
+			"dependsOn": ["@zkfair/sdk#build"],
 			"outputs": ["dist/**"],
 			"cache": true
 		},
