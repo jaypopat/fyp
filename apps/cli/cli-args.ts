@@ -8,7 +8,6 @@ export const getModelOptions = {
 };
 
 const datasetAndHashOptions = {
-	// NEW: Simple directory option
 	dir: string("dir")
 		.alias("D")
 		.desc(

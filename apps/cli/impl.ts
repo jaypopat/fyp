@@ -26,10 +26,15 @@ export type CommitOpts = TypeOf<typeof commitOptions>;
 
 type Hash = `0x${string}`;
 
+const isOnChain = process.env.ONCHAIN === "true";
 const zkFairSDK = new SDK({
-	rpcUrl: process.env.RPC_URL,
-	privateKey: process.env.PRIVATE_KEY || "",
-	contractAddress: process.env.CONTRACT_ADDRESS || "",
+	rpcUrl: isOnChain ? process.env.ONCHAIN_RPC_URL : process.env.RPC_URL,
+	contractAddress: isOnChain
+		? process.env.ONCHAIN_CONTRACT_ADDRESS
+		: process.env.CONTRACT_ADDRESS,
+	privateKey: isOnChain
+		? process.env.ONCHAIN_PRIVATE_KEY
+		: process.env.PRIVATE_KEY,
 });
 
 /**
