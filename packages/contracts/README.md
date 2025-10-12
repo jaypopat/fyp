@@ -58,10 +58,8 @@ The `--interactives 1` flag will prompt you to paste your private key securely.
 **Alternative: Using Alchemy/Infura with verification:**
 ```shell
 forge script script/DeployAndSeed.s.sol:DeployAndSeed \
-  --rpc-url https://eth-sepolia.g.alchemy.com/v2/YOUR_API_KEY \
+  --rpc-url https://ethereum-sepolia-rpc.publicnode.com \
   --broadcast \
-  --verify \
-  --etherscan-api-key YOUR_ETHERSCAN_API_KEY \
   --interactives 1
 ```
 

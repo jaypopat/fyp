@@ -30,11 +30,11 @@ const contractAddress = zkfairDeployment.contractAddress;
 console.log("✅ Found ZKFair contract at:", contractAddress);
 
 // Update CLI .env
-const cliEnvPath = join(import.meta.dir, "../../../apps/cli/.env");
+const cliEnvPath = join(import.meta.dir, "../../../apps/cli/.env.local");
 updateEnvFile(cliEnvPath, "CONTRACT_ADDRESS", contractAddress);
 
 // Update Web .env
-const webEnvPath = join(import.meta.dir, "../../../apps/web/.env");
+const webEnvPath = join(import.meta.dir, "../../../apps/web/.env.local");
 updateEnvFile(webEnvPath, "VITE_CONTRACT_ADDRESS", contractAddress);
 
 function updateEnvFile(filePath: string, key: string, value: string): void {

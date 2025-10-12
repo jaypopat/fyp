@@ -5,10 +5,6 @@ import * as chains from "viem/chains";
 function getChain(): Chain {
 	const chainId = import.meta.env.VITE_CHAIN_ID;
 
-	if (!chainId) {
-		throw new Error("VITE_CHAIN_ID environment variable is not set");
-	}
-
 	const numericChainId = Number.parseInt(chainId, 10);
 
 	const chainMap: Record<number, Chain> = {
@@ -20,12 +16,13 @@ function getChain(): Chain {
 		84532: chains.baseSepolia,
 		10: chains.optimism,
 		42161: chains.arbitrum,
+		31337: chains.anvil,
 	};
 
 	const chain = chainMap[numericChainId];
 
 	if (!chain) {
-		throw new Error(`Unsupported or unknown chain ID: ${numericChainId}`);
+		return chains.anvil;
 	}
 
 	return chain;
@@ -42,12 +39,6 @@ export function createSDK() {
 	if (!contractAddress) {
 		throw new Error(
 			"VITE_CONTRACT_ADDRESS environment variable is not set. Please add it to your .env file.",
-		);
-	}
-
-	if (!rpcUrl) {
-		throw new Error(
-			"VITE_RPC_URL environment variable is not set. Please add it to your .env file.",
 		);
 	}
 
