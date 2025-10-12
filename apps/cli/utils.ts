@@ -46,6 +46,7 @@ export function modelStatusToString(statusNumeric: number): string {
 	const statusMap = ["REGISTERED", "VERIFIED", "FAILED"] as const;
 
 	if (statusNumeric >= 0 && statusNumeric < statusMap.length) {
+		// biome-ignore lint/style/noNonNullAssertion: array access is safe due to bounds check
 		return statusMap[statusNumeric]!;
 	}
 	return "UNKNOWN";

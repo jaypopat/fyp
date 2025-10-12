@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft, Check, Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import type { Hash } from "viem";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -25,9 +26,7 @@ export const Route = createFileRoute("/model/$modelId")({
 		}
 
 		const sdk = createSDK();
-		const model = (await sdk.model.get(
-			modelId as `0x${string}`,
-		)) as SDKModelRaw;
+		const model = (await sdk.model.get(modelId as Hash)) as SDKModelRaw;
 		const normalized = normalizeModel(model);
 
 		return { model: normalized } satisfies { model: SDKModel };

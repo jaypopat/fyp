@@ -14,7 +14,7 @@ export class SDK {
 	public verify: VerifyAPI;
 	public queries: QueriesAPI;
 
-	constructor(options?: ZkFairOptions) {
+	constructor(options: ZkFairOptions) {
 		this.contracts = new ContractClient(options);
 
 		this.model = new ModelAPI(this.contracts);

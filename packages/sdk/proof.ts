@@ -42,7 +42,7 @@ export class ProofAPI {
 
 		const proofHash = `0x${Array.from(proofData.proof)
 			.map((b) => b.toString(16).padStart(2, "0"))
-			.join("")}` as `0x${string}`;
+			.join("")}` as Hash;
 
 		const proofRecord = {
 			weightsHash,

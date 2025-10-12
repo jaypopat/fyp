@@ -1,25 +1,27 @@
+import type { Hash } from "viem";
+
 export type SDKModelRaw = {
 	name: string;
-	author: `0x${string}`;
+	author: Hash;
 	description: string;
-	datasetMerkleRoot: `0x${string}`;
-	weightsHash: `0x${string}`;
+	datasetMerkleRoot: Hash;
+	weightsHash: Hash;
 	status: number;
 	registrationTimestamp: bigint;
 	verificationTimestamp: bigint;
-	proofHash: `0x${string}`;
+	proofHash: Hash;
 };
 
 export type SDKModel = {
 	name: string;
-	author: `0x${string}`;
+	author: Hash;
 	description: string;
-	datasetMerkleRoot: `0x${string}`;
-	weightsHash: `0x${string}`;
+	datasetMerkleRoot: Hash;
+	weightsHash: Hash;
 	status: number;
 	registrationTimestamp: number;
 	verificationTimestamp: number | null;
-	proofHash: `0x${string}`;
+	proofHash: Hash;
 };
 
 export function normalizeModel(model: SDKModelRaw): SDKModel {

@@ -1,32 +1,6 @@
 import { BrowserSDK } from "@zkfair/sdk/browser";
-import type { Chain, Hash } from "viem";
-import * as chains from "viem/chains";
-
-function getChain(): Chain {
-	const chainId = import.meta.env.VITE_CHAIN_ID;
-
-	const numericChainId = Number.parseInt(chainId, 10);
-
-	const chainMap: Record<number, Chain> = {
-		1: chains.mainnet,
-		11155111: chains.sepolia,
-		137: chains.polygon,
-		80002: chains.polygonAmoy,
-		8453: chains.base,
-		84532: chains.baseSepolia,
-		10: chains.optimism,
-		42161: chains.arbitrum,
-		31337: chains.anvil,
-	};
-
-	const chain = chainMap[numericChainId];
-
-	if (!chain) {
-		return chains.anvil;
-	}
-
-	return chain;
-}
+import type { Hash } from "viem";
+import { anvil, sepolia } from "viem/chains";
 
 /**
  * Create a configured BrowserSDK instance
@@ -35,6 +9,7 @@ function getChain(): Chain {
 export function createSDK() {
 	const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
 	const rpcUrl = import.meta.env.VITE_RPC_URL;
+	const chainId = import.meta.env.VITE_CHAIN_ID;
 
 	if (!contractAddress) {
 		throw new Error(
@@ -42,9 +17,11 @@ export function createSDK() {
 		);
 	}
 
+	const chain = chainId === "11155111" ? sepolia : anvil;
+
 	return new BrowserSDK({
 		contractAddress: contractAddress as Hash,
 		rpcUrl,
-		chain: getChain(),
+		chain,
 	});
 }
