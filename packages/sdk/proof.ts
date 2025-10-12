@@ -1,15 +1,15 @@
 import { UltraHonkBackend } from "@aztec/bb.js";
 import { type CompiledCircuit, Noir } from "@noir-lang/noir_js";
 import circuit from "@zkfair/zk-circuits/circuit";
-import type { Hex } from "viem";
 import { type FairnessThresholdFile, parsePathsFile } from "./artifacts";
 import type { ContractClient } from "./client";
 import { getArtifactDir, parseCSV } from "./utils";
+import type { Hash } from "viem";
 
 export class ProofAPI {
-	constructor(private contracts: ContractClient) {}
+	constructor(private contracts: ContractClient) { }
 
-	async generateProof(weightsHash: Hex): Promise<Hex> {
+	async generateProof(weightsHash: Hash): Promise<Hash> {
 		const dir = getArtifactDir(weightsHash);
 
 		const rawPaths = await Bun.file(`${dir}/paths.json`).json();
@@ -26,11 +26,6 @@ export class ProofAPI {
 			number,
 			string
 		>;
-		const fairness = (await Bun.file(`${dir}/fairness.json`).json()) as {
-			metric: string;
-			targetDisparity: number;
-			protectedAttribute: string;
-		};
 
 		const input = {
 			weights: new Uint8Array(weights_data),
@@ -45,21 +40,21 @@ export class ProofAPI {
 		const backend = new UltraHonkBackend(circuit.bytecode);
 		const proofData = await backend.generateProof(witness);
 
-		const proofHex = `0x${Array.from(proofData.proof)
+		const proofHash = `0x${Array.from(proofData.proof)
 			.map((b) => b.toString(16).padStart(2, "0"))
-			.join("")}` as Hex;
+			.join("")}` as `0x${string}`;
 
 		const proofRecord = {
 			weightsHash,
 			generatedAt: Date.now(),
-			proof: proofHex,
-			publicInputs: proofData.publicInputs as Hex[],
+			proof: proofHash,
+			publicInputs: proofData.publicInputs as Hash[],
 		};
 		await Bun.write(`${dir}/proof.json`, JSON.stringify(proofRecord, null, 2));
 
-		return proofHex;
+		return proofHash;
 	}
-	async getStatus(weightsHash: Hex) {
+	async getStatus(weightsHash: Hash) {
 		try {
 			const status = await this.contracts.getProofStatus(weightsHash);
 			return status;

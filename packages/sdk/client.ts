@@ -4,7 +4,7 @@ import {
 	type Chain,
 	createPublicClient,
 	createWalletClient,
-	type Hex,
+	type Hash,
 	http,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -27,7 +27,7 @@ export class ContractClient {
 		});
 
 		if (options?.privateKey) {
-			const account = privateKeyToAccount(options?.privateKey as Hex);
+			const account = privateKeyToAccount(options?.privateKey as Hash);
 			this.walletClient = createWalletClient({
 				account,
 				chain: this.chain,
@@ -39,8 +39,8 @@ export class ContractClient {
 	async createModelAndCommit(
 		name: string,
 		description: string,
-		merkleRoot: Hex,
-		weightsHash: Hex,
+		merkleRoot: Hash,
+		weightsHash: Hash,
 	) {
 		if (!this.walletClient)
 			throw new Error("Wallet client required for write operations");
@@ -53,7 +53,7 @@ export class ContractClient {
 			args: [name, description, merkleRoot, weightsHash],
 		});
 	}
-	async verifyModel(weightsHash: Hex, proof: Hex, publicInputs: Hex[]) {
+	async verifyModel(weightsHash: Hash, proof: Hash, publicInputs: Hash[]) {
 		if (!this.walletClient || !this.publicClient)
 			throw new Error("Both wallet and public client required");
 
@@ -88,7 +88,7 @@ export class ContractClient {
 			functionName: "getAllModels",
 		});
 	}
-	async getModelByHash(modelId: Hex) {
+	async getModelByHash(modelId: Hash) {
 		return this.publicClient.readContract({
 			address: this.contractAddress,
 			abi: zkFairAbi,
@@ -96,7 +96,7 @@ export class ContractClient {
 			args: [modelId],
 		});
 	}
-	async getProofStatus(weightsHash: Hex) {
+	async getProofStatus(weightsHash: Hash) {
 		const statusNumeric = (await this.publicClient.readContract({
 			address: this.contractAddress,
 			abi: zkFairAbi,

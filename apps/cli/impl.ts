@@ -3,7 +3,6 @@
 import type { TypeOf } from "@drizzle-team/brocli";
 import { SDK } from "@zkfair/sdk";
 import path from "path";
-import type { FairnessFile } from "../../packages/sdk/artifacts";
 import type {
 	commitOptions,
 	getModelOptions,
@@ -13,8 +12,9 @@ import type {
 } from "./cli-args";
 import {
 	computeFileHash,
+	discoverModelFiles,
 	modelStatusToString,
-	validateHexHash,
+	validateHash,
 	withSpinner,
 } from "./utils";
 
@@ -24,109 +24,13 @@ export type GetProofStatusOpts = TypeOf<typeof getProofStatusOptions>;
 export type VerifyProofOpts = TypeOf<typeof verifyProofOptions>;
 export type CommitOpts = TypeOf<typeof commitOptions>;
 
+type Hash = `0x${string}`;
+
 const zkFairSDK = new SDK({
 	rpcUrl: process.env.RPC_URL,
 	privateKey: process.env.PRIVATE_KEY || "",
 	contractAddress: process.env.CONTRACT_ADDRESS || "",
 });
-
-interface ModelFiles {
-	weightsPath: string;
-	datasetPath: string;
-	fairnessThresholdPath: string;
-	modelMetadata: {
-		name: string;
-		description: string;
-		creator?: string;
-	};
-}
-
-/**
- * Discovers model files from either a directory or explicit paths.
- * If --dir is provided, looks for weights.bin, dataset.csv, fairness_threshold.json, and optionally model.json
- * If explicit paths are provided, uses those directly.
- * CLI metadata flags override model.json metadata.
- */
-async function discoverModelFiles(opts: {
-	dir?: string;
-	weights?: string;
-	data?: string;
-	fairnessThreshold?: string;
-	name?: string;
-	description?: string;
-	creator?: string;
-}): Promise<ModelFiles> {
-	// Validate that either dir OR explicit paths are provided
-	if (opts.dir) {
-		// Directory mode: discover files in the directory
-		if (opts.weights || opts.data || opts.fairnessThreshold) {
-			throw new Error(
-				"Cannot use --dir with explicit file paths. Use either --dir OR (--weights, --data, --fairness-threshold).",
-			);
-		}
-
-		const dirPath = path.resolve(opts.dir);
-		if (!(await Bun.file(dirPath).exists())) {
-			throw new Error(`Directory not found: ${dirPath}`);
-		}
-
-		const weightsPath = path.join(dirPath, "weights.bin");
-		const datasetPath = path.join(dirPath, "dataset.csv");
-		const fairnessThresholdPath = path.join(dirPath, "fairness_threshold.json");
-		const modelJsonPath = path.join(dirPath, "model.json");
-
-		// Check required files exist
-		if (!(await Bun.file(weightsPath).exists())) {
-			throw new Error(`weights.bin not found in directory: ${dirPath}`);
-		}
-		if (!(await Bun.file(datasetPath).exists())) {
-			throw new Error(`dataset.csv not found in directory: ${dirPath}`);
-		}
-		if (!(await Bun.file(fairnessThresholdPath).exists())) {
-			throw new Error(
-				`fairness_threshold.json not found in directory: ${dirPath}`,
-			);
-		}
-
-		// Load model.json if it exists
-		let modelJson: { name?: string; description?: string; creator?: string } =
-			{};
-		if (await Bun.file(modelJsonPath).exists()) {
-			modelJson = await Bun.file(modelJsonPath).json();
-		}
-
-		// CLI flags override model.json
-		return {
-			weightsPath,
-			datasetPath,
-			fairnessThresholdPath,
-			modelMetadata: {
-				name: opts.name || modelJson.name || "Unnamed Model",
-				description:
-					opts.description || modelJson.description || "No description",
-				creator: opts.creator || modelJson.creator,
-			},
-		};
-	}
-
-	// Explicit paths mode: require all three paths
-	if (!opts.weights || !opts.data || !opts.fairnessThreshold) {
-		throw new Error(
-			"Must provide either --dir OR all of (--weights, --data, --fairness-threshold)",
-		);
-	}
-
-	return {
-		weightsPath: opts.weights,
-		datasetPath: opts.data,
-		fairnessThresholdPath: opts.fairnessThreshold,
-		modelMetadata: {
-			name: opts.name || "Unnamed Model",
-			description: opts.description || "No description",
-			creator: opts.creator,
-		},
-	};
-}
 
 /**
  * Registers a new model if it doesn't already exist.
@@ -145,7 +49,7 @@ async function registerModel(params: {
 		description: string;
 		creator?: string;
 	};
-}): Promise<`0x${string}`> {
+}): Promise<Hash> {
 	console.log("🚀 Registering new model...");
 
 	const absWeightsPath = path.resolve(params.weightsPath);
@@ -167,16 +71,13 @@ async function registerModel(params: {
 				);
 			}
 
-			const targetDisparity = (
-				(await Bun.file(absFairnessThresholdPath).json()) as FairnessFile
-			).targetDisparity;
-
 			return await withSpinner(
 				"Submitting commitment to blockchain",
 				async () =>
 					await zkFairSDK.commit.makeCommitment(
 						absDatasetPath,
 						absWeightsPath,
+						absFairnessThresholdPath,
 						{
 							model: {
 								name: params.modelMetadata.name ?? "",
@@ -284,9 +185,9 @@ export async function getProofStatus(options: GetProofStatusOpts) {
 	const result = await withSpinner(
 		"Getting proof status",
 		async () => {
-			let weightsHash: `0x${string}`;
+			let weightsHash: Hash;
 			if (options.proofHash) {
-				weightsHash = validateHexHash(options.proofHash);
+				weightsHash = validateHash(options.proofHash);
 			} else {
 				if (!options.weights)
 					throw new Error("Provide --weights or --proofHash");
@@ -311,9 +212,9 @@ export async function getProofStatus(options: GetProofStatusOpts) {
 export async function verifyProof(options: VerifyProofOpts) {
 	const publicInputs: string[] = options.publicInputs.split(",");
 
-	let hashToVerify: `0x${string}`;
+	let hashToVerify: Hash;
 	if (options.proofHash) {
-		hashToVerify = validateHexHash(options.proofHash);
+		hashToVerify = validateHash(options.proofHash);
 		console.log(`Using provided proof hash: ${hashToVerify}`);
 	} else if (options.weights) {
 		hashToVerify = await computeFileHash(options.weights);
@@ -376,7 +277,7 @@ export async function listModels() {
 }
 
 export async function getModel(options: GetModelOpts) {
-	let hashToUse: `0x${string}`;
+	let hashToUse: Hash;
 
 	if (options.modelHash && options.weightsFile) {
 		throw new Error("Provide either model hash or weights file, not both");
@@ -385,7 +286,7 @@ export async function getModel(options: GetModelOpts) {
 		throw new Error("Must provide either model hash or weights file path");
 	}
 	if (options.modelHash) {
-		hashToUse = validateHexHash(options.modelHash);
+		hashToUse = validateHash(options.modelHash);
 		console.log(`🔍 Using provided model hash: ${hashToUse}`);
 	} else {
 		if (!options.weightsFile) throw new Error("weightsFile path missing");

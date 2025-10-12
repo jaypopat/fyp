@@ -1,5 +1,5 @@
 import { encode } from "@msgpack/msgpack";
-import type { Hex } from "viem";
+import type { Hash } from "viem";
 import type { ContractClient } from "./client";
 import { merkleRoot } from "./merkle";
 import type { encodingSchemas, hashAlgos } from "./types";
@@ -10,7 +10,7 @@ interface QueryRecord {
 	query: string;
 	timestamp: number;
 	modelId: number;
-	modelWeightsHash: Hex;
+	modelWeightsHash: Hash;
 	input: unknown[];
 	prediction: number;
 }

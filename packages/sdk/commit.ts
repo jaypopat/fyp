@@ -1,6 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { encode } from "@msgpack/msgpack";
-import type { Hex } from "viem";
+import type { Hash } from "viem";
 import type { FairnessFile } from "./artifacts";
 import type { ContractClient } from "./client";
 import { merkleRoot } from "./merkle";
@@ -15,7 +15,7 @@ export class CommitAPI {
 		weightsPath: string,
 		fairnessThresholdPath: string,
 		options: CommitOptions,
-	): Promise<Hex> {
+	): Promise<Hash> {
 		const datasetRows = await parseCSV(dataSetPath);
 		const weights = await Bun.file(weightsPath).arrayBuffer();
 		const fairnessThreshold = (await Bun.file(
@@ -41,7 +41,7 @@ export class CommitAPI {
 			);
 
 		// Attempt to register the model - if it already exists, provide a clear error
-		let hash: Hex;
+		let hash: Hash;
 		try {
 			// TODO modify fn to take in threshold too
 			hash = await this.contracts.createModelAndCommit(
@@ -139,8 +139,8 @@ export class CommitAPI {
 		},
 	): Promise<{
 		saltsMap: Record<number, string>;
-		dataSetMerkleRoot: Hex;
-		weightsHash: Hex;
+		dataSetMerkleRoot: Hash;
+		weightsHash: Hash;
 	}> {
 		const weightsHash = await this.hashWeights(weights, options.hashAlgo);
 
@@ -190,7 +190,7 @@ export class CommitAPI {
 	private async deriveSalts(
 		masterSalt: string,
 		rowCount: number,
-		weightsHash: Hex,
+		weightsHash: Hash,
 		hashAlgo: hashAlgos,
 	): Promise<Record<number, string>> {
 		const salts: Record<number, string> = {};
@@ -208,8 +208,8 @@ export class CommitAPI {
 		schema: CommitOptions["schema"],
 		masterSalt: string,
 		salts: Record<number, string>,
-		dataSetMerkleRoot: Hex,
-		weightsHash: Hex,
+		dataSetMerkleRoot: Hash,
+		weightsHash: Hash,
 	) {
 		const dir = getArtifactDir(weightsHash);
 		await mkdir(dir, { recursive: true });
@@ -246,10 +246,10 @@ export class CommitAPI {
 	private async hashWeights(
 		weightsBuffer: Uint8Array,
 		algo: hashAlgos,
-	): Promise<Hex> {
+	): Promise<Hash> {
 		const plain = await hashBytes(weightsBuffer, algo);
 		if (plain.length !== 64) throw new Error("weights hash length invalid");
-		return `0x${plain}` as Hex;
+		return `0x${plain}` as Hash;
 	}
 
 	private async encodeRow(

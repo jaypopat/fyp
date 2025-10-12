@@ -1,0 +1,5 @@
+{
+	"name": "Adult Income Prediction Model",
+	"description": "Logistic regression model predicting income >50K from census data",
+	"creator": "ZKFair Team"
+}

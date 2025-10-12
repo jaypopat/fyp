@@ -2,7 +2,7 @@ import os from "node:os";
 import path from "node:path";
 import { blake2b } from "@noble/hashes/blake2";
 import Papa from "papaparse";
-import type { Hex } from "viem";
+import type { Hash } from "viem";
 import type { hashAlgos } from "./types";
 
 export async function parseCSV(filePath: string): Promise<string[][]> {
@@ -21,16 +21,16 @@ export async function parseCSV(filePath: string): Promise<string[][]> {
 	return dataRows;
 }
 
-export function bytesToHex(bytes: Uint8Array): Hex {
-	return `0x${[...bytes].map((b) => b.toString(16).padStart(2, "0")).join("")}` as Hex;
+export function bytesToHash(bytes: Uint8Array): Hash {
+	return `0x${[...bytes].map((b) => b.toString(16).padStart(2, "0")).join("")}` as Hash;
 }
 
-export function bytesToPlainHex(bytes: Uint8Array): string {
+export function bytesToPlainHash(bytes: Uint8Array): string {
 	return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export function hexToBytes(hex: Hex | string): Uint8Array {
-	if (!hex.startsWith("0x")) throw new Error("Hex string must start with 0x");
+export function hexToBytes(hex: Hash | string): Uint8Array {
+	if (!hex.startsWith("0x")) throw new Error("Hash string must start with 0x");
 	const clean = hex.slice(2);
 	if (clean.length % 2 !== 0) throw new Error("Invalid hex length");
 	const out = new Uint8Array(clean.length / 2);
@@ -51,13 +51,13 @@ export async function hashBytes(
 	} else {
 		out = blake2b(data, { dkLen: 32 });
 	}
-	const hex = bytesToPlainHex(out).toLowerCase();
+	const hex = bytesToPlainHash(out).toLowerCase();
 	if (hex.length !== 64)
 		throw new Error(`hashBytes produced invalid length ${hex.length}`);
 	return hex;
 }
 
-export function getArtifactDir(weightsHash: Hex): string {
+export function getArtifactDir(weightsHash: Hash): string {
 	const home = os.homedir();
 	return path.join(home, ".zkfair", weightsHash.slice(2));
 }

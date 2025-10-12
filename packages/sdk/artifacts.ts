@@ -1,11 +1,14 @@
-import type { Hex } from "viem";
+import type { Hash } from "viem";
 import type { encodingSchemas, hashAlgos } from "./types";
 
 function assert(condition: unknown, msg: string): asserts condition {
 	if (!condition) throw new Error(msg);
 }
 
-export function assertHex(value: string, label: string): asserts value is Hex {
+export function assertHash(
+	value: string,
+	label: string,
+): asserts value is Hash {
 	assert(typeof value === "string", `${label} must be string`);
 	assert(value.startsWith("0x"), `${label} must start with 0x`);
 	assert(
@@ -29,8 +32,8 @@ export interface SchemaFile {
 	encodingSchema: encodingSchemas;
 }
 export interface CommitmentsFile {
-	datasetMerkleRoot: Hex;
-	weightsHash: Hex;
+	datasetMerkleRoot: Hash;
+	weightsHash: Hash;
 }
 export interface MetadataFile {
 	name: string;
@@ -48,10 +51,10 @@ export interface MetaFile {
 }
 export interface ProofFile {
 	version: number;
-	weightsHash: Hex;
+	weightsHash: Hash;
 	generatedAt: number;
-	proof: Hex; // entire proof as hex (current format)
-	publicInputs: Hex[];
+	proof: Hash; // entire proof as hex (current format)
+	publicInputs: Hash[];
 }
 
 export function parsePathsFile(data: unknown): PathsFile {
@@ -72,11 +75,11 @@ export function parseCommitmentsFile(data: unknown): CommitmentsFile {
 	const d = data as Record<string, unknown>;
 	assert(typeof d.datasetMerkleRoot === "string", "datasetMerkleRoot missing");
 	assert(typeof d.weightsHash === "string", "weightsHash missing");
-	assertHex(d.datasetMerkleRoot as string, "datasetMerkleRoot");
-	assertHex(d.weightsHash as string, "weightsHash");
+	assertHash(d.datasetMerkleRoot as string, "datasetMerkleRoot");
+	assertHash(d.weightsHash as string, "weightsHash");
 	return {
-		datasetMerkleRoot: d.datasetMerkleRoot as Hex,
-		weightsHash: d.weightsHash as Hex,
+		datasetMerkleRoot: d.datasetMerkleRoot as Hash,
+		weightsHash: d.weightsHash as Hash,
 	};
 }
 export function parseProofFile(data: unknown): ProofFile {
@@ -87,18 +90,18 @@ export function parseProofFile(data: unknown): ProofFile {
 	assert(typeof d.weightsHash === "string", "weightsHash missing");
 	assert(typeof d.proof === "string", "proof missing");
 	assert(Array.isArray(d.publicInputs), "publicInputs must be array");
-	assertHex(d.weightsHash as string, "weightsHash");
-	assertHex(d.proof as string, "proof");
+	assertHash(d.weightsHash as string, "weightsHash");
+	assertHash(d.proof as string, "proof");
 	const publicInputs = (d.publicInputs as unknown[]).map((p, i) => {
 		assert(typeof p === "string", `publicInputs[${i}] must be string`);
-		assertHex(p as string, `publicInputs[${i}]`);
-		return p as Hex;
+		assertHash(p as string, `publicInputs[${i}]`);
+		return p as Hash;
 	});
 	return {
 		version: d.version as number,
-		weightsHash: d.weightsHash as Hex,
+		weightsHash: d.weightsHash as Hash,
 		generatedAt: d.generatedAt as number,
-		proof: d.proof as Hex,
+		proof: d.proof as Hash,
 		publicInputs,
 	};
 }
