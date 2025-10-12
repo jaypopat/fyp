@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { BrowserSDK } from "@zkfair/sdk/browser";
 import { ArrowLeft, Check, Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { getModelStatusBadge } from "@/lib/model-status";
+import { createSDK } from "@/lib/sdk";
 import {
 	normalizeModel,
 	type SDKModel,
@@ -24,9 +24,7 @@ export const Route = createFileRoute("/model/$modelId")({
 			throw new Error("Model ID must be a 0x-prefixed hash");
 		}
 
-		const sdk = new BrowserSDK({
-			contractAddress: import.meta.env.VITE_CONTRACT_ADDRESS,
-		});
+		const sdk = createSDK();
 		const model = (await sdk.model.get(
 			modelId as `0x${string}`,
 		)) as SDKModelRaw;

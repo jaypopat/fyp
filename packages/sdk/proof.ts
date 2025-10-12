@@ -1,13 +1,13 @@
 import { UltraHonkBackend } from "@aztec/bb.js";
 import { type CompiledCircuit, Noir } from "@noir-lang/noir_js";
 import circuit from "@zkfair/zk-circuits/circuit";
+import type { Hash } from "viem";
 import { type FairnessThresholdFile, parsePathsFile } from "./artifacts";
 import type { ContractClient } from "./client";
 import { getArtifactDir, parseCSV } from "./utils";
-import type { Hash } from "viem";
 
 export class ProofAPI {
-	constructor(private contracts: ContractClient) { }
+	constructor(private contracts: ContractClient) {}
 
 	async generateProof(weightsHash: Hash): Promise<Hash> {
 		const dir = getArtifactDir(weightsHash);

@@ -8,7 +8,6 @@ import {
 	getSortedRowModel,
 	useReactTable,
 } from "@tanstack/react-table";
-import { BrowserSDK } from "@zkfair/sdk/browser";
 import { ArrowUpDown, ExternalLink, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -23,6 +22,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { getModelStatusBadge } from "@/lib/model-status";
+import { createSDK } from "@/lib/sdk";
 import {
 	normalizeModels,
 	type SDKModel,
@@ -31,9 +31,7 @@ import {
 
 export const Route = createFileRoute("/")({
 	loader: async () => {
-		const sdk = new BrowserSDK({
-			contractAddress: import.meta.env.VITE_CONTRACT_ADDRESS,
-		});
+		const sdk = createSDK();
 		const rawModels = (await sdk.model.list()) as readonly SDKModelRaw[];
 		const models = normalizeModels(rawModels);
 		return { models };

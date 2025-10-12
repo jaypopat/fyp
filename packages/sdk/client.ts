@@ -17,13 +17,13 @@ export class ContractClient {
 	private walletClient?;
 	private chain: Chain;
 
-	constructor(options?: ZkFairOptions) {
+	constructor(options: ZkFairOptions) {
 		this.contractAddress = options?.contractAddress as Address;
 		this.chain = options?.chain ?? anvil;
 
 		this.publicClient = createPublicClient({
 			chain: this.chain,
-			transport: http(options?.rpcUrl ?? "http://localhost:8545"),
+			transport: http(options.rpcUrl ?? "http://localhost:8545"),
 		});
 
 		if (options?.privateKey) {

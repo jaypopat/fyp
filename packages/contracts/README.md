@@ -48,7 +48,32 @@ $ anvil
 ### Deploy
 
 ```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+forge script script/DeployAndSeed.s.sol:DeployAndSeed \
+  --rpc-url wss://ethereum-sepolia-rpc.publicnode.com \
+  --broadcast \
+  --interactives 1
+```
+The `--interactives 1` flag will prompt you to paste your private key securely.
+
+**Alternative: Using Alchemy/Infura with verification:**
+```shell
+forge script script/DeployAndSeed.s.sol:DeployAndSeed \
+  --rpc-url https://eth-sepolia.g.alchemy.com/v2/YOUR_API_KEY \
+  --broadcast \
+  --verify \
+  --etherscan-api-key YOUR_ETHERSCAN_API_KEY \
+  --interactives 1
+```
+
+**Test locally first:**
+```shell
+# Terminal 1: Start Anvil
+anvil
+
+# Terminal 2: Deploy to local node
+forge script script/DeployAndSeed.s.sol:DeployAndSeed \
+  --rpc-url http://localhost:8545 \
+  --broadcast
 ```
 
 ### Cast
