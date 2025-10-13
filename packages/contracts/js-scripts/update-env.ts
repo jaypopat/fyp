@@ -1,4 +1,3 @@
-import { existsSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 
 async function main() {
@@ -14,13 +13,15 @@ async function main() {
 		`../broadcast/DeployAndSeed.s.sol/${chainId}/run-latest.json`,
 	);
 
-	if (!existsSync(artifactPath)) {
+	try {
+		await Bun.file(artifactPath).exists();
+	} catch {
 		console.error("❌ Deployment artifact not found at:", artifactPath);
 		console.error(`Run deployment first: bun run deploy-${network}`);
 		process.exit(1);
 	}
 
-	const artifact = JSON.parse(readFileSync(artifactPath, "utf-8"));
+	const artifact = JSON.parse(await Bun.file(artifactPath).text());
 
 	// Find ZKFair contract deployment
 	const zkfairDeployment = artifact.transactions.find(
@@ -52,27 +53,19 @@ async function main() {
 
 	console.log(`\n🎉 ${network} contract address synced successfully!`);
 	console.log(`   Contract: ${contractAddress}`);
-
-	if (network === "sepolia") {
-		console.log("\n📦 Next steps:");
-		console.log("   1. Commit the updated config.ts to git");
-		console.log(
-			"   2. Vercel will automatically use the new contract address\n",
-		);
-	}
 }
 
-function updateConfigFile(
+async function updateConfigFile(
 	filePath: string,
 	network: string,
 	address: string,
-): void {
-	if (!existsSync(filePath)) {
-		console.error("❌ Config file not found at:", filePath);
+): Promise<void> {
+	if (!(await Bun.file(filePath).exists())) {
+		console.error("Config file not found at:", filePath);
 		process.exit(1);
 	}
 
-	let content = readFileSync(filePath, "utf-8");
+	let content = await Bun.file(filePath).text();
 
 	// Update the appropriate network configuration
 	const configKey = network === "sepolia" ? "sepolia" : "local";
@@ -90,16 +83,18 @@ function updateConfigFile(
 
 	content = content.replace(addressRegex, `$1"${address}"`);
 
-	writeFileSync(filePath, content);
+	await Bun.write(filePath, content);
 	console.log(`✅ Updated ${filePath} (${configKey}.contractAddress)`);
 }
 
-function updateEnvFile(filePath: string, key: string, value: string): void {
+async function updateEnvFile(
+	filePath: string,
+	key: string,
+	value: string,
+): Promise<void> {
 	let envContent = "";
-
-	// Read existing content if file exists
-	if (existsSync(filePath)) {
-		envContent = readFileSync(filePath, "utf-8");
+	if (await Bun.file(filePath).exists()) {
+		envContent = await Bun.file(filePath).text();
 	}
 
 	const envLine = `${key}=${value}`;
@@ -114,7 +109,7 @@ function updateEnvFile(filePath: string, key: string, value: string): void {
 		envContent += `${envLine}\n`;
 	}
 
-	writeFileSync(filePath, envContent);
+	await Bun.write(filePath, envContent);
 	console.log(`✅ Updated ${filePath} (${key})`);
 }
 

@@ -1,8 +1,8 @@
 import { UltraHonkBackend } from "@aztec/bb.js";
 import { type CompiledCircuit, Noir } from "@noir-lang/noir_js";
-import circuit from "@zkfair/zk-circuits/circuit";
+import circuit from "@zkfair/zk-circuits/training";
 import type { Hash } from "viem";
-import { type FairnessThresholdFile, parsePathsFile } from "./artifacts";
+import { parsePathsFile } from "./artifacts";
 import type { ContractClient } from "./contract";
 import { getArtifactDir, parseCSV } from "./utils";
 
@@ -18,9 +18,9 @@ export class ProofAPI {
 		// Load dataset & weights
 		const weights_data = await Bun.file(paths.weights).arrayBuffer();
 		const dataset = await parseCSV(paths.dataset);
-		const threshold = (await Bun.file(
-			paths.threshold,
-		).json()) as FairnessThresholdFile;
+		// const threshold = (await Bun.file(
+		// 	paths.threshold,
+		// ).json()) as FairnessThresholdFile;
 
 		const salts = (await Bun.file(`${dir}/salts.json`).json()) as Record<
 			number,
@@ -28,14 +28,13 @@ export class ProofAPI {
 		>;
 
 		const input = {
-			weights: new Uint8Array(weights_data),
+			weights: Array.from(new Uint8Array(weights_data)),
 			dataset: dataset,
 			salts: salts,
-			threshold: threshold,
 		};
 
 		const noir = new Noir(circuit as CompiledCircuit);
-		const { witness } = await noir.execute(input as any); // TODO build the circuit so it takes the input as required
+		const { witness } = await noir.execute(input);
 
 		const backend = new UltraHonkBackend(circuit.bytecode);
 		const proofData = await backend.generateProof(witness);

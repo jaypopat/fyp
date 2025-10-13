@@ -1,10 +1,18 @@
 // apps/provider-server/src/index.ts
+
+import { sha256 } from "@noble/hashes/sha2";
+import { bytesToHex } from "@noble/hashes/utils";
+import { encode } from "@msgpack/msgpack";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import * as ort from "onnxruntime-node";
-import { join } from "path";
-import { Provider } from "@zkfair/itmac/provider"
+import type { Hex } from "viem";
+import { ensureProviderKeys } from "./lib/keys";
+import { appendRecord, initDB, type QueryLogRecord } from "./lib/db";
+import { loadAllModels } from "./lib/models";
+import { makeItmacBundle, verifyClientCommitment } from "./lib/itmac";
+import { Provider } from "@zkfair/itmac";
 
 const app = new Hono();
 
@@ -12,118 +20,162 @@ const app = new Hono();
 app.use("*", cors());
 app.use("*", logger());
 
-const providerAPI = new Provider();
-
-// Store loaded models in memory
-const models = new Map<string, ort.InferenceSession>();
-// eg - adult-income -> model.onnx session etc
-// for our example the same provider has added the 3 models in the examples folder
-
-async function loadAllModels() {
-  async function loadModel(modelId: string, modelPath: string) {
-    try {
-      const modelFile = Bun.file(modelPath);
-      const modelBuffer = await modelFile.arrayBuffer();
-      const session = await ort.InferenceSession.create(modelBuffer);
-      models.set(modelId, session);
-      console.log(`✅ Loaded model ${modelId} from ${modelPath}`);
-    } catch (error) {
-      console.error(`❌ Failed to load model ${modelId}:`, error);
-      throw error;
-    }
-  }
-
-  const examples = join(process.cwd(), "../../examples/");
-
-  // Get all directories in the examples folder using Bun.Glob
-  const glob = new Bun.Glob("*/model.onnx");
-  const files = await Array.fromAsync(glob.scan({ cwd: examples }));
-
-  for (const file of files) {
-    const parts = file.split("/");
-    if (parts[0]) {
-      const modelName = parts[0];
-      const modelPath = join(examples, file);
-      await loadModel(modelName, modelPath);
-    }
-  }
-}
 // Load all models on startup
-await loadAllModels();
+const models = await loadAllModels();
+
+// Init DB and provider keys
+await initDB();
+const providerKeys = await ensureProviderKeys();
+const itmacProvider = new Provider(providerKeys);
+
+// Simple JSON file persistence for minimal query logs handled in lib/db
+
+// (DB is initialized above)
 
 app.get("/health", (c) => {
-  return c.json({
-    status: "ok",
-    loadedModels: Array.from(models.keys()),
-    timestamp: Date.now(),
-  });
+	return c.json({
+		status: "ok",
+		loadedModels: Array.from(models.keys()),
+		timestamp: Date.now(),
+	});
 });
 
 /**
  * Inference endpoint
  */
 app.post("/predict", async (c) => {
-  try {
-    const body = await c.req.json();
-    const { modelId, input, coins } = body;
+	try {
+		const body = await c.req.json();
+		const { modelId, input, clientCommit, clientRand, queryId } = body as {
+			modelId: string | number;
+			input: unknown;
+			clientCommit?: Hex;
+			clientRand?: Hex;
+			queryId?: string;
+		};
 
-    // Validate input
-    if (!modelId || !input) {
-      return c.json({ error: "modelId and input are required" }, 400);
-    }
+		// Validate input
+		if (modelId === undefined || input === undefined) {
+			return c.json({ error: "modelId and input are required" }, 400);
+		}
 
-    if (!Array.isArray(input)) {
-      return c.json({ error: "input must be an array" }, 400);
-    }
+		// For demo models, we expect a numeric array
+		if (!Array.isArray(input)) {
+			return c.json({ error: "input must be an array" }, 400);
+		}
 
-    // Get model
-    const session = models.get(String(modelId));
-    if (!session) {
-      return c.json({ error: `Model ${modelId} not found` }, 404);
-    }
+		// Get model
+		const session = models.get(String(modelId));
+		if (!session) {
+			return c.json({ error: `Model ${modelId} not found` }, 404);
+		}
 
-    // Prepare input tensor
-    const inputTensor = new ort.Tensor("float32", Float32Array.from(input), [
-      1,
-      input.length,
-    ]);
+		// Prepare input tensor
+		const inputTensor = new ort.Tensor(
+			"float32",
+			Float32Array.from(input as number[]),
+			[1, (input as number[]).length],
+		);
 
-    // Run inference
-    const results = await session.run({
-      float_input: inputTensor, // Input name from your ONNX model
-    });
+		// Run inference
+		const results = await session.run({
+			float_input: inputTensor, // Input name from your ONNX model
+		});
 
-    // Extract prediction (adjust based on your model's output)
-    const outputTensor = results.label || results.output0;
-    const prediction = outputTensor?.data[0] as number;
+		// Extract prediction (adjust based on your model's output)
+		const outputTensor = results.label || results.output0;
+		const prediction = outputTensor?.data[0] as number;
 
-    console.log(`🧠 Inference for model ${modelId}: ${prediction}`);
+		// Build IT-MAC artifacts if client provided coin-flip inputs
+		const now = Date.now();
+		// Canonical input hash: encode float32 array via msgpack
+		const asF32 = Array.from(new Float32Array(input as number[]));
+		const inputHash = `0x${bytesToHex(sha256(encode(asF32)))}` as Hex;
+		const qid = queryId ?? globalThis.crypto?.randomUUID?.() ?? `${now}`;
+		let itmac:
+			| {
+				providerRand: Hex;
+				coins: Hex;
+				transcript: {
+					queryId: string;
+					modelId: number;
+					inputHash: Hex;
+					prediction: number;
+					timestamp: number;
+					coins: Hex;
+				};
+				bundle: { mac: Hex; providerSignature: Hex };
+				providerPublicKey: Hex;
+			}
+			| undefined;
+		if (clientCommit && clientRand) {
+			// Ensure clientRand matches commitment
+			if (!verifyClientCommitment(clientCommit as Hex, clientRand as Hex)) {
+				return c.json({ error: "Invalid commitment" }, 400);
+			}
+			const { flip, transcript, bundle } = makeItmacBundle({
+				provider: itmacProvider,
+				clientCommit: clientCommit as Hex,
+				clientRand: clientRand as Hex,
+				transcript: {
+					queryId: qid,
+					modelId: Number(modelId),
+					inputHash,
+					prediction: Number(prediction),
+					timestamp: now,
+				},
+			});
+			itmac = {
+				providerRand: flip.providerRand,
+				coins: flip.coins,
+				transcript,
+				bundle,
+				providerPublicKey: providerKeys.publicKey,
+			};
+		}
 
-    return c.json({
-      modelId,
-      prediction: Number(prediction),
-      timestamp: Date.now(),
-    });
-  } catch (error) {
-    console.error("Inference error:", error);
-    return c.json(
-      {
-        error: (error as Error).message || "Inference failed",
-      },
-      500,
-    );
-  }
+		console.log(`🧠 Inference for model ${modelId}: ${prediction}`);
+
+		// Persist minimal query data only (batches/Merkle later)
+		const record: QueryLogRecord = {
+			queryId: qid,
+			modelId: Number(modelId),
+			input: input as number[],
+			prediction: Number(prediction),
+			timestamp: now,
+		};
+		await appendRecord(record);
+
+		return c.json({
+			modelId,
+			prediction: Number(prediction),
+			timestamp: now,
+			inputHash,
+			queryId: qid,
+			itmac,
+		});
+	} catch (error) {
+		console.error("Inference error:", error);
+		return c.json(
+			{
+				error: (error as Error).message || "Inference failed",
+			},
+			500,
+		);
+	}
 });
-
 
 app.get("/models", (c) => {
-  return c.json({
-    models: Array.from(models.keys()).map((id) => ({
-      modelId: id,
-      loaded: true,
-    })),
-  });
+	return c.json({
+		models: Array.from(models.keys()).map((id) => ({
+			modelId: id,
+			loaded: true,
+		})),
+	});
 });
+
+// No auditor endpoints for now; batches with Merkle will be added later
+
 
 // Start server
 const port = Number(process.env.PORT) || 5000;
@@ -131,8 +183,8 @@ const port = Number(process.env.PORT) || 5000;
 console.log("🚀 Starting ONNX inference server...");
 
 export default {
-  port,
-  fetch: app.fetch,
+	port,
+	fetch: app.fetch,
 };
 
 console.log(`✅ Server running on http://localhost:${port}`);
