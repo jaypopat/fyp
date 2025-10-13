@@ -13,5 +13,9 @@
 		"hono": "^4.9.11",
 		"onnxruntime-node": "^1.23.0",
 		"@zkfair/itmac": "workspace:*"
+	},
+	"scripts":{
+		"dev": "bun --hot index.ts",
+		"start": "bun index.ts"
 	}
 }

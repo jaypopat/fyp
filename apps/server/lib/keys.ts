@@ -1,5 +1,5 @@
 import type { ProviderKeys } from "@zkfair/itmac";
-import { generateProviderKeys, loadProviderKeysFromDisk, saveProviderKeysToDisk } from "@zkfair/itmac";
+import { generateProviderKeys, loadProviderKeysFromDisk, saveProviderKeysToDisk } from "@zkfair/itmac/keys";
 import type { Hex } from "viem";
 
 export async function ensureProviderKeys(): Promise<ProviderKeys> {
