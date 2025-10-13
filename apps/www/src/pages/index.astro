@@ -136,11 +136,14 @@ import Layout from "../layouts/Layout.astro";
     background: #fff;
   }
 
+  /* Dark mode: sleek, high-contrast, minimal color pop */
   @media (prefers-color-scheme: dark) {
     .page {
-      background: #000;
+      background: #000; /* true black canvas */
+      color: #f5f7fa; /* near-white for text */
     }
   }
+
 
   .container {
     max-width: 1200px;
@@ -163,14 +166,15 @@ import Layout from "../layouts/Layout.astro";
   @media (prefers-color-scheme: dark) {
     .header-bar {
       border-color: #fff;
-      background: #fff;
-      color: #000;
+      background: #000;
+      color: #fff;
     }
   }
 
+
   .header-item {
     padding: 0.75rem 1.25rem;
-    border-right: 2px solid #fff;
+    border-right: 3px solid #fff; /* more prominent divider */
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -181,9 +185,11 @@ import Layout from "../layouts/Layout.astro";
 
   @media (prefers-color-scheme: dark) {
     .header-item {
-      border-right-color: #000;
+      border-right-color: #fff; /* bright white separators in dark */
+      border-right-width: 3px;
     }
   }
+
 
   .header-item:last-child {
     border-right: none;
@@ -214,9 +220,10 @@ import Layout from "../layouts/Layout.astro";
 
   @media (prefers-color-scheme: dark) {
     .header-item img {
-      filter: invert(1);
+      filter: invert(1) brightness(1.05);
     }
   }
+
   .hero {
     border: 4px solid #000;
     background: #fff;
@@ -229,10 +236,12 @@ import Layout from "../layouts/Layout.astro";
   @media (prefers-color-scheme: dark) {
     .hero {
       border-color: #fff;
-      background: #0a0a0a;
+      background: #050505; /* panel subtly lifted off black */
       box-shadow: 6px 6px 0px #fff;
+      color: #f5f7fa;
     }
   }
+
 
   .hero-content {
     padding: 2rem 3rem;
@@ -249,10 +258,9 @@ import Layout from "../layouts/Layout.astro";
   }
 
   @media (prefers-color-scheme: dark) {
-    .hero-title {
-      color: #fff;
-    }
+    .hero-title { color: #fff; }
   }
+
 
   .hero-subtitle {
     font-size: 0.95rem;
@@ -263,10 +271,9 @@ import Layout from "../layouts/Layout.astro";
   }
 
   @media (prefers-color-scheme: dark) {
-    .hero-subtitle {
-      color: #ccc;
-    }
+    .hero-subtitle { color: #c7ccd1; }
   }
+
   .actions {
     display: grid;
     grid-template-columns: repeat(4, minmax(200px, 1fr));
@@ -292,11 +299,12 @@ import Layout from "../layouts/Layout.astro";
   @media (prefers-color-scheme: dark) {
     .action-tile {
       border-color: #fff;
-      background: #0a0a0a;
+      background: #050505;
       color: #fff;
       box-shadow: 4px 4px 0px #fff;
     }
   }
+
 
   .action-tile:hover {
     transform: translate(-2px, -2px);
@@ -309,6 +317,7 @@ import Layout from "../layouts/Layout.astro";
     }
   }
 
+
   .action-tile.primary {
     background: #000;
     color: #fff;
@@ -316,11 +325,13 @@ import Layout from "../layouts/Layout.astro";
 
   @media (prefers-color-scheme: dark) {
     .action-tile.primary {
-      background: #fff;
-      color: #000;
-      box-shadow: 4px 4px 0px #fff;
+      background: #ffffff; /* crisp monochrome accent */
+      color: #000000;
+      border-color: #ffffff;
+      box-shadow: 4px 4px 0px #ffffff;
     }
   }
+
 
   .action-tile.primary:hover {
     background: #333;
@@ -328,10 +339,11 @@ import Layout from "../layouts/Layout.astro";
 
   @media (prefers-color-scheme: dark) {
     .action-tile.primary:hover {
-      background: #ccc;
-      box-shadow: 6px 6px 0px #fff;
+      background: #e6e6e6; /* subtle hover on white */
+      box-shadow: 6px 6px 0px #ffffff;
     }
   }
+
 
   .action-number {
     font-size: 1.2rem;
@@ -373,9 +385,11 @@ import Layout from "../layouts/Layout.astro";
   @media (prefers-color-scheme: dark) {
     .features {
       border-color: #fff;
-      background: #0a0a0a;
+      background: #050505;
+      color: #f5f7fa;
     }
   }
+
 
   .features-grid {
     display: grid;
@@ -386,7 +400,7 @@ import Layout from "../layouts/Layout.astro";
 
   .feature-card {
     padding: 1.5rem;
-    border-right: 2px solid #000;
+    border-right: 3px solid #000; /* more prominent divider */
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -395,10 +409,9 @@ import Layout from "../layouts/Layout.astro";
   }
 
   @media (prefers-color-scheme: dark) {
-    .feature-card {
-      border-right-color: #fff;
-    }
+    .feature-card { border-right-color: #fff; border-right-width: 3px; }
   }
+
 
   .feature-card:last-child {
     border-right: none;
@@ -412,10 +425,9 @@ import Layout from "../layouts/Layout.astro";
   }
 
   @media (prefers-color-scheme: dark) {
-    .feature-number {
-      color: #fff;
-    }
+    .feature-number { color: #fff; opacity: 0.22; }
   }
+
 
   .feature-content h3 {
     font-size: 0.9rem;
@@ -426,10 +438,9 @@ import Layout from "../layouts/Layout.astro";
   }
 
   @media (prefers-color-scheme: dark) {
-    .feature-content h3 {
-      color: #fff;
-    }
+    .feature-content h3 { color: #fff; }
   }
+
 
   .feature-content p {
     font-size: 0.8rem;
@@ -439,10 +450,9 @@ import Layout from "../layouts/Layout.astro";
   }
 
   @media (prefers-color-scheme: dark) {
-    .feature-content p {
-      color: #aaa;
-    }
+    .feature-content p { color: #c7ccd1; }
   }
+
   .academic {
     border: 4px solid #000;
     background: #000;
@@ -453,10 +463,11 @@ import Layout from "../layouts/Layout.astro";
   @media (prefers-color-scheme: dark) {
     .academic {
       border-color: #fff;
-      background: #fff;
-      color: #000;
+      background: #000;
+      color: #fff;
     }
   }
+
 
   .academic-grid {
     display: grid;
@@ -465,16 +476,15 @@ import Layout from "../layouts/Layout.astro";
 
   .academic-section {
     padding: 1.25rem;
-    border-right: 2px solid #fff;
+    border-right: 3px solid #fff; /* more prominent divider */
     text-align: center;
     min-width: 0;
   }
 
   @media (prefers-color-scheme: dark) {
-    .academic-section {
-      border-right-color: #000;
-    }
+    .academic-section { border-right-color: #fff; border-right-width: 3px; } /* bright white on black */
   }
+
 
   .academic-section:last-child {
     border-right: none;
@@ -499,6 +509,7 @@ import Layout from "../layouts/Layout.astro";
     .page {
       height: auto;
       padding: 1rem;
+      padding-top: 3.5rem; /* extra top space to avoid fixed toggle overlap */
       overflow: visible;
     }
 
@@ -523,16 +534,10 @@ import Layout from "../layouts/Layout.astro";
 
     .feature-card {
       border-right: none;
-      border-bottom: 2px solid #000;
+      border-bottom: 3px solid #000; /* match vertical prominence */
       max-width: none;
     }
-
-    @media (prefers-color-scheme: dark) {
-      .feature-card {
-        border-bottom-color: #fff;
-      }
-    }
-
+    
     .feature-card:last-child {
       border-bottom: none;
     }
@@ -546,13 +551,62 @@ import Layout from "../layouts/Layout.astro";
     }
 
     .academic-section:nth-child(-n+2) {
-      border-bottom: 2px solid #fff;
+      border-bottom: 3px solid #fff; /* match vertical prominence */
     }
 
     @media (prefers-color-scheme: dark) {
-      .academic-section:nth-child(-n+2) {
-        border-bottom-color: #000;
-      }
+      .academic-section:nth-child(-n+2) { border-bottom-color: #444; }
     }
+  }
+</style>
+
+<style is:global>
+  /* Explicit dark theme overrides via data-theme for immediate toggle response */
+  html[data-theme="dark"] .page { background: #000; color: #f5f7fa; }
+  html[data-theme="dark"] .header-bar { border-color: #fff; background: #000; color: #fff; }
+  html[data-theme="dark"] .header-item { border-right-color: #fff; border-right-width: 3px; }
+  html[data-theme="dark"] .header-item img { filter: invert(1) brightness(1.05); }
+
+  html[data-theme="dark"] .hero {
+    border-color: #fff;
+    background: #050505;
+    box-shadow: 6px 6px 0px #fff;
+    color: #f5f7fa;
+  }
+  html[data-theme="dark"] .hero-title { color: #fff; }
+  html[data-theme="dark"] .hero-subtitle { color: #c7ccd1; }
+
+  html[data-theme="dark"] .action-tile {
+    border-color: #fff;
+    background: #050505;
+    color: #fff;
+    box-shadow: 4px 4px 0px #fff;
+  }
+  html[data-theme="dark"] .action-tile:hover { box-shadow: 6px 6px 0px #fff; }
+  html[data-theme="dark"] .action-tile.primary {
+    background: #ffffff;
+    color: #000000;
+    border-color: #ffffff;
+    box-shadow: 4px 4px 0px #ffffff;
+  }
+  html[data-theme="dark"] .action-tile.primary:hover {
+    background: #e6e6e6;
+    box-shadow: 6px 6px 0px #ffffff;
+  }
+
+  html[data-theme="dark"] .features { border-color: #fff; background: #050505; color: #f5f7fa; }
+  html[data-theme="dark"] .feature-card { border-right-color: #fff; border-right-width: 3px; }
+  html[data-theme="dark"] .feature-number { color: #fff; opacity: 0.22; }
+  html[data-theme="dark"] .feature-content h3 { color: #fff; }
+  html[data-theme="dark"] .feature-content p { color: #c7ccd1; }
+
+  html[data-theme="dark"] .academic { border-color: #fff; background: #000; color: #fff; }
+  /* Academic column separators: bright white, 3px (explicit) */
+  html[data-theme="dark"] .academic .academic-grid .academic-section { border-right: 3px solid #fff; }
+  @media (max-width: 768px) {
+    html[data-theme="dark"] .academic-section:nth-child(-n+2) { border-bottom-width: 3px; }
+  }
+  @media (max-width: 768px) {
+    html[data-theme="dark"] .academic-section:nth-child(-n+2) { border-bottom-color: #444; }
   }
 </style>
