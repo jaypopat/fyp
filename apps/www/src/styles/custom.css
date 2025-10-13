@@ -1,0 +1,314 @@
+/* Custom Starlight styling for zk-Fair docs - Brutalist Black Theme */
+
+/* Use JetBrains Mono everywhere for consistency with landing */
+:root {
+  --sl-font: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  --sl-font-system: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  --sl-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  
+  /* Brutalist spacing */
+  --sl-content-pad-x: 1.5rem;
+  --sl-sidebar-width: 20rem;
+}
+
+/* Dark mode overrides - keep black theme */
+:root[data-theme='dark'] {
+  --sl-color-accent-low: #fff;
+  --sl-color-accent: #fff;
+  --sl-color-accent-high: #000;
+  --sl-color-bg: #0a0a0a;
+  --sl-color-bg-nav: #000;
+  --sl-color-bg-sidebar: #000;
+  --sl-color-gray-1: #1a1a1a;
+  --sl-color-gray-2: #2a2a2a;
+  --sl-color-gray-3: #3a3a3a;
+  --sl-color-gray-4: #6a6a6a;
+  --sl-color-gray-5: #9a9a9a;
+  --sl-color-gray-6: #c7c7c7;
+  --sl-color-white: #fff;
+  --sl-color-black: #fff;
+  --sl-color-text: #fff;
+  --sl-color-text-accent: #fff;
+}
+
+/* Force all text to be white in dark mode */
+:root[data-theme='dark'] body,
+:root[data-theme='dark'] *,
+:root[data-theme='dark'] .sl-markdown-content,
+:root[data-theme='dark'] .sl-markdown-content *,
+:root[data-theme='dark'] .sl-markdown-content p,
+:root[data-theme='dark'] .sl-markdown-content li,
+:root[data-theme='dark'] .sl-markdown-content h1,
+:root[data-theme='dark'] .sl-markdown-content h2,
+:root[data-theme='dark'] .sl-markdown-content h3,
+:root[data-theme='dark'] .sl-markdown-content h4,
+:root[data-theme='dark'] .sl-markdown-content h5,
+:root[data-theme='dark'] .sl-markdown-content h6,
+:root[data-theme='dark'] .sl-markdown-content a,
+:root[data-theme='dark'] .sl-markdown-content span,
+:root[data-theme='dark'] .sl-markdown-content div,
+:root[data-theme='dark'] .sl-markdown-content td,
+:root[data-theme='dark'] .sl-markdown-content th,
+:root[data-theme='dark'] .sidebar-content,
+:root[data-theme='dark'] .sidebar-content *,
+:root[data-theme='dark'] .right-sidebar,
+:root[data-theme='dark'] .right-sidebar * {
+  color: #fff !important;
+}
+
+/* Force navbar to be black in dark mode */
+:root[data-theme='dark'] header.header,
+:root[data-theme='dark'] .header {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+:root[data-theme='dark'] header.header *,
+:root[data-theme='dark'] .header * {
+  color: #fff !important;
+}
+
+/* Make headings uppercase for brutalist look */
+h1, h2 {
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+}
+
+/* Brutalist code blocks - sharp corners, bold borders */
+pre {
+  border: 2px solid var(--sl-color-gray-5);
+  border-radius: 0;
+  box-shadow: 4px 4px 0px var(--sl-color-gray-5);
+  padding: 1.25rem !important;
+}
+
+/* Inline code styling */
+code {
+  background: var(--sl-color-gray-1);
+  border: 1px solid var(--sl-color-gray-3);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0;
+  font-size: 0.9em;
+  color: inherit;
+}
+
+/* Dark mode code visibility */
+:root[data-theme='dark'] code {
+  background: #1a1a1a;
+  border-color: #3a3a3a;
+  color: #fff;
+}
+
+:root[data-theme='dark'] .sl-markdown-content code {
+  color: #fff;
+}
+
+/* Light mode code - ensure good contrast */
+:root[data-theme='light'] code {
+  color: #000;
+  background: #f5f5f5;
+  border-color: #d4d4d4;
+}
+
+pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+}
+
+/* Brutalist buttons and links */
+a.button,
+.sl-link-button {
+  border: 2px solid currentColor;
+  border-radius: 0;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  transition: all 0.2s ease;
+}
+
+a.button:hover,
+.sl-link-button:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0px currentColor;
+}
+
+/* Sidebar styling */
+.sidebar {
+  border-right: 2px solid var(--sl-color-gray-5);
+}
+
+/* Sharp table borders with proper padding */
+table {
+  border: 2px solid var(--sl-color-gray-5);
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 1.5rem 0;
+  width: 100%;
+}
+
+th, td {
+  border: 1px solid var(--sl-color-gray-5);
+  padding: 0.75rem 1rem;
+  text-align: left;
+}
+
+th {
+  background: var(--sl-color-gray-1);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.875rem;
+}
+
+/* Ensure table doesn't overflow */
+.sl-markdown-content table {
+  display: table;
+  overflow-x: auto;
+}
+
+/* Better table cell spacing */
+td:first-child,
+th:first-child {
+  padding-left: 1.25rem;
+}
+
+td:last-child,
+th:last-child {
+  padding-right: 1.25rem;
+}
+
+/* Brutalist cards/callouts */
+.sl-markdown-content :is(aside, blockquote) {
+  border: 2px solid var(--sl-color-gray-5);
+  border-radius: 0;
+  box-shadow: 3px 3px 0px var(--sl-color-gray-5);
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+}
+
+/* Black header and navigation - DARK MODE ONLY */
+:root[data-theme='dark'] header.header {
+  background: var(--sl-color-black);
+  border-bottom: 2px solid var(--sl-color-gray-5);
+}
+
+/* Sidebar styling - black theme for dark mode */
+:root[data-theme='dark'] .sidebar {
+  background: var(--sl-color-bg-sidebar);
+}
+
+.sidebar {
+  border-right: 2px solid var(--sl-color-gray-5);
+}
+
+/* Sidebar links - brutalist style */
+.sidebar-content a {
+  border-left: 2px solid transparent;
+  padding: 0.5rem 1rem;
+  transition: all 0.15s ease;
+  font-weight: 500;
+}
+
+/* Light mode hover */
+.sidebar-content a:hover {
+  border-left: 2px solid var(--sl-color-accent);
+  background: rgba(0, 0, 0, 0.05);
+  transform: translateX(2px);
+}
+
+/* Light mode active link - bold black text */
+.sidebar-content a[aria-current="page"] {
+  border-left: 2px solid var(--sl-color-accent);
+  background: rgba(0, 0, 0, 0.08);
+  font-weight: 700;
+  color: #000 !important;
+}
+
+/* Dark mode hover with lighter background */
+:root[data-theme='dark'] .sidebar-content a:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-left-color: var(--sl-color-white);
+  color: #fff !important;
+}
+
+/* Dark mode active link - white text */
+:root[data-theme='dark'] .sidebar-content a[aria-current="page"] {
+  background: rgba(255, 255, 255, 0.15);
+  border-left-color: var(--sl-color-white);
+  font-weight: 700;
+  color: #fff !important;
+}
+
+/* Content panel borders */
+.content-panel {
+  border-left: 2px solid var(--sl-color-gray-5);
+}
+
+/* Search styling */
+site-search button {
+  border: 2px solid var(--sl-color-gray-5);
+  border-radius: 0;
+  transition: all 0.2s ease;
+}
+
+site-search button:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 2px 2px 0px var(--sl-color-gray-5);
+}
+
+/* Dark mode search bar - black with white text */
+:root[data-theme='dark'] site-search,
+:root[data-theme='dark'] site-search button,
+:root[data-theme='dark'] site-search * {
+  background: #000 !important;
+  color: #fff !important;
+  border-color: #3a3a3a !important;
+}
+
+:root[data-theme='dark'] site-search button:hover {
+  background: #1a1a1a !important;
+}
+
+/* Dark mode - file name text should be black */
+:root[data-theme='dark'] .expressive-code .frame .header,
+:root[data-theme='dark'] .expressive-code .frame .title,
+:root[data-theme='dark'] .expressive-code .frame-title,
+:root[data-theme='dark'] .ec-line .filename,
+:root[data-theme='dark'] [data-language]::before {
+  color: #000 !important;
+}
+
+/* Pagination buttons */
+.pagination-links a {
+  border: 2px solid var(--sl-color-gray-5);
+  border-radius: 0;
+  padding: 0.75rem 1.25rem;
+  transition: all 0.2s ease;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.875rem;
+}
+
+.pagination-links a:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0px var(--sl-color-gray-5);
+}
+
+/* Make TOC (right sidebar) consistent */
+.right-sidebar {
+  border-left: 2px solid var(--sl-color-gray-5);
+}
+
+/* Badge/tag styling */
+.sl-badge {
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0;
+  padding: 0.25rem 0.5rem;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}

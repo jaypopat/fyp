@@ -11,14 +11,14 @@ This repository is a [Turborepo](https://turbo.build/) with multiple apps and pa
 
 apps/
   cli/       → Command-line interface
-  docs/      → Documentation site
-  landing/   → landing page
+  www/       → landing page + docs
   web/       → Web dashboard (Registry)
 
 packages/
   contracts/   → Solidity contracts for verifying proofs and storing model metadata
   sdk/         → TypeScript SDK for web and cli to interact with contracts
   zk-circuits/ → Noir circuits for ZK logic
+  itmac/       → ITMAC Protocol functions used by the provider/auditor/client for any interactions
 
 ````
 
@@ -44,8 +44,7 @@ turbo run dev
 ```bash
 turbo run dev --filter=cli
 turbo run dev --filter=web
-turbo run dev --filter=docs
-turbo run dev --filter=landing
+turbo run dev --filter=www
 ```
 
 ### Build everything
