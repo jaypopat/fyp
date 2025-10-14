@@ -6,7 +6,7 @@
 			"dependsOn": ["^build"],
 			"cache": true
 		},
-		"lander#build": {
+		"www#build": {
 			"dependsOn": ["^build"],
 			"outputs": ["dist/**", ".vercel/**"],
 			"cache": true

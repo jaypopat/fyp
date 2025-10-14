@@ -1,5 +1,5 @@
 import type { Hash } from "viem";
-import type { ContractClient } from "./client";
+import type { ContractClient } from "./contract";
 
 export class ModelAPI {
 	constructor(private contracts: ContractClient) {}

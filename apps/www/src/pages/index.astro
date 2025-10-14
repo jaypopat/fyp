@@ -1,0 +1,612 @@
+---
+import { config } from "../config";
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout title={config.title} description={config.description}>
+  <main class="page">
+    <div class="container">
+      <!-- Header Bar -->
+      <section class="header-bar">
+        <div class="header-item">
+          <span class="header-label">Final Year Project</span>
+          <img class="header-value"src="/nuig.svg" alt="Project Logo" />
+        </div>
+        <div class="header-item">
+          <span class="header-label">Year</span>
+          <span class="header-value">{config.year}</span>
+        </div>
+        <div class="header-item">
+          <span class="header-label">Status</span>
+          <!-- <span class="header-value active">Live</span> -->
+          <span class="header-value dev">Development</span>
+
+        </div>
+      </section>
+
+      <!-- Hero Section -->
+      <section class="hero">
+        <div class="hero-content">
+          <h1 class="hero-title">zk‑Fair</h1>
+          <p class="hero-subtitle">Privacy-preserving AI model fairness auditing using zero-knowledge proofs.</p>
+        </div>
+      </section>
+
+      <!-- Action Grid -->
+      <section class="actions">
+        <a href={config.links.paper} class="action-tile primary">
+          <span class="action-number">01</span>
+          <div class="action-content">
+            <h3>Research Paper</h3>
+            <span class="action-meta">PDF • 15 pages</span>
+          </div>
+          <span class="action-arrow">→</span>
+        </a>
+        <a href={config.links.docs} class="action-tile">
+          <span class="action-number">02</span>
+          <div class="action-content">
+            <h3>Documentation</h3>
+            <span class="action-meta">Technical Specs</span>
+          </div>
+          <span class="action-arrow">→</span>
+        </a>
+        <a href={config.links.demo} class="action-tile">
+          <span class="action-number">03</span>
+          <div class="action-content">
+            <h3>Live App</h3>
+            <span class="action-meta">Interactive Proof</span>
+          </div>
+          <span class="action-arrow">→</span>
+        </a>
+        <a href={config.links.github} class="action-tile">
+          <span class="action-number">04</span>
+          <div class="action-content">
+            <h3>Source Code</h3>
+            <span class="action-meta">MIT License</span>
+          </div>
+          <span class="action-arrow">→</span>
+        </a>
+      </section>
+
+      <!-- Features Section -->
+      <section class="features">
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-number">01</div>
+            <div class="feature-content">
+              <h3>Privacy-Preserving</h3>
+              <p>Audit AI models without exposing sensitive training data or model parameters.</p>
+            </div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-number">02</div>
+            <div class="feature-content">
+              <h3>Zero-Knowledge Proofs</h3>
+              <p>Mathematically prove fairness compliance without revealing private information.</p>
+            </div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-number">03</div>
+            <div class="feature-content">
+              <h3>Bias Detection</h3>
+              <p>Verify demographic parity and equal opportunity metrics with cryptographic certainty.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Academic Info -->
+      <section class="academic">
+        <div class="academic-grid">
+          <div class="academic-section">
+            <h3>Student</h3>
+            <span class="academic-value">{config.student}</span>
+          </div>
+          <div class="academic-section">
+            <h3>Supervisor</h3>
+            <span class="academic-value">{config.supervisor}</span>
+          </div>
+          <div class="academic-section">
+            <h3>Institution</h3>
+            <span class="academic-value">{config.university}</span>
+          </div>
+          <div class="academic-section">
+            <h3>Academic Year</h3>
+            <span class="academic-value">{config.year}</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</Layout>
+
+<style>
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  .page {
+    height: 100vh;
+    padding: 1.5rem;
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    background: #fff;
+  }
+
+  /* Dark mode: sleek, high-contrast, minimal color pop */
+  @media (prefers-color-scheme: dark) {
+    .page {
+      background: #000; /* true black canvas */
+      color: #f5f7fa; /* near-white for text */
+    }
+  }
+
+
+  .container {
+    max-width: 1200px;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-rows: auto auto 1fr 1fr auto;
+    gap: 1.5rem;
+  }
+
+  .header-bar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border: 4px solid #000;
+    background: #000;
+    color: #fff;
+    min-height: 60px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .header-bar {
+      border-color: #fff;
+      background: #000;
+      color: #fff;
+    }
+  }
+
+
+  .header-item {
+    padding: 0.75rem 1.25rem;
+    border-right: 3px solid #fff; /* more prominent divider */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .header-item {
+      border-right-color: #fff; /* bright white separators in dark */
+      border-right-width: 3px;
+    }
+  }
+
+
+  .header-item:last-child {
+    border-right: none;
+  }
+
+  .header-value.active {
+    background: #00ff41;
+    color: #000;
+    padding: 0.2rem 0.6rem;
+    font-weight: 700;
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+  .header-value.dev {
+    background: #f1c21b;
+    color: #000;
+    padding: 0.2rem 0.6rem;
+    font-weight: 700;
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
+
+  .header-item img {
+    max-height: 30px;
+    width: auto;
+    object-fit: contain;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .header-item img {
+      filter: invert(1) brightness(1.05);
+    }
+  }
+
+  .hero {
+    border: 4px solid #000;
+    background: #fff;
+    box-shadow: 6px 6px 0px #000;
+    display: flex;
+    align-items: center;
+    min-height: 140px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .hero {
+      border-color: #fff;
+      background: #050505; /* panel subtly lifted off black */
+      box-shadow: 6px 6px 0px #fff;
+      color: #f5f7fa;
+    }
+  }
+
+
+  .hero-content {
+    padding: 2rem 3rem;
+    width: 100%;
+  }
+
+  .hero-title {
+    font-size: 3rem;
+    font-weight: 900;
+    margin: 0 0 0.75rem 0;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    line-height: 0.9;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .hero-title { color: #fff; }
+  }
+
+
+  .hero-subtitle {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin: 0;
+    max-width: 500px;
+    color: #333;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .hero-subtitle { color: #c7ccd1; }
+  }
+
+  .actions {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(200px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .action-tile {
+    border: 4px solid #000;
+    background: #fff;
+    padding: 1.5rem;
+    color: #000;
+    text-decoration: none;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 1rem;
+    align-items: center;
+    transition: all 0.2s ease;
+    box-shadow: 4px 4px 0px #000;
+    min-width: 0;
+    max-width: 280px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .action-tile {
+      border-color: #fff;
+      background: #050505;
+      color: #fff;
+      box-shadow: 4px 4px 0px #fff;
+    }
+  }
+
+
+  .action-tile:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0px #000;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .action-tile:hover {
+      box-shadow: 6px 6px 0px #fff;
+    }
+  }
+
+
+  .action-tile.primary {
+    background: #000;
+    color: #fff;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .action-tile.primary {
+      background: #ffffff; /* crisp monochrome accent */
+      color: #000000;
+      border-color: #ffffff;
+      box-shadow: 4px 4px 0px #ffffff;
+    }
+  }
+
+
+  .action-tile.primary:hover {
+    background: #333;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .action-tile.primary:hover {
+      background: #e6e6e6; /* subtle hover on white */
+      box-shadow: 6px 6px 0px #ffffff;
+    }
+  }
+
+
+  .action-number {
+    font-size: 1.2rem;
+    font-weight: 900;
+    opacity: 0.3;
+    flex-shrink: 0;
+  }
+
+  .action-content {
+    min-width: 0;
+  }
+
+  .action-content h3 {
+    margin: 0 0 0.25rem 0;
+    font-size: 0.9rem;
+    font-weight: 700;
+  }
+
+  .action-meta {
+    font-size: 0.7rem;
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .action-arrow {
+    font-size: 1.2rem;
+    font-weight: bold;
+    opacity: 0.5;
+    flex-shrink: 0;
+  }
+  .features {
+    border: 4px solid #000;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .features {
+      border-color: #fff;
+      background: #050505;
+      color: #f5f7fa;
+    }
+  }
+
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(200px, 1fr));
+    gap: 0;
+    flex: 1;
+  }
+
+  .feature-card {
+    padding: 1.5rem;
+    border-right: 3px solid #000; /* more prominent divider */
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+    max-width: 350px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .feature-card { border-right-color: #fff; border-right-width: 3px; }
+  }
+
+
+  .feature-card:last-child {
+    border-right: none;
+  }
+
+  .feature-number {
+    font-size: 1.5rem;
+    font-weight: 900;
+    opacity: 0.2;
+    line-height: 1;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .feature-number { color: #fff; opacity: 0.22; }
+  }
+
+
+  .feature-content h3 {
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    margin: 0 0 0.5rem 0;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .feature-content h3 { color: #fff; }
+  }
+
+
+  .feature-content p {
+    font-size: 0.8rem;
+    line-height: 1.4;
+    margin: 0;
+    color: #555;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .feature-content p { color: #c7ccd1; }
+  }
+
+  .academic {
+    border: 4px solid #000;
+    background: #000;
+    color: #fff;
+    min-height: 80px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .academic {
+      border-color: #fff;
+      background: #000;
+      color: #fff;
+    }
+  }
+
+
+  .academic-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .academic-section {
+    padding: 1.25rem;
+    border-right: 3px solid #fff; /* more prominent divider */
+    text-align: center;
+    min-width: 0;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .academic-section { border-right-color: #fff; border-right-width: 3px; } /* bright white on black */
+  }
+
+
+  .academic-section:last-child {
+    border-right: none;
+  }
+
+  .academic-section h3 {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 0 0 0.75rem 0;
+    opacity: 0.7;
+  }
+
+  .academic-value {
+    font-weight: 700;
+    font-size: 0.85rem;
+    word-break: break-word;
+  }
+
+  /* Mobile */
+  @media (max-width: 768px) {
+    .page {
+      height: auto;
+      padding: 1rem;
+      padding-top: 3.5rem; /* extra top space to avoid fixed toggle overlap */
+      overflow: visible;
+    }
+
+    .container {
+      height: auto;
+      grid-template-rows: auto;
+      max-width: 100%;
+    }
+
+    .actions {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+
+    .action-tile {
+      max-width: none;
+    }
+
+    .features-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .feature-card {
+      border-right: none;
+      border-bottom: 3px solid #000; /* match vertical prominence */
+      max-width: none;
+    }
+    
+    .feature-card:last-child {
+      border-bottom: none;
+    }
+
+    .academic-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .academic-section:nth-child(2n) {
+      border-right: none;
+    }
+
+    .academic-section:nth-child(-n+2) {
+      border-bottom: 3px solid #fff; /* match vertical prominence */
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .academic-section:nth-child(-n+2) { border-bottom-color: #444; }
+    }
+  }
+</style>
+
+<style is:global>
+  /* Explicit dark theme overrides via data-theme for immediate toggle response */
+  html[data-theme="dark"] .page { background: #000; color: #f5f7fa; }
+  html[data-theme="dark"] .header-bar { border-color: #fff; background: #000; color: #fff; }
+  html[data-theme="dark"] .header-item { border-right-color: #fff; border-right-width: 3px; }
+  html[data-theme="dark"] .header-item img { filter: invert(1) brightness(1.05); }
+
+  html[data-theme="dark"] .hero {
+    border-color: #fff;
+    background: #050505;
+    box-shadow: 6px 6px 0px #fff;
+    color: #f5f7fa;
+  }
+  html[data-theme="dark"] .hero-title { color: #fff; }
+  html[data-theme="dark"] .hero-subtitle { color: #c7ccd1; }
+
+  html[data-theme="dark"] .action-tile {
+    border-color: #fff;
+    background: #050505;
+    color: #fff;
+    box-shadow: 4px 4px 0px #fff;
+  }
+  html[data-theme="dark"] .action-tile:hover { box-shadow: 6px 6px 0px #fff; }
+  html[data-theme="dark"] .action-tile.primary {
+    background: #ffffff;
+    color: #000000;
+    border-color: #ffffff;
+    box-shadow: 4px 4px 0px #ffffff;
+  }
+  html[data-theme="dark"] .action-tile.primary:hover {
+    background: #e6e6e6;
+    box-shadow: 6px 6px 0px #ffffff;
+  }
+
+  html[data-theme="dark"] .features { border-color: #fff; background: #050505; color: #f5f7fa; }
+  html[data-theme="dark"] .feature-card { border-right-color: #fff; border-right-width: 3px; }
+  html[data-theme="dark"] .feature-number { color: #fff; opacity: 0.22; }
+  html[data-theme="dark"] .feature-content h3 { color: #fff; }
+  html[data-theme="dark"] .feature-content p { color: #c7ccd1; }
+
+  html[data-theme="dark"] .academic { border-color: #fff; background: #000; color: #fff; }
+  /* Academic column separators: bright white, 3px (explicit) */
+  html[data-theme="dark"] .academic .academic-grid .academic-section { border-right: 3px solid #fff; }
+  @media (max-width: 768px) {
+    html[data-theme="dark"] .academic-section:nth-child(-n+2) { border-bottom-width: 3px; }
+  }
+  @media (max-width: 768px) {
+    html[data-theme="dark"] .academic-section:nth-child(-n+2) { border-bottom-color: #444; }
+  }
+</style>

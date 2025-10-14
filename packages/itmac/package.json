@@ -1,5 +1,5 @@
 {
-	"name": "itmac",
+	"name": "@zkfair/itmac",
 	"module": "index.ts",
 	"type": "module",
 	"private": true,
@@ -8,5 +8,17 @@
 	},
 	"peerDependencies": {
 		"typescript": "^5"
+	},
+	"dependencies": {
+		"@noble/curves": "^1.4.0",
+		"@noble/hashes": "^1.4.0",
+		"@msgpack/msgpack": "^3.1.2"
+	},
+	"exports": {
+		".": "./index.ts",
+		"./provider": "./provider.ts",
+		"./client": "./client.ts",
+		"./types": "./types.ts",
+		"./keys": "./keys.ts"
 	}
 }

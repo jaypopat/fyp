@@ -2,7 +2,7 @@ import { UltraHonkBackend } from "@aztec/bb.js";
 import circuit from "@zkfair/zk-circuits/circuit";
 import type { Hash } from "viem";
 import { parseCommitmentsFile, parseProofFile } from "./artifacts";
-import type { ContractClient } from "./client";
+import type { ContractClient } from "./contract";
 import { getArtifactDir, hexToBytes } from "./utils";
 
 export class VerifyAPI {

@@ -2,7 +2,7 @@ import { mkdir } from "node:fs/promises";
 import { encode } from "@msgpack/msgpack";
 import type { Hash } from "viem";
 import type { FairnessFile } from "./artifacts";
-import type { ContractClient } from "./client";
+import type { ContractClient } from "./contract";
 import { merkleRoot } from "./merkle";
 import type { CommitOptions, encodingSchemas, hashAlgos } from "./types";
 import { getArtifactDir, hashBytes, parseCSV } from "./utils";

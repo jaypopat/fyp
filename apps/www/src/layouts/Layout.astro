@@ -1,0 +1,351 @@
+---
+export interface Props {
+	title: string;
+	description: string;
+}
+
+const {
+	title = "zk‑Fair: AI Model Fairness Auditing",
+	description = "Privacy-preserving fairness verification for AI models using zero-knowledge proofs",
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<meta name="generator" content={Astro.generator} />
+		<!-- Support both light & dark color schemes -->
+		<meta name="color-scheme" content="dark light" />
+		<meta name="supported-color-schemes" content="dark light" />
+		<!-- Browser UI theme colors for each scheme -->
+		<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+		<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000" />
+		<title>{title}</title>
+		<meta name="title" content={title} />
+		<meta name="description" content={description} />
+
+		<!-- OpenGraph Meta Tags -->
+		<meta property="og:type" content="website" />
+		<meta property="og:url" content={Astro.url} />
+		<meta property="og:title" content={title} />
+		<meta property="og:description" content={description} />
+		<meta property="og:site_name" content="zk-Fair" />
+
+
+		<script is:inline>
+			// Initialize theme before paint to prevent flash
+			(function () {
+				try {
+					const stored = localStorage.getItem('theme');
+					if (stored === 'light' || stored === 'dark') {
+						document.documentElement.dataset.theme = stored;
+					} else {
+						// fall back to system
+						const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+						document.documentElement.dataset.theme = prefersDark ? 'dark' : 'light';
+					}
+				} catch {}
+			})();
+		</script>
+
+		<style>
+			*, *::before, *::after {
+				box-sizing: border-box;
+			}
+
+			html {
+				/* Base allows both; concrete theme set below for instant UI updates */
+				color-scheme: light dark;
+				font-family: ui-monospace, SFMono-Regular, "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+				font-size: 16px;
+				line-height: 1.5;
+			}
+
+			html[data-theme="light"] { color-scheme: light; }
+			html[data-theme="dark"]  { color-scheme: dark; }
+
+			body {
+				margin: 0;
+				background: transparent;
+				color: inherit;
+				font-family: inherit;
+			}
+
+			/* Theme toggle button */
+			.theme-toggle {
+				position: fixed;
+				top: 14px;
+				right: 14px;
+				height: 36px;
+				width: 36px;
+				border: 2px solid currentColor;
+				border-radius: 8px;
+				background: transparent;
+				color: #000;
+				display: grid;
+				place-items: center;
+				cursor: pointer;
+				box-shadow: 3px 3px 0 #000;
+				transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+				z-index: 1000;
+			}
+			/* Mobile: shrink and nudge inward so it doesn't overlap content */
+			@media (max-width: 480px) {
+				.theme-toggle {
+					top: 8px;
+					right: 8px;
+					height: 30px;
+					width: 30px;
+					border-radius: 7px;
+					font-size: 14px;
+				}
+			}
+			html[data-theme="dark"] .theme-toggle {
+				color: #fff;
+				box-shadow: 3px 3px 0 #fff;
+				background: rgba(255,255,255,0.06); /* slight plate so it doesn't vanish on black */
+			}
+			.theme-toggle:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 currentColor; }
+
+			.theme-toggle .icon {
+				position: absolute;
+				line-height: 1;
+				font-size: 16px;
+				transition: opacity .2s ease, transform .2s ease;
+				opacity: 0;
+				transform: rotate(-45deg) scale(.85);
+			}
+			html[data-theme="light"] .theme-toggle .icon-sun { opacity: 1; transform: rotate(0deg) scale(1); }
+			html[data-theme="light"] .theme-toggle .icon-moon { opacity: 0; transform: rotate(-45deg) scale(.85); }
+			html[data-theme="dark"] .theme-toggle .icon-sun { opacity: 0; transform: rotate(45deg) scale(.85); }
+			html[data-theme="dark"] .theme-toggle .icon-moon { opacity: 1; transform: rotate(0deg) scale(1); }
+			/* Critical page structure */
+			.page {
+				min-height: 100vh;
+				font-family: inherit;
+			}
+
+			/* Ensure basic layout renders immediately */
+			.hero, .actions, .features, .meta {
+				border: 3px solid #000;
+				margin-bottom: 2rem;
+				background: #fff;
+			}
+
+			h1, h2, h3, h4, h5, h6 {
+				font-family: inherit;
+				font-weight: 700;
+				line-height: 1.2;
+				margin: 0;
+			}
+
+			p {
+				margin: 0;
+			}
+
+			a {
+				color: inherit;
+				text-decoration: none;
+			}
+		</style>
+	</head>
+	<body>
+		<button class="theme-toggle" aria-label="Toggle theme" title="Toggle theme" id="theme-toggle">
+			<span class="icon icon-sun" aria-hidden="true">☀</span>
+			<span class="icon icon-moon" aria-hidden="true">🌙</span>
+		</button>
+		<slot />
+		<script is:inline>
+			(function(){
+				const btn = document.getElementById('theme-toggle');
+				if (!btn) return;
+				btn.addEventListener('click', () => {
+					const root = document.documentElement;
+					const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+					root.dataset.theme = next;
+					try { localStorage.setItem('theme', next); } catch {}
+				});
+			})();
+		</script>
+	</body>
+</html>
+
+<style is:global>
+	.hero-content {
+		padding: 3rem;
+	}
+
+	.hero h1 {
+		font-size: 3rem;
+		font-weight: 700;
+		margin: 0 0 1rem 0;
+		text-transform: uppercase;
+		letter-spacing: -0.02em;
+	}
+
+	.hero p {
+		font-size: 1rem;
+		line-height: 1.5;
+		margin: 0;
+		max-width: 600px;
+	}
+
+	.actions {
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		gap: 0;
+	}
+
+	.action-link {
+		padding: 2rem 1.5rem;
+		border-right: 2px solid #000;
+		color: #000;
+		text-decoration: none;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		transition: all 0.2s ease;
+		text-align: center;
+	}
+
+	.action-link:last-child {
+		border-right: none;
+	}
+
+	.action-link:hover {
+		background: #000;
+		color: #fff;
+	}
+
+	.action-number {
+		font-size: 0.8rem;
+		font-weight: 700;
+		opacity: 0.6;
+	}
+
+	.action-text {
+		font-size: 0.9rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.025em;
+	}
+
+	.feature {
+		padding: 2rem;
+		border-bottom: 2px solid #000;
+		font-size: 1rem;
+		line-height: 1.6;
+	}
+
+	.feature:last-child {
+		border-bottom: none;
+	}
+
+	.feature strong {
+		text-transform: uppercase;
+		font-weight: 700;
+		letter-spacing: 0.025em;
+	}
+
+	.meta {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0;
+		background: #000;
+		color: #fff;
+	}
+
+	.meta-item {
+		padding: 2rem;
+		border-right: 2px solid #fff;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.meta-item:last-child {
+		border-right: none;
+	}
+
+	.meta-label {
+		font-size: 0.8rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		opacity: 0.7;
+	}
+
+	.meta-value {
+		font-weight: 600;
+	}
+
+	/* Mobile Responsive */
+	@media (max-width: 768px) {
+		.page {
+			margin: 1rem;
+		}
+
+		.hero-content {
+			padding: 2rem;
+		}
+
+		.hero h1 {
+			font-size: 2.5rem;
+		}
+
+		.actions {
+			grid-template-columns: 1fr;
+		}
+
+		.action-link {
+			border-right: none;
+			border-bottom: 2px solid #000;
+		}
+
+		.action-link:last-child {
+			border-bottom: none;
+		}
+
+		.meta {
+			grid-template-columns: 1fr;
+		}
+
+		.meta-item {
+			border-right: none;
+			border-bottom: 2px solid #fff;
+		}
+
+		.meta-item:last-child {
+			border-bottom: none;
+		}
+	}
+
+	/* Additional Mobile Breakpoints */
+	@media (max-width: 480px) {
+		.page {
+			margin: 0.5rem;
+		}
+
+		.hero-content {
+			padding: 1.5rem;
+		}
+
+		.hero h1 {
+			font-size: 2rem;
+		}
+
+		.action-link {
+			padding: 1.5rem 1rem;
+		}
+
+		.feature {
+			padding: 1.5rem;
+		}
+
+		.meta-item {
+			padding: 1.5rem;
+		}
+	}
+</style>
