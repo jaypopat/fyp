@@ -8,6 +8,11 @@ export default defineConfig({
   devToolbar: {
     enabled: false,
   },
+  vite: {
+		ssr: {
+			noExternal: ['zod'],
+		},
+	},
   integrations: [
     starlight({
       title: "zk-Fair Docs",
