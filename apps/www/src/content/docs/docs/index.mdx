@@ -1,36 +1,25 @@
 ---
-title: OpenAuth
-description: Introduction to OpenAuth.
+title: ZKFair
+description: Introduction to ZKFair.
 ---
 
 import { Image } from "astro:assets"
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 
-import themeDark from "./themes-dark.png"
-import themeLight from "./themes-light.png"
 
-[OpenAuth](/) is a standards-based auth provider for web apps, mobile apps, single pages apps, APIs, or 3rd party clients. It is currently in beta.
+[ZKFair](/) is a platform for model providers to prove model fairness using Zero Knowledge Proofs in a trustless manner.
 
-- **Universal**: You can deploy it as a standalone service or embed it into an existing application. It works with any framework or platform.
-- **Self-hosted**: It runs entirely on your infrastructure and can be deployed on Node.js, Bun, AWS Lambda, or Cloudflare Workers.
-- **Standards-based**: It implements the OAuth 2.0 spec and is based on web standards. So any OAuth client can use it.
-- **Customizable**: It comes with prebuilt themeable UI that you can customize or opt out of.
+- **Privacy-Preserving**: You can prove fairness without exposing your internal dataset to third party auditing services or end users
+- **Self-hosted**: It runs entirely on your infrastructure, with the only barrier to integration being installing the itmac package for secure communication between the model provider and the end user.
+- **Standards-based**: It implements the OATH protocol and is based on ZKP standards.
+- **Zero-Knowledge Proofs** : It uses zero knowledge proofs to prove model fairness without revealing private information.
 
-<picture>
-  <source srcset={themeDark.src} media="(prefers-color-scheme: dark)" />
-  <source srcset={themeLight.src} media="(prefers-color-scheme: light)" />
-  <Image src={themeLight} alt="OpenAuth themes" />
-</picture>
-
-:::tip
-Check out the [launch video](https://www.youtube.com/watch?v=SSjNUuQ06tk) to learn more.
-:::
 
 ---
 
 ## Get started
 
-If you just want to get started as fast as possible you can jump straight into the [code examples](https://github.com/openauthjs/openauthjs/tree/master/examples) folder and copy paste away. There are also [SST components](https://sst.dev/docs/component/aws/auth) for deploying everything OpenAuth needs.
+If you just want to get started as fast as possible you can run the project using `bun run dev` and visit `http://localhost:3000/`.
 
 ---
 
