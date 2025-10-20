@@ -3,13 +3,18 @@ import { hmac } from "@noble/hashes/hmac";
 import { sha256 } from "@noble/hashes/sha2";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils";
 import { encodeTranscript } from "./codec";
-import type { ClientVerifyResult, Hex, MacBundle, QueryTranscript } from "./types";
+import type {
+	ClientVerifyResult,
+	Hex,
+	MacBundle,
+	QueryTranscript,
+} from "./types";
 
 export class Client {
 	constructor(
 		private providerPubKey: Hex,
 		private macKey?: Hex,
-	) { }
+	) {}
 
 	// Static helper: client randomness & commitment; does not require provider keys
 	static generateCommitment(): { clientRand: Hex; clientCommit: Hex } {
