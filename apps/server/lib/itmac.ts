@@ -1,5 +1,3 @@
-import { sha256 } from "@noble/hashes/sha2.js";
-import { bytesToHex } from "@noble/hashes/utils.js";
 import type { Provider } from "@zkfair/itmac";
 
 type Hex = `0x${string}`;
@@ -14,7 +12,11 @@ export function verifyClientCommitment(
 	const bytes = new Uint8Array(raw.length / 2);
 	for (let i = 0; i < bytes.length; i++)
 		bytes[i] = Number.parseInt(raw.slice(i * 2, i * 2 + 2), 16);
-	const digest = `0x${bytesToHex(sha256(bytes))}` as Hex;
+	const hasher = new Bun.CryptoHasher("sha256");
+	hasher.update(bytes);
+	const digestBytes = new Uint8Array(hasher.digest());
+	const digest =
+		`0x${[...digestBytes].map((b) => b.toString(16).padStart(2, "0")).join("")}` as Hex;
 	return digest.toLowerCase() === clientCommit.toLowerCase();
 }
 

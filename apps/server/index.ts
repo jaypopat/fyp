@@ -1,6 +1,4 @@
 import { encode } from "@msgpack/msgpack";
-import { sha256 } from "@noble/hashes/sha2.js";
-import { bytesToHex } from "@noble/hashes/utils.js";
 import { Provider } from "@zkfair/itmac";
 import { SDK } from "@zkfair/sdk";
 import { Hono } from "hono";
@@ -103,23 +101,27 @@ app.post("/predict", async (c) => {
 		const now = Date.now();
 		// Canonical input hash: encode float32 array via msgpack
 		const asF32 = Array.from(new Float32Array(input as number[]));
-		const inputHash = `0x${bytesToHex(sha256(encode(asF32)))}` as Hex;
+		const hasher = new Bun.CryptoHasher("sha256");
+		hasher.update(encode(asF32));
+		const inputHashBytes = new Uint8Array(hasher.digest());
+		const inputHash =
+			`0x${[...inputHashBytes].map((b) => b.toString(16).padStart(2, "0")).join("")}` as Hex;
 		const qid = queryId ?? globalThis.crypto?.randomUUID?.() ?? `${now}`;
 		let itmac:
 			| {
-					providerRand: Hex;
+				providerRand: Hex;
+				coins: Hex;
+				transcript: {
+					queryId: string;
+					modelId: number;
+					inputHash: Hex;
+					prediction: number;
+					timestamp: number;
 					coins: Hex;
-					transcript: {
-						queryId: string;
-						modelId: number;
-						inputHash: Hex;
-						prediction: number;
-						timestamp: number;
-						coins: Hex;
-					};
-					bundle: { mac: Hex; providerSignature: Hex };
-					providerPublicKey: Hex;
-			  }
+				};
+				bundle: { mac: Hex; providerSignature: Hex };
+				providerPublicKey: Hex;
+			}
 			| undefined;
 		if (clientCommit && clientRand) {
 			// Ensure clientRand matches commitment

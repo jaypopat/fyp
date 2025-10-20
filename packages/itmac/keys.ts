@@ -2,11 +2,10 @@ import { mkdir } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { secp256k1 } from "@noble/curves/secp256k1";
-import { bytesToHex } from "@noble/hashes/utils";
 import type { Hex, ProviderKeys } from "./types";
 
 function toHex(u8: Uint8Array): Hex {
-	return `0x${bytesToHex(u8)}` as Hex;
+	return `0x${[...u8].map((b) => b.toString(16).padStart(2, "0")).join("")}` as Hex;
 }
 
 export function generateProviderKeys(): ProviderKeys {

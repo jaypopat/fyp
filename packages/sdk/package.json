@@ -18,7 +18,6 @@
 	"dependencies": {
 		"@aztec/bb.js": "^2.0.3",
 		"@msgpack/msgpack": "^3.1.2",
-		"@noble/hashes": "^2.0.1",
 		"@noir-lang/noir_js": "^1.0.0-beta.11",
 		"@types/papaparse": "^5.3.16",
 		"@zkfair/contracts": "workspace:*",

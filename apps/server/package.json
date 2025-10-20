@@ -11,7 +11,6 @@
 	},
 	"dependencies": {
 		"@msgpack/msgpack": "^3.1.2",
-		"@noble/hashes": "^2.0.1",
 		"@zkfair/itmac": "workspace:*",
 		"@zkfair/sdk": "workspace:*",
 		"hono": "^4.9.11",

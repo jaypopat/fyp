@@ -1,7 +1,5 @@
 import os from "node:os";
 import path from "node:path";
-import { blake2b } from "@noble/hashes/blake2.js";
-import { sha256 } from "@noble/hashes/sha2.js";
 import Papa from "papaparse";
 import type { Hash } from "viem";
 import type { hashAlgos } from "./types";
@@ -47,9 +45,13 @@ export async function hashBytes(
 	// plain hex
 	let out: Uint8Array;
 	if (algo === "SHA-256") {
-		out = sha256(data);
+		const hasher = new Bun.CryptoHasher("sha256");
+		hasher.update(data);
+		out = new Uint8Array(hasher.digest());
 	} else {
-		out = blake2b(data, { dkLen: 32 });
+		const hasher = new Bun.CryptoHasher("blake2b256");
+		hasher.update(data);
+		out = new Uint8Array(hasher.digest());
 	}
 	const hex = bytesToPlainHash(out).toLowerCase();
 	if (hex.length !== 64)
