@@ -6,6 +6,7 @@ COPY . .
 RUN bun install --frozen-lockfile
 
 WORKDIR /build/apps/server
+RUN bun install
 RUN bun run build.ts
 
 FROM oven/bun:1
