@@ -62,4 +62,7 @@ export class ProofAPI {
 			throw new Error("Failed to retrieve proof status from contract");
 		}
 	}
+	async submitAuditProof(data: any) {
+		console.warn("Submitting audit proof is not yet implemented");
+	}
 }

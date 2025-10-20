@@ -10,8 +10,8 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { getModelStatusBadge } from "@/lib/model-status";
 import { predict } from "@/lib/inference";
+import { getModelStatusBadge } from "@/lib/model-status";
 import { createSDK } from "@/lib/sdk";
 import {
 	normalizeModel,
@@ -44,7 +44,11 @@ function ModelDetailComponent() {
 	// Simple inference UI state
 	const [inputCSV, setInputCSV] = useState("");
 	const [loading, setLoading] = useState(false);
-		const [result, setResult] = useState<{ prediction: number; verified: boolean; queryId: string } | null>(null);
+	const [result, setResult] = useState<{
+		prediction: number;
+		verified: boolean;
+		queryId: string;
+	} | null>(null);
 
 	useEffect(() => {
 		return () => {
@@ -176,8 +180,12 @@ function ModelDetailComponent() {
 
 				<Card>
 					<CardHeader>
-						<CardTitle className="font-semibold text-foreground text-lg">Try Inference</CardTitle>
-						<CardDescription>Enter comma-separated numbers matching the model input schema.</CardDescription>
+						<CardTitle className="font-semibold text-foreground text-lg">
+							Try Inference
+						</CardTitle>
+						<CardDescription>
+							Enter comma-separated numbers matching the model input schema.
+						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-3">
 						<input
@@ -193,16 +201,24 @@ function ModelDetailComponent() {
 								setResult(null);
 								try {
 									const values = inputCSV
-										.split(',')
+										.split(",")
 										.map((v) => v.trim())
 										.filter((v) => v.length > 0)
 										.map((v) => Number(v));
 									if (!values.length || values.some((x) => Number.isNaN(x))) {
-										throw new Error('Provide valid numeric input');
+										throw new Error("Provide valid numeric input");
 									}
-									const providerUrl = 'http://localhost:5000'; // proxy or direct URL
-									const resultData = await predict({ providerUrl, modelId, input: values });
-									setResult({ prediction: resultData.prediction, verified: resultData.verified, queryId: resultData.queryId });
+									const providerUrl = "http://localhost:5000"; // proxy or direct URL
+									const resultData = await predict({
+										providerUrl,
+										modelId,
+										input: values,
+									});
+									setResult({
+										prediction: resultData.prediction,
+										verified: resultData.verified,
+										queryId: resultData.queryId,
+									});
 								} catch (err) {
 									console.error(err);
 									setResult(null);
@@ -211,13 +227,29 @@ function ModelDetailComponent() {
 								}
 							}}
 						>
-							{loading ? 'Predicting…' : 'Predict'}
+							{loading ? "Predicting…" : "Predict"}
 						</Button>
 						{result && (
-								<div className="text-foreground text-sm">
-								<p>Prediction: <b>{result.prediction}</b></p>
-								<p>Verified: <b className={result.verified ? 'text-green-600' : 'text-red-600'}>{String(result.verified)}</b></p>
-								<p>Query ID: <code className="rounded bg-muted px-1 py-0.5">{result.queryId}</code></p>
+							<div className="text-foreground text-sm">
+								<p>
+									Prediction: <b>{result.prediction}</b>
+								</p>
+								<p>
+									Verified:{" "}
+									<b
+										className={
+											result.verified ? "text-green-600" : "text-red-600"
+										}
+									>
+										{String(result.verified)}
+									</b>
+								</p>
+								<p>
+									Query ID:{" "}
+									<code className="rounded bg-muted px-1 py-0.5">
+										{result.queryId}
+									</code>
+								</p>
 							</div>
 						)}
 					</CardContent>

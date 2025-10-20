@@ -2,17 +2,17 @@ import { secp256k1 } from "@noble/curves/secp256k1";
 import { hmac } from "@noble/hashes/hmac";
 import { sha256 } from "@noble/hashes/sha2";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils";
-import type { Hex } from "viem";
+import { encodeTranscript } from "./codec";
 import type {
 	CoinFlip,
+	Hex,
 	MacBundle,
 	ProviderKeys,
 	QueryTranscript,
 } from "./types";
-import { encodeTranscript } from "./codec";
 
 export class Provider {
-	constructor(private keys: ProviderKeys) { }
+	constructor(private keys: ProviderKeys) {}
 
 	// Generate provider randomness and compute final coins
 	performCoinFlip(clientCommit: Hex, clientRand: Hex): CoinFlip {

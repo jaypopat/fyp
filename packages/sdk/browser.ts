@@ -1,9 +1,9 @@
+import type { Hex } from "viem";
 import { Client } from "./client";
 import { ContractClient } from "./contract";
+import { InferenceClient } from "./inference";
 import { ModelAPI } from "./model";
 import type { ZkFairOptions } from "./types";
-import { InferenceClient } from "./inference";
-import type { Hex } from "viem";
 
 export type BrowserSDKOptions = Omit<ZkFairOptions, "privateKey">;
 

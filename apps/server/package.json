@@ -10,11 +10,13 @@
 		"typescript": "^5"
 	},
 	"dependencies": {
+		"@noble/hashes": "^2.0.1",
+		"@zkfair/itmac": "workspace:*",
+		"@zkfair/sdk": "workspace:*",
 		"hono": "^4.9.11",
-		"onnxruntime-node": "^1.23.0",
-		"@zkfair/itmac": "workspace:*"
+		"onnxruntime-node": "^1.23.0"
 	},
-	"scripts":{
+	"scripts": {
 		"dev": "bun --hot index.ts",
 		"start": "bun index.ts"
 	}

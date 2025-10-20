@@ -1,12 +1,13 @@
+import type { Hex } from "viem";
 import { CommitAPI } from "./commit";
 import { ContractClient } from "./contract";
-import { ModelAPI } from "./model";
+import { EventsAPI } from "./events";
 import { InferenceClient } from "./inference";
+import { ModelAPI } from "./model";
 import { ProofAPI } from "./proof";
 import { QueriesAPI } from "./queries";
 import type { ZkFairOptions } from "./types";
 import { VerifyAPI } from "./verify";
-import type { Hex } from "viem";
 
 export class SDK {
 	public model: ModelAPI;
@@ -15,6 +16,7 @@ export class SDK {
 	public commit: CommitAPI;
 	public verify: VerifyAPI;
 	public queries: QueriesAPI;
+	public events: EventsAPI;
 	public inference: InferenceClient | undefined;
 
 	constructor(options: ZkFairOptions) {
@@ -25,7 +27,7 @@ export class SDK {
 		this.commit = new CommitAPI(this.contracts);
 		this.verify = new VerifyAPI(this.contracts);
 		this.queries = new QueriesAPI(this.contracts);
-		// Optional: user can set inference client when they know provider keys
+		this.events = new EventsAPI(this.contracts);
 	}
 
 	// Helper to set up inference client with provider keys

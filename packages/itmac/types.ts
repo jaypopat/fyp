@@ -1,4 +1,4 @@
-import type { Hex } from "viem";
+export type Hex = `0x${string}`;
 
 export type Bytes = Uint8Array;
 

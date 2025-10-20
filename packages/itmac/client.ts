@@ -2,9 +2,8 @@ import { secp256k1 } from "@noble/curves/secp256k1";
 import { hmac } from "@noble/hashes/hmac";
 import { sha256 } from "@noble/hashes/sha2";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils";
-import type { Hex } from "viem";
-import type { ClientVerifyResult, MacBundle, QueryTranscript } from "./types";
 import { encodeTranscript } from "./codec";
+import type { ClientVerifyResult, Hex, MacBundle, QueryTranscript } from "./types";
 
 export class Client {
 	constructor(
@@ -15,8 +14,8 @@ export class Client {
 	// Static helper: client randomness & commitment; does not require provider keys
 	static generateCommitment(): { clientRand: Hex; clientCommit: Hex } {
 		const rand = crypto.getRandomValues(new Uint8Array(32)) as Uint8Array;
-		const clientRand = (`0x${bytesToHex(rand)}`) as Hex;
-		const commit = (`0x${bytesToHex(sha256(rand))}`) as Hex;
+		const clientRand = `0x${bytesToHex(rand)}` as Hex;
+		const commit = `0x${bytesToHex(sha256(rand))}` as Hex;
 		return { clientRand, clientCommit: commit };
 	}
 
@@ -70,7 +69,11 @@ export class Client {
 
 	private verifyMac(t: QueryTranscript, mac: Hex): boolean {
 		if (!this.macKey) return false;
-		const expected = hmac(sha256, this.hexToBytes(this.macKey), encodeTranscript(t));
+		const expected = hmac(
+			sha256,
+			this.hexToBytes(this.macKey),
+			encodeTranscript(t),
+		);
 		return `0x${bytesToHex(expected)}` === mac;
 	}
 	private hexToBytes(hex: Hex): Uint8Array {

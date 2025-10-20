@@ -28,7 +28,9 @@ export type CommitOpts = TypeOf<typeof commitOptions>;
 
 const isOnChain = process.env.ONCHAIN === "true";
 const zkFairSDK = new SDK({
-	rpcUrl: (isOnChain ? process.env.ONCHAIN_RPC_URL : process.env.RPC_URL) || "",
+	rpcUrl:
+		(isOnChain ? process.env.ONCHAIN_RPC_URL : process.env.RPC_URL) ||
+		"http://localhost:8545",
 	contractAddress:
 		((isOnChain
 			? (process.env.ONCHAIN_CONTRACT_ADDRESS as Hash)
