@@ -6,7 +6,7 @@ export type WebPredictParams = {
 	modelId: string | number;
 	input: number[];
 	verifyMac?: boolean;
-	providerPubKey?: Hex; // optional, signature-only by default
+	providerPubKey?: Hex;
 };
 
 export type Result = {

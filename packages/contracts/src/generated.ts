@@ -20,55 +20,6 @@ export const baseHonkVerifierAbi = [
 ] as const;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Counter
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const counterAbi = [
-	{
-		type: "function",
-		inputs: [],
-		name: "increment",
-		outputs: [],
-		stateMutability: "nonpayable",
-	},
-	{
-		type: "function",
-		inputs: [],
-		name: "number",
-		outputs: [{ name: "", internalType: "uint256", type: "uint256" }],
-		stateMutability: "view",
-	},
-	{
-		type: "function",
-		inputs: [{ name: "newNumber", internalType: "uint256", type: "uint256" }],
-		name: "setNumber",
-		outputs: [],
-		stateMutability: "nonpayable",
-	},
-] as const;
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// DeployScript
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const deployScriptAbi = [
-	{
-		type: "function",
-		inputs: [],
-		name: "IS_SCRIPT",
-		outputs: [{ name: "", internalType: "bool", type: "bool" }],
-		stateMutability: "view",
-	},
-	{
-		type: "function",
-		inputs: [],
-		name: "run",
-		outputs: [],
-		stateMutability: "nonpayable",
-	},
-] as const;
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // HonkVerifier
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -342,42 +293,6 @@ export const iVerifierAbi = [
 		inputs: [
 			{ name: "_proof", internalType: "bytes", type: "bytes" },
 			{ name: "_publicInputs", internalType: "bytes32[]", type: "bytes32[]" },
-		],
-		name: "verify",
-		outputs: [{ name: "", internalType: "bool", type: "bool" }],
-		stateMutability: "view",
-	},
-] as const;
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// MockVerifier
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const mockVerifierAbi = [
-	{
-		type: "constructor",
-		inputs: [{ name: "_result", internalType: "bool", type: "bool" }],
-		stateMutability: "nonpayable",
-	},
-	{
-		type: "function",
-		inputs: [],
-		name: "result",
-		outputs: [{ name: "", internalType: "bool", type: "bool" }],
-		stateMutability: "view",
-	},
-	{
-		type: "function",
-		inputs: [{ name: "_result", internalType: "bool", type: "bool" }],
-		name: "setResult",
-		outputs: [],
-		stateMutability: "nonpayable",
-	},
-	{
-		type: "function",
-		inputs: [
-			{ name: "", internalType: "bytes", type: "bytes" },
-			{ name: "", internalType: "bytes32[]", type: "bytes32[]" },
 		],
 		name: "verify",
 		outputs: [{ name: "", internalType: "bool", type: "bool" }],
