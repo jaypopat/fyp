@@ -1,5 +1,5 @@
 import starlight from "@astrojs/starlight";
-import { defineConfig } from "astro/config";
+import { defineConfig, passthroughImageService } from "astro/config";
 
 const url = "https://fyp.jaypopat.me";
 
@@ -7,6 +7,9 @@ export default defineConfig({
 	site: url,
 	devToolbar: {
 		enabled: false,
+	},
+	image: {
+		service: passthroughImageService(),
 	},
 	vite: {
 		ssr: {

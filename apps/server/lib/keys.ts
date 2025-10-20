@@ -4,7 +4,8 @@ import {
 	loadProviderKeysFromDisk,
 	saveProviderKeysToDisk,
 } from "@zkfair/itmac/keys";
-import type { Hex } from "viem";
+
+type Hex = `0x${string}`;
 
 export async function ensureProviderKeys(): Promise<ProviderKeys> {
 	// 1) Try ~/.zkfair/provider/keys.json

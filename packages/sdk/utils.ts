@@ -1,6 +1,7 @@
 import os from "node:os";
 import path from "node:path";
-import { blake2b } from "@noble/hashes/blake2";
+import { blake2b } from "@noble/hashes/blake2.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 import Papa from "papaparse";
 import type { Hash } from "viem";
 import type { hashAlgos } from "./types";
@@ -46,8 +47,7 @@ export async function hashBytes(
 	// plain hex
 	let out: Uint8Array;
 	if (algo === "SHA-256") {
-		const buf = await crypto.subtle.digest("SHA-256", data);
-		out = new Uint8Array(buf);
+		out = sha256(data);
 	} else {
 		out = blake2b(data, { dkLen: 32 });
 	}

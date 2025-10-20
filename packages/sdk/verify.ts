@@ -1,5 +1,5 @@
 import { UltraHonkBackend } from "@aztec/bb.js";
-import circuit from "@zkfair/zk-circuits/circuit";
+import circuit from "@zkfair/zk-circuits/training";
 import type { Hash } from "viem";
 import { parseCommitmentsFile, parseProofFile } from "./artifacts";
 import type { ContractClient } from "./contract";

@@ -12,7 +12,8 @@
 	"dependencies": {
 		"@drizzle-team/brocli": "^0.11.0",
 		"@zkfair/sdk": "workspace:*",
-		"ora": "^9.0.0"
+		"ora": "^9.0.0",
+		"viem": "^2.38.3"
 	},
 	"scripts": {
 		"build": "bun build index.ts --compile --outfile zkfair"

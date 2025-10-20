@@ -7,12 +7,12 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import * as ort from "onnxruntime-node";
-import type { Hex } from "viem";
 import { appendRecord, initDB, type QueryLogRecord } from "./lib/db";
 import { makeItmacBundle, verifyClientCommitment } from "./lib/itmac";
 import { ensureProviderKeys } from "./lib/keys";
 import { loadAllModels } from "./lib/models";
 
+type Hex = `0x${string}`;
 const app = new Hono();
 
 // Middleware

@@ -1,7 +1,8 @@
-import { sha256 } from "@noble/hashes/sha2";
-import { bytesToHex } from "@noble/hashes/utils";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { bytesToHex } from "@noble/hashes/utils.js";
 import type { Provider } from "@zkfair/itmac";
-import type { Hex } from "viem";
+
+type Hex = `0x${string}`;
 
 export function verifyClientCommitment(
 	clientCommit?: Hex,
