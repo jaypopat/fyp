@@ -4,6 +4,7 @@ import {
 	type Chain,
 	createPublicClient,
 	createWalletClient,
+	type GetEventArgs,
 	type Hash,
 	http,
 } from "viem";
@@ -109,5 +110,68 @@ export class ContractClient {
 			return statusMap[statusNumeric];
 		}
 		return "UNKNOWN";
+	}
+
+	// Event watching methods (simple wrappers around viem)
+	watchModelRegistered(
+		callback: (
+			event: GetEventArgs<typeof zkFairAbi, "ModelRegistered">,
+		) => void,
+	) {
+		return this.publicClient.watchContractEvent({
+			address: this.contractAddress,
+			abi: zkFairAbi,
+			eventName: "ModelRegistered",
+			onLogs: (logs) => {
+				for (const log of logs) {
+					callback(log.args as any);
+				}
+			},
+		});
+	}
+
+	watchModelVerified(
+		callback: (event: GetEventArgs<typeof zkFairAbi, "ModelVerified">) => void,
+	) {
+		return this.publicClient.watchContractEvent({
+			address: this.contractAddress,
+			abi: zkFairAbi,
+			eventName: "ModelVerified",
+			onLogs: (logs) => {
+				for (const log of logs) {
+					callback(log.args as any);
+				}
+			},
+		});
+	}
+
+	// TODO: Add when AuditRequested event exists in contract
+	watchAuditRequested(callback: (event: unknown) => void) {
+		// Placeholder - implement when contract has AuditRequested event
+		console.warn("AuditRequested event not yet implemented in contract");
+		return () => {}; // Return empty unwatch function
+	}
+
+	// Get historical events
+	async getModelRegisteredEvents(fromBlock?: bigint, toBlock?: bigint) {
+		const logs = await this.publicClient.getContractEvents({
+			address: this.contractAddress,
+			abi: zkFairAbi,
+			eventName: "ModelRegistered",
+			fromBlock: fromBlock ?? "earliest",
+			toBlock: toBlock ?? "latest",
+		});
+		return logs.map((log) => log.args);
+	}
+
+	async getModelVerifiedEvents(fromBlock?: bigint, toBlock?: bigint) {
+		const logs = await this.publicClient.getContractEvents({
+			address: this.contractAddress,
+			abi: zkFairAbi,
+			eventName: "ModelVerified",
+			fromBlock: fromBlock ?? "earliest",
+			toBlock: toBlock ?? "latest",
+		});
+		return logs.map((log) => log.args);
 	}
 }

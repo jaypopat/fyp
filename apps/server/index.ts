@@ -1,18 +1,17 @@
-// apps/provider-server/src/index.ts
-
-import { sha256 } from "@noble/hashes/sha2";
-import { bytesToHex } from "@noble/hashes/utils";
 import { encode } from "@msgpack/msgpack";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { bytesToHex } from "@noble/hashes/utils.js";
+import { Provider } from "@zkfair/itmac";
+import { SDK } from "@zkfair/sdk";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import * as ort from "onnxruntime-node";
 import type { Hex } from "viem";
-import { ensureProviderKeys } from "./lib/keys";
 import { appendRecord, initDB, type QueryLogRecord } from "./lib/db";
-import { loadAllModels } from "./lib/models";
 import { makeItmacBundle, verifyClientCommitment } from "./lib/itmac";
-import { Provider } from "@zkfair/itmac";
+import { ensureProviderKeys } from "./lib/keys";
+import { loadAllModels } from "./lib/models";
 
 const app = new Hono();
 
@@ -28,9 +27,23 @@ await initDB();
 const providerKeys = await ensureProviderKeys();
 const itmacProvider = new Provider(providerKeys);
 
-// Simple JSON file persistence for minimal query logs handled in lib/db
+const sdk = new SDK({
+	contractAddress: process.env.CONTRACT_ADDRESS as Hex,
+	privateKey: process.env.PRIVATE_KEY as Hex,
+	rpcUrl: process.env.RPC_URL || "http://localhost:8545",
+});
 
-// (DB is initialized above)
+// Watch for audit requests - this is the only event the provider needs to respond to
+sdk.events.watchAuditRequested(async (event) => {
+	console.log("🔍 Audit requested:", event);
+	// TODO: Implement audit response logic
+	// 1. Get queries from db.json for the time range
+	// 2. Build Merkle tree
+	// 3. Generate fairness proof
+	// 4. Submit proof on-chain via sdk.proof.submitAuditProof()
+});
+
+console.log("✅ Contract event listeners initialized (watching for audits)");
 
 app.get("/health", (c) => {
 	return c.json({
@@ -94,19 +107,19 @@ app.post("/predict", async (c) => {
 		const qid = queryId ?? globalThis.crypto?.randomUUID?.() ?? `${now}`;
 		let itmac:
 			| {
-				providerRand: Hex;
-				coins: Hex;
-				transcript: {
-					queryId: string;
-					modelId: number;
-					inputHash: Hex;
-					prediction: number;
-					timestamp: number;
+					providerRand: Hex;
 					coins: Hex;
-				};
-				bundle: { mac: Hex; providerSignature: Hex };
-				providerPublicKey: Hex;
-			}
+					transcript: {
+						queryId: string;
+						modelId: number;
+						inputHash: Hex;
+						prediction: number;
+						timestamp: number;
+						coins: Hex;
+					};
+					bundle: { mac: Hex; providerSignature: Hex };
+					providerPublicKey: Hex;
+			  }
 			| undefined;
 		if (clientCommit && clientRand) {
 			// Ensure clientRand matches commitment
@@ -175,7 +188,6 @@ app.get("/models", (c) => {
 });
 
 // No auditor endpoints for now; batches with Merkle will be added later
-
 
 // Start server
 const port = Number(process.env.PORT) || 5000;
