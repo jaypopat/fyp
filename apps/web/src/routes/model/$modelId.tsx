@@ -10,6 +10,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { config } from "@/config";
 import { predict } from "@/lib/inference";
 import { getModelStatusBadge } from "@/lib/model-status";
 import { createSDK } from "@/lib/sdk";
@@ -208,7 +209,7 @@ function ModelDetailComponent() {
 									if (!values.length || values.some((x) => Number.isNaN(x))) {
 										throw new Error("Provide valid numeric input");
 									}
-									const providerUrl = "http://localhost:5000"; // proxy or direct URL
+									const providerUrl = config.providerUrl; // auto-selects local vs prod
 									const resultData = await predict({
 										providerUrl,
 										modelId,
