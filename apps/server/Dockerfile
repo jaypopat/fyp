@@ -3,7 +3,7 @@ FROM oven/bun:1 as builder
 WORKDIR /build
 COPY . .
 
-RUN bun install
+RUN bun install --frozen-lockfile
 
 WORKDIR /build/apps/server
 RUN bun run build.ts
