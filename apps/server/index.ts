@@ -101,9 +101,7 @@ app.post("/predict", async (c) => {
 		const now = Date.now();
 		// Canonical input hash: encode float32 array via msgpack
 		const asF32 = Array.from(new Float32Array(input as number[]));
-		const hasher = new Bun.CryptoHasher("sha256");
-		hasher.update(encode(asF32));
-		const inputHashBytes = new Uint8Array(hasher.digest());
+		const inputHashBytes = Bun.sha(encode(asF32)) as Uint8Array;
 		const inputHash =
 			`0x${[...inputHashBytes].map((b) => b.toString(16).padStart(2, "0")).join("")}` as Hex;
 		const qid = queryId ?? globalThis.crypto?.randomUUID?.() ?? `${now}`;

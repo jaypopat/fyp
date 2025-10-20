@@ -12,9 +12,7 @@ export function verifyClientCommitment(
 	const bytes = new Uint8Array(raw.length / 2);
 	for (let i = 0; i < bytes.length; i++)
 		bytes[i] = Number.parseInt(raw.slice(i * 2, i * 2 + 2), 16);
-	const hasher = new Bun.CryptoHasher("sha256");
-	hasher.update(bytes);
-	const digestBytes = new Uint8Array(hasher.digest());
+	const digestBytes = Bun.sha(bytes) as Uint8Array;
 	const digest =
 		`0x${[...digestBytes].map((b) => b.toString(16).padStart(2, "0")).join("")}` as Hex;
 	return digest.toLowerCase() === clientCommit.toLowerCase();

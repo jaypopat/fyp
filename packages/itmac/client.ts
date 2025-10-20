@@ -6,33 +6,20 @@ import type {
 	MacBundle,
 	QueryTranscript,
 } from "./types";
+import { bytesToHex, hexToBytes } from "./utils";
 
-function bytesToHex(bytes: Uint8Array): string {
-	return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-function hexToBytes(hex: string): Uint8Array {
-	const clean = hex.startsWith("0x") ? hex.slice(2) : hex;
-	const bytes = new Uint8Array(clean.length / 2);
-	for (let i = 0; i < bytes.length; i++) {
-		bytes[i] = Number.parseInt(clean.slice(i * 2, i * 2 + 2), 16);
-	}
-	return bytes;
-}
 
 export class Client {
 	constructor(
 		private providerPubKey: Hex,
 		private macKey?: Hex,
-	) {}
+	) { }
 
 	// Static helper: client randomness & commitment; does not require provider keys
 	static generateCommitment(): { clientRand: Hex; clientCommit: Hex } {
 		const rand = crypto.getRandomValues(new Uint8Array(32)) as Uint8Array;
 		const clientRand = `0x${bytesToHex(rand)}` as Hex;
-		const hasher = new Bun.CryptoHasher("sha256");
-		hasher.update(rand);
-		const commitBytes = new Uint8Array(hasher.digest());
+		const commitBytes = Bun.sha(rand) as Uint8Array;
 		const commit = `0x${bytesToHex(commitBytes)}` as Hex;
 		return { clientRand, clientCommit: commit };
 	}
@@ -49,9 +36,7 @@ export class Client {
 		const bytes = new Uint8Array(a.length + b.length);
 		bytes.set(a, 0);
 		bytes.set(b, a.length);
-		const hasher = new Bun.CryptoHasher("sha256");
-		hasher.update(bytes);
-		const hash = new Uint8Array(hasher.digest());
+		const hash = Bun.sha(bytes) as Uint8Array;
 		return `0x${bytesToHex(hash)}` as Hex;
 	}
 
@@ -69,9 +54,7 @@ export class Client {
 			if (!macOk) return { valid: false, reason: "Invalid MAC" };
 		}
 
-		const transcriptHasher = new Bun.CryptoHasher("sha256");
-		transcriptHasher.update(encodeTranscript(t));
-		const hashT = new Uint8Array(transcriptHasher.digest());
+		const hashT = Bun.sha(encodeTranscript(t)) as Uint8Array;
 		const payload = new Uint8Array(
 			this.hexToBytes(bundle.mac).length + hashT.length,
 		);
@@ -79,9 +62,7 @@ export class Client {
 		payload.set(hashT, this.hexToBytes(bundle.mac).length);
 		try {
 			const sigBytes = this.hexToBytes(bundle.providerSignature);
-			const payloadHasher = new Bun.CryptoHasher("sha256");
-			payloadHasher.update(payload);
-			const payloadHash = new Uint8Array(payloadHasher.digest());
+			const payloadHash = Bun.sha(payload) as Uint8Array;
 			const ok = secp256k1.verify(
 				sigBytes,
 				payloadHash,
@@ -103,7 +84,7 @@ export class Client {
 		const expected = `0x${bytesToHex(macBytes)}`;
 		return expected === mac;
 	}
-	
+
 	private hexToBytes(hex: Hex): Uint8Array {
 		return hexToBytes(hex);
 	}

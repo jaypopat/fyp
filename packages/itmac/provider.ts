@@ -22,7 +22,7 @@ function hexToBytes(hex: string): Uint8Array {
 }
 
 export class Provider {
-	constructor(private keys: ProviderKeys) {}
+	constructor(private keys: ProviderKeys) { }
 
 	// Generate provider randomness and compute final coins
 	performCoinFlip(clientCommit: Hex, clientRand: Hex): CoinFlip {
@@ -56,15 +56,11 @@ export class Provider {
 
 	// Sign mac || hash(transcript)
 	signBundle(t: QueryTranscript, mac: Hex): MacBundle {
-		const transcriptHasher = new Bun.CryptoHasher("sha256");
-		transcriptHasher.update(encodeTranscript(t));
-		const hashT = new Uint8Array(transcriptHasher.digest());
+		const hashT = Bun.sha(encodeTranscript(t)) as Uint8Array;
 		const payload = new Uint8Array(this.hexToBytes(mac).length + hashT.length);
 		payload.set(this.hexToBytes(mac), 0);
 		payload.set(hashT, this.hexToBytes(mac).length);
-		const payloadHasher = new Bun.CryptoHasher("sha256");
-		payloadHasher.update(payload);
-		const payloadHash = new Uint8Array(payloadHasher.digest());
+		const payloadHash = Bun.sha(payload) as Uint8Array;
 		const sig = secp256k1.sign(
 			payloadHash,
 			this.hexToBytes(this.keys.privateKey),
@@ -86,9 +82,7 @@ export class Provider {
 		);
 		bytes.set(this.hexToBytes(a), 0);
 		bytes.set(this.hexToBytes(b), this.hexToBytes(a).length);
-		const hasher = new Bun.CryptoHasher("sha256");
-		hasher.update(bytes);
-		const hash = new Uint8Array(hasher.digest());
+		const hash = Bun.sha(bytes) as Uint8Array;
 		return `0x${bytesToHex(hash)}` as Hex;
 	}
 }
