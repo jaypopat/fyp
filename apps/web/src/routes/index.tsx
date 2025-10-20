@@ -21,6 +21,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { config } from "@/config";
 import { getModelStatusBadge } from "@/lib/model-status";
 import { createSDK } from "@/lib/sdk";
 import {
@@ -71,10 +72,25 @@ function HomeComponent() {
 						</p>
 						<div className="flex items-center gap-1.5 text-xs">
 							<span className="text-muted-foreground">Author:</span>
-							<code className="rounded bg-muted px-1.5 py-0.5 font-mono">
-								{(row.original.author as string).slice(0, 6)}...
-								{(row.original.author as string).slice(-4)}
-							</code>
+							{config.explorerBase ? (
+								<a
+									href={`${config.explorerBase}/address/${row.original.author as string}`}
+									target="_blank"
+									rel="noreferrer"
+									className="underline-offset-4 hover:underline"
+									title="View author on explorer"
+								>
+									<code className="rounded bg-muted px-1.5 py-0.5 font-mono">
+										{(row.original.author as string).slice(0, 6)}...
+										{(row.original.author as string).slice(-4)}
+									</code>
+								</a>
+							) : (
+								<code className="rounded bg-muted px-1.5 py-0.5 font-mono">
+									{(row.original.author as string).slice(0, 6)}...
+									{(row.original.author as string).slice(-4)}
+								</code>
+							)}
 						</div>
 					</div>
 				),

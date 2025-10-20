@@ -113,9 +113,23 @@ function ModelDetailComponent() {
 						<CardDescription className="space-y-1">
 							<span className="text-muted-foreground text-sm">
 								Registered by{" "}
-								<code className="rounded bg-muted px-2 py-1 text-sm">
-									{model.author}
-								</code>
+								{config.explorerBase ? (
+									<a
+										href={`${config.explorerBase}/address/${model.author}`}
+										target="_blank"
+										rel="noreferrer"
+										className="underline-offset-4 hover:underline"
+										title="View author on explorer"
+									>
+										<code className="rounded bg-muted px-2 py-1 text-sm">
+											{model.author}
+										</code>
+									</a>
+								) : (
+									<code className="rounded bg-muted px-2 py-1 text-sm">
+										{model.author}
+									</code>
+								)}
 							</span>
 							<span className="block text-muted-foreground text-sm">
 								Model ID: {modelId}
@@ -271,6 +285,7 @@ type HashFieldProps = {
 	copied: boolean;
 	onCopy?: (value: string) => void;
 	fallback?: string;
+	href?: string;
 };
 
 function HashField({
@@ -279,17 +294,35 @@ function HashField({
 	copied,
 	onCopy,
 	fallback = "—",
+	href,
 }: HashFieldProps) {
 	return (
 		<div className="space-y-1">
 			<p className="text-muted-foreground text-sm">{label}</p>
 			<div className="flex items-center gap-2">
-				<code
-					title={value}
-					className="break-all rounded bg-muted px-2 py-1 text-xs md:text-sm"
-				>
-					{formatHash(value, fallback)}
-				</code>
+				{href && value ? (
+					<a
+						href={href}
+						target="_blank"
+						rel="noreferrer"
+						className="underline-offset-4 hover:underline"
+						title={`Open ${label} on explorer`}
+					>
+						<code
+							title={value}
+							className="break-all rounded bg-muted px-2 py-1 text-xs md:text-sm"
+						>
+							{formatHash(value, fallback)}
+						</code>
+					</a>
+				) : (
+					<code
+						title={value}
+						className="break-all rounded bg-muted px-2 py-1 text-xs md:text-sm"
+					>
+						{formatHash(value, fallback)}
+					</code>
+				)}
 				{value && onCopy ? (
 					<Button
 						variant="ghost"

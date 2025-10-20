@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { config } from "@/config";
 import { ModeToggle } from "./mode-toggle";
 
 export default function Header() {
@@ -22,6 +23,18 @@ export default function Header() {
 					</span>
 				</Link>
 				<div className="flex items-center gap-2">
+					{/* Contract on explorer (only when explorer is set, i.e., Sepolia in prod) */}
+					{config.explorerBase && (
+						<a
+							href={`${config.explorerBase}/address/${config.contractAddress}`}
+							target="_blank"
+							rel="noreferrer"
+							className="hidden text-muted-foreground text-xs underline-offset-4 hover:underline md:inline"
+							title="View contract on explorer"
+						>
+							Contract ↗
+						</a>
+					)}
 					{!isDevPage && ( // ✅ Add this condition
 						<Button variant="ghost" size="icon" className="h-8 w-8" asChild>
 							<Link to="/dev" title="Developer tools">

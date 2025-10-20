@@ -6,6 +6,7 @@ type NetworkConfig = {
 	rpcUrl: string;
 	chain: typeof anvil | typeof sepolia;
 	providerUrl: string;
+	explorerBase?: string; // Base URL of the block explorer (if available)
 };
 
 type Config = {
@@ -24,12 +25,14 @@ const _config: Config = {
 		rpcUrl: "http://localhost:8545",
 		chain: anvil,
 		providerUrl: "http://localhost:5000",
+		// No explorer for local anvil by default
 	},
 	sepolia: {
 		contractAddress: "0xc8d9688e0a5e96b1cca56d98eae62ce980088537",
 		rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com",
 		chain: sepolia,
 		providerUrl: "https://zkfair-provider.fly.dev",
+		explorerBase: "https://sepolia.etherscan.io",
 	},
 	isDevelopment: process.env.NODE_ENV !== "production",
 };
