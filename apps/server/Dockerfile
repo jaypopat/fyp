@@ -1,34 +1,30 @@
-FROM oven/bun:1 AS builder
+FROM oven/bun:1 as builder
 
-WORKDIR /app
-
-# Copy everything (use .dockerignore to exclude node_modules, etc.)
+WORKDIR /build
 COPY . .
 
-# Install dependencies
 RUN bun install --frozen-lockfile
 
-# Build (bundles everything into dist/index.js)
-WORKDIR /app/apps/server
+WORKDIR /build/apps/server
 RUN bun run build.ts
 
-RUN ls -la dist/
-
-# Production - minimal image
-FROM oven/bun:1-slim
+FROM oven/bun:1
 
 WORKDIR /app
 
-# Only need the bundled output
-COPY --from=builder /app/apps/server/dist/index.js ./dist/index.js
+COPY --from=builder /build/apps/server/dist ./dist
+COPY --from=builder /build/examples ./examples
 
-# Install single runtime dependency
+#  Create minimal package.json
 RUN echo '{"type":"module","dependencies":{"onnxruntime-node":"^1.23.0"}}' > package.json
+
+# Install onnxruntime-node fresh
 RUN bun install --production
+
+RUN mkdir -p /app/data
 
 ENV NODE_ENV=production
 ENV PORT=5000
-
 EXPOSE 5000
 
 CMD ["bun", "dist/index.js"]
