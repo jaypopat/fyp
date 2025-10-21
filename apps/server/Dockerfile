@@ -2,47 +2,26 @@ FROM oven/bun:1 AS builder
 
 WORKDIR /app
 
-# Install turbo globally
-RUN bun install -g turbo
-
-# Copy repo
+# Copy everything (use .dockerignore to exclude node_modules, etc.)
 COPY . .
-
-# Prune the monorepo to only server app + dependencies
-RUN turbo prune --scope=@shipyard/server --docker
-
-# Install dependencies from pruned workspace
-FROM oven/bun:1 AS installer
-
-WORKDIR /app
-
-# Copy pruned lockfile and package.json files
-COPY --from=builder /app/out/json/ .
-COPY --from=builder /app/out/bun.lockb ./bun.lockb
 
 # Install dependencies
 RUN bun install --frozen-lockfile
 
-# Copy pruned source code
-COPY --from=builder /app/out/full/ .
-
-# Build server (bundles everything into dist/index.js)
+# Build (bundles everything into dist/index.js)
 RUN bun --cwd apps/server run build.ts
 
-# Production image - use slim for smaller size
+# Production - minimal image
 FROM oven/bun:1-slim
 
 WORKDIR /app
 
-# Copy bundled output
-COPY --from=installer /app/apps/server/dist ./dist
+# Only need the bundled output
+COPY --from=builder /app/apps/server/dist/index.js ./dist/index.js
 
-# Copy examples if needed at runtime
-COPY --from=installer /app/examples ./examples
-
-# Install only runtime dependency (onnxruntime-node)
-COPY --from=installer /app/apps/server/package.json ./package.json
-RUN bun install --production --no-save
+# Install single runtime dependency
+RUN echo '{"type":"module","dependencies":{"onnxruntime-node":"^1.23.0"}}' > package.json
+RUN bun install --production
 
 ENV NODE_ENV=production
 ENV PORT=5000
