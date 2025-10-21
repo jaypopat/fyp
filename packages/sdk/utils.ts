@@ -43,10 +43,13 @@ export async function hashBytes(
 	algo: hashAlgos,
 ): Promise<string> {
 	// plain hex
-	const out = (algo === "SHA-256") 
-		? Bun.sha(data) as Uint8Array
-		: new Uint8Array(new Bun.CryptoHasher("blake2b256").update(data).digest());
-	
+	const out =
+		algo === "SHA-256"
+			? (Bun.sha(data) as Uint8Array)
+			: new Uint8Array(
+					new Bun.CryptoHasher("blake2b256").update(data).digest(),
+				);
+
 	const hex = bytesToPlainHash(out).toLowerCase();
 	if (hex.length !== 64)
 		throw new Error(`hashBytes produced invalid length ${hex.length}`);

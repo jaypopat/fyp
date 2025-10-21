@@ -22,7 +22,7 @@ function hexToBytes(hex: string): Uint8Array {
 }
 
 export class Provider {
-	constructor(private keys: ProviderKeys) { }
+	constructor(private keys: ProviderKeys) {}
 
 	// Generate provider randomness and compute final coins
 	performCoinFlip(clientCommit: Hex, clientRand: Hex): CoinFlip {

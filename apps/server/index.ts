@@ -107,19 +107,19 @@ app.post("/predict", async (c) => {
 		const qid = queryId ?? globalThis.crypto?.randomUUID?.() ?? `${now}`;
 		let itmac:
 			| {
-				providerRand: Hex;
-				coins: Hex;
-				transcript: {
-					queryId: string;
-					modelId: number;
-					inputHash: Hex;
-					prediction: number;
-					timestamp: number;
+					providerRand: Hex;
 					coins: Hex;
-				};
-				bundle: { mac: Hex; providerSignature: Hex };
-				providerPublicKey: Hex;
-			}
+					transcript: {
+						queryId: string;
+						modelId: number;
+						inputHash: Hex;
+						prediction: number;
+						timestamp: number;
+						coins: Hex;
+					};
+					bundle: { mac: Hex; providerSignature: Hex };
+					providerPublicKey: Hex;
+			  }
 			| undefined;
 		if (clientCommit && clientRand) {
 			// Ensure clientRand matches commitment

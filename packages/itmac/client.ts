@@ -8,12 +8,11 @@ import type {
 } from "./types";
 import { bytesToHex, hexToBytes } from "./utils";
 
-
 export class Client {
 	constructor(
 		private providerPubKey: Hex,
 		private macKey?: Hex,
-	) { }
+	) {}
 
 	// Static helper: client randomness & commitment; does not require provider keys
 	static generateCommitment(): { clientRand: Hex; clientCommit: Hex } {

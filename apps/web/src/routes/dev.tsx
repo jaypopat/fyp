@@ -54,9 +54,10 @@ function DevPage() {
 		return aiVector ?? [];
 	}
 
-	// Load models on mount to populate the dropdown
+	// Load models and health on mount
 	useEffect(() => {
 		void doGet<Models>("/models", setModels);
+		void doGet<Health>("/health", setHealth);
 	}, []);
 
 	const doGet = async <T,>(path: string, setter: (v: T) => void) => {
@@ -69,7 +70,6 @@ function DevPage() {
 			setError(e instanceof Error ? e.message : "Request failed");
 		}
 	};
-
 	const doPredict = async () => {
 		setLoading(true);
 		setError(null);
