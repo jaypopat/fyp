@@ -9,7 +9,10 @@ COPY . .
 RUN bun install --frozen-lockfile
 
 # Build (bundles everything into dist/index.js)
-RUN bun --cwd apps/server run build.ts
+WORKDIR /app/apps/server
+RUN bun run build.ts
+
+RUN ls -la dist/
 
 # Production - minimal image
 FROM oven/bun:1-slim
