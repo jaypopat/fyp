@@ -10,7 +10,7 @@ function toHex(u8: Uint8Array): Hex {
 
 export function generateProviderKeys(): ProviderKeys {
 	// Secp256k1 private key
-	const priv = secp256k1.utils.randomPrivateKey();
+	const priv = secp256k1.utils.randomSecretKey();
 	const pub = secp256k1.getPublicKey(priv, true); // compressed
 
 	// HMAC key (32 bytes)

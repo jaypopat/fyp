@@ -72,25 +72,18 @@ function HomeComponent() {
 						</p>
 						<div className="flex items-center gap-1.5 text-xs">
 							<span className="text-muted-foreground">Author:</span>
-							{config.explorerBase ? (
-								<a
-									href={`${config.explorerBase}/address/${row.original.author as string}`}
-									target="_blank"
-									rel="noreferrer"
-									className="underline-offset-4 hover:underline"
-									title="View author on explorer"
-								>
-									<code className="rounded bg-muted px-1.5 py-0.5 font-mono">
-										{(row.original.author as string).slice(0, 6)}...
-										{(row.original.author as string).slice(-4)}
-									</code>
-								</a>
-							) : (
+							<a
+								href={`${config.explorerBase}/address/${row.original.author as string}`}
+								target="_blank"
+								rel="noreferrer"
+								className="underline-offset-4 hover:underline"
+								title="View author on explorer"
+							>
 								<code className="rounded bg-muted px-1.5 py-0.5 font-mono">
 									{(row.original.author as string).slice(0, 6)}...
 									{(row.original.author as string).slice(-4)}
 								</code>
-							)}
+							</a>
 						</div>
 					</div>
 				),

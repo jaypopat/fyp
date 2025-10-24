@@ -113,23 +113,17 @@ function ModelDetailComponent() {
 						<CardDescription className="space-y-1">
 							<span className="text-muted-foreground text-sm">
 								Registered by{" "}
-								{config.explorerBase ? (
-									<a
-										href={`${config.explorerBase}/address/${model.author}`}
-										target="_blank"
-										rel="noreferrer"
-										className="underline-offset-4 hover:underline"
-										title="View author on explorer"
-									>
-										<code className="rounded bg-muted px-2 py-1 text-sm">
-											{model.author}
-										</code>
-									</a>
-								) : (
+								<a
+									href={`${config.explorerBase}/address/${model.author}`}
+									target="_blank"
+									rel="noreferrer"
+									className="underline-offset-4 hover:underline"
+									title="View author on explorer"
+								>
 									<code className="rounded bg-muted px-2 py-1 text-sm">
 										{model.author}
 									</code>
-								)}
+								</a>
 							</span>
 							<span className="block text-muted-foreground text-sm">
 								Model ID: {modelId}

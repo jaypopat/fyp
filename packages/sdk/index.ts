@@ -2,7 +2,7 @@ import type { Hex } from "viem";
 import { CommitAPI } from "./commit";
 import { ContractClient } from "./contract";
 import { EventsAPI } from "./events";
-import { InferenceClient } from "./inference";
+import type { InferenceClient } from "./inference";
 import { ModelAPI } from "./model";
 import { ProofAPI } from "./proof";
 import { QueriesAPI } from "./queries";
@@ -28,11 +28,5 @@ export class SDK {
 		this.verify = new VerifyAPI(this.contracts);
 		this.queries = new QueriesAPI(this.contracts);
 		this.events = new EventsAPI(this.contracts);
-	}
-
-	// Helper to set up inference client with provider keys
-	useInference(providerPubKey: Hex, macKey?: Hex) {
-		this.inference = new InferenceClient(providerPubKey, macKey);
-		return this.inference;
 	}
 }

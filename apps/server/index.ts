@@ -182,7 +182,6 @@ app.get("/models", (c) => {
 	return c.json({
 		models: Array.from(models.keys()).map((id) => ({
 			modelId: id,
-			loaded: true,
 		})),
 	});
 });
