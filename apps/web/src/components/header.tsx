@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { config } from "@/config";
 import { ModeToggle } from "./mode-toggle";
 
+const HEADER_CLASSES = "border-b-2 border-border bg-secondary-background shadow-[var(--shadow)]";
+
 export default function Header() {
 	const pathname = useRouterState({
 		select: (state) => state.location?.pathname ?? "/",
@@ -12,14 +14,11 @@ export default function Header() {
 	const isDevPage = pathname === "/dev";
 
 	return (
-		<header className="border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+		<header className={HEADER_CLASSES}>
 			<div className="flex h-14 w-full items-center justify-between px-4">
-				<Link to="/" className="flex items-center gap-2 font-semibold text-sm">
-					<span className="rounded-md bg-primary/5 px-2 py-1 text-primary">
+				<Link to="/" className="flex items-center gap-3 font-semibold text-sm" aria-label="ZKFair home">
+					<span className="rounded-[var(--radius-base)] border-2 border-border bg-main/10 px-2 py-1 text-main shadow-[var(--shadow)]">
 						ZKFair
-					</span>
-					<span className="hidden text-muted-foreground sm:inline">
-						AI Fairness Registry
 					</span>
 				</Link>
 				<div className="flex items-center gap-2">
@@ -29,7 +28,7 @@ export default function Header() {
 						href={`${config.explorerBase}/address/${config.contractAddress}`}
 						target="_blank"
 						rel="noreferrer"
-						className="hidden text-muted-foreground text-xs underline-offset-4 hover:underline md:inline"
+						className="hidden text-foreground/70 text-xs underline-offset-4 hover:underline md:inline"
 						title="View contract on explorer"
 					>
 						Contract ↗

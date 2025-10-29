@@ -2,12 +2,17 @@ import type * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+const CARD_HEADER_CLASSES =
+	"@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] border-b-2 border-border pb-6";
+
+const CARD_FOOTER_CLASSES = "flex items-center border-t-2 border-border px-6 pt-6";
+
 function Card({ className, ...props }: React.ComponentProps<"div">) {
 	return (
 		<div
 			data-slot="card"
 			className={cn(
-				"flex flex-col gap-6 rounded-xl border bg-card py-6 text-card-foreground shadow-sm",
+				"flex flex-col gap-6 rounded-[var(--radius-base)] border-2 border-border bg-secondary-background py-6 text-foreground shadow-[var(--shadow)]",
 				className,
 			)}
 			{...props}
@@ -19,10 +24,7 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
 	return (
 		<div
 			data-slot="card-header"
-			className={cn(
-				"@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
-				className,
-			)}
+			className={cn(CARD_HEADER_CLASSES, className)}
 			{...props}
 		/>
 	);
@@ -75,7 +77,7 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
 	return (
 		<div
 			data-slot="card-footer"
-			className={cn("flex items-center px-6 [.border-t]:pt-6", className)}
+			className={cn(CARD_FOOTER_CLASSES, className)}
 			{...props}
 		/>
 	);

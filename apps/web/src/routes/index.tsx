@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { cn } from "@/lib/utils";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
 	flexRender,
@@ -50,9 +51,9 @@ function HomeComponent() {
 				accessorKey: "name",
 				header: ({ column }) => (
 					<Button
-						variant="ghost"
+						variant="plain"
 						onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-						className="h-auto p-0 hover:bg-transparent"
+						className="h-12 items-center p-0"
 					>
 						Model Details
 						<ArrowUpDown className="ml-2 h-4 w-4" />
@@ -63,15 +64,15 @@ function HomeComponent() {
 						<Link
 							to="/model/$modelId"
 							params={{ modelId: row.original.weightsHash }}
-							className="font-semibold text-foreground transition-colors hover:text-primary"
+							className="font-semibold text-foreground transition-colors hover:text-main"
 						>
 							{row.original.name}
 						</Link>
-						<p className="text-muted-foreground text-sm leading-relaxed">
+						<p className="text-foreground/70 text-sm leading-relaxed">
 							{row.original.description}
 						</p>
 						<div className="flex items-center gap-1.5 text-xs">
-							<span className="text-muted-foreground">Author:</span>
+							<span className="text-foreground/70">Author:</span>
 							<a
 								href={`${config.explorerBase}/address/${row.original.author as string}`}
 								target="_blank"
@@ -79,7 +80,7 @@ function HomeComponent() {
 								className="underline-offset-4 hover:underline"
 								title="View author on explorer"
 							>
-								<code className="rounded bg-muted px-1.5 py-0.5 font-mono">
+								<code className="rounded-[var(--radius-base)] border-2 border-border bg-secondary-background px-1.5 py-0.5 font-mono shadow-[var(--shadow)]">
 									{(row.original.author as string).slice(0, 6)}...
 									{(row.original.author as string).slice(-4)}
 								</code>
@@ -92,9 +93,9 @@ function HomeComponent() {
 				accessorKey: "status",
 				header: ({ column }) => (
 					<Button
-						variant="ghost"
+						variant="plain"
 						onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-						className="h-auto p-0 hover:bg-transparent"
+						className="h-12 items-center p-0"
 					>
 						Status
 						<ArrowUpDown className="ml-2 h-4 w-4" />
@@ -112,7 +113,7 @@ function HomeComponent() {
 				cell: ({ row }) => {
 					const hash = row.getValue("weightsHash") as string;
 					return (
-						<code className="block rounded bg-muted px-2 py-1 font-mono text-xs">
+						<code className="block rounded-[var(--radius-base)] border-2 border-border bg-secondary-background px-2 py-1 font-mono text-xs shadow-[var(--shadow)]">
 							{hash.slice(0, 10)}...{hash.slice(-8)}
 						</code>
 					);
@@ -124,7 +125,7 @@ function HomeComponent() {
 				cell: ({ row }) => {
 					const root = row.getValue("datasetMerkleRoot") as string;
 					return (
-						<code className="block rounded bg-muted px-2 py-1 font-mono text-xs">
+						<code className="block rounded-[var(--radius-base)] border-2 border-border bg-secondary-background px-2 py-1 font-mono text-xs shadow-[var(--shadow)]">
 							{root.slice(0, 10)}...{root.slice(-8)}
 						</code>
 					);
@@ -134,9 +135,9 @@ function HomeComponent() {
 				accessorKey: "registrationTimestamp",
 				header: ({ column }) => (
 					<Button
-						variant="ghost"
+						variant="plain"
 						onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-						className="h-auto p-0 hover:bg-transparent"
+						className="h-12 items-center p-0"
 					>
 						Registered
 						<ArrowUpDown className="ml-2 h-4 w-4" />
@@ -145,8 +146,8 @@ function HomeComponent() {
 				cell: ({ row }) => {
 					const timestamp = row.getValue("registrationTimestamp") as number;
 					const date = new Date(timestamp * 1000);
-					return (
-						<div className="font-medium text-foreground text-sm">
+						return (
+							<div className={cn("text-sm", LABEL_EMPHASIS)}>
 							{date.toLocaleDateString("en-US", {
 								month: "short",
 								day: "numeric",
@@ -163,7 +164,7 @@ function HomeComponent() {
 					<Link
 						to="/model/$modelId"
 						params={{ modelId: row.original.weightsHash }}
-						className="inline-flex items-center gap-1.5 whitespace-nowrap text-primary text-sm transition-colors hover:text-primary/80"
+						className="inline-flex items-center gap-1.5 whitespace-nowrap text-main text-sm transition-colors hover:text-main/80"
 					>
 						View Details
 						<ExternalLink className="h-3.5 w-3.5" />
@@ -193,24 +194,31 @@ function HomeComponent() {
 		},
 	});
 
+	const COUNT_TEXT = "text-sm text-foreground/70";
+	const LABEL_EMPHASIS = "text-foreground font-medium";
+	const HEADLINE = "mb-3 text-4xl font-bold tracking-tight text-foreground";
+	const SUBHEAD = "text-lg text-foreground/70";
+	const SEARCH_ICON =
+		"absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/60";
+
 	return (
 		<div className="min-h-screen w-full px-6 py-12">
 			<div className="mx-auto max-w-[1600px]">
 				{/* Header */}
 				<div className="mb-10">
-					<h1 className="mb-3 font-bold text-4xl text-foreground tracking-tight">
+					<h1 className={HEADLINE}>
 						ZK AI Fairness Registry
 					</h1>
-					<p className="text-lg text-muted-foreground">
+					<p className={SUBHEAD}>
 						Explore verified AI models and their fairness compliance status
 					</p>
 				</div>
 
 				{/* Search Bar */}
-				<Card className="mb-6 p-4 shadow-sm">
+				<Card className="mb-6 p-4">
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div className="relative max-w-md flex-1">
-							<Search className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
+							<Search className={SEARCH_ICON} />
 							<Input
 								placeholder="Search models by name or description..."
 								value={globalFilter ?? ""}
@@ -218,8 +226,8 @@ function HomeComponent() {
 								className="pl-10"
 							/>
 						</div>
-						<div className="text-muted-foreground text-sm">
-							<span className="font-medium text-foreground">
+						<div className={COUNT_TEXT}>
+							<span className={LABEL_EMPHASIS}>
 								{table.getFilteredRowModel().rows.length}
 							</span>{" "}
 							{table.getFilteredRowModel().rows.length === 1
@@ -230,14 +238,14 @@ function HomeComponent() {
 				</Card>
 
 				{/* Table */}
-				<Card className="overflow-hidden shadow-sm">
+				<Card className="overflow-hidden py-0">
 					<div className="w-full overflow-x-auto">
 						<Table>
 							<TableHeader>
 								{table.getHeaderGroups().map((headerGroup) => (
 									<TableRow
 										key={headerGroup.id}
-										className="border-b hover:bg-transparent"
+										className="hover:bg-transparent"
 									>
 										{headerGroup.headers.map((header) => (
 											<TableHead key={header.id} className="font-semibold">
@@ -257,10 +265,10 @@ function HomeComponent() {
 									table.getRowModel().rows.map((row) => (
 										<TableRow
 											key={row.id}
-											className="transition-colors hover:bg-muted/50"
+											className="transition-colors hover:bg-main/5"
 										>
 											{row.getVisibleCells().map((cell) => (
-												<TableCell key={cell.id} className="py-4">
+												<TableCell key={cell.id}>
 													{flexRender(
 														cell.column.columnDef.cell,
 														cell.getContext(),
@@ -276,8 +284,8 @@ function HomeComponent() {
 											className="h-32 text-center"
 										>
 											<div className="flex flex-col items-center gap-2">
-												<Search className="h-8 w-8 text-muted-foreground" />
-												<p className="text-muted-foreground text-sm">
+												<Search className="h-8 w-8 text-foreground/60" />
+												<p className={COUNT_TEXT}>
 													No models found matching your search
 												</p>
 											</div>
@@ -291,15 +299,15 @@ function HomeComponent() {
 
 				{/* Pagination */}
 				<div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-					<p className="text-muted-foreground text-sm">
+					<p className={COUNT_TEXT}>
 						Showing{" "}
-						<span className="font-medium text-foreground">
+						<span className={LABEL_EMPHASIS}>
 							{table.getState().pagination.pageIndex *
 								table.getState().pagination.pageSize +
 								1}
 						</span>{" "}
 						to{" "}
-						<span className="font-medium text-foreground">
+						<span className={LABEL_EMPHASIS}>
 							{Math.min(
 								(table.getState().pagination.pageIndex + 1) *
 									table.getState().pagination.pageSize,
@@ -307,7 +315,7 @@ function HomeComponent() {
 							)}
 						</span>{" "}
 						of{" "}
-						<span className="font-medium text-foreground">
+						<span className={LABEL_EMPHASIS}>
 							{table.getFilteredRowModel().rows.length}
 						</span>{" "}
 						results
