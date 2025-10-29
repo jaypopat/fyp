@@ -1,5 +1,5 @@
 import { command } from "@drizzle-team/brocli";
-import { register } from "./auditor";
+import { getBatch, listBatches, verifyMembership } from "./auditor";
 import { query } from "./client";
 import { getModel, listModels } from "./model";
 import { getProofStatus, proveModelBias } from "./proof";
@@ -19,7 +19,7 @@ export const proof = command({
 export const auditor = command({
 	name: "audit",
 	desc: "Audit models",
-	subcommands: [register],
+	subcommands: [listBatches, getBatch, verifyMembership],
 });
 export const client = command({
 	name: "client",

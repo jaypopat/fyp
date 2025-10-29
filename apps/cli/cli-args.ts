@@ -72,3 +72,26 @@ export const verifyProofOptions = {
 		.desc("Comma-separated public inputs OR path to JSON file"),
 	local: boolean("local").desc("Verify proof locally instead of onchain (DEV)"),
 };
+
+// Auditor CLI options
+export const auditProviderOptions = {
+	providerUrl: string("provider-url")
+		.alias("u")
+		.default("http://localhost:5000")
+		.desc("Base URL of the provider server"),
+} as const;
+
+export const listBatchesOptions = {
+	...auditProviderOptions,
+} as const;
+
+export const getBatchOptions = {
+	...auditProviderOptions,
+	id: positional("batch-id").required().desc("Batch id, e.g. 0-99"),
+} as const;
+
+export const batchProofOptions = {
+	...auditProviderOptions,
+	batchId: string("batch-id").alias("b").required().desc("Batch id, e.g. 0-99"),
+	queryId: string("query-id").alias("q").required().desc("Query id to verify"),
+} as const;

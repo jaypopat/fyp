@@ -11,6 +11,7 @@
 	},
 	"dependencies": {
 		"@drizzle-team/brocli": "^0.11.0",
+		"@msgpack/msgpack": "^3.1.2",
 		"@zkfair/sdk": "workspace:*",
 		"ora": "^9.0.0",
 		"viem": "^2.38.3"

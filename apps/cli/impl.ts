@@ -2,13 +2,18 @@
 
 import type { TypeOf } from "@drizzle-team/brocli";
 import { SDK } from "@zkfair/sdk";
+import { encode } from "@msgpack/msgpack";
 import path from "path";
 import type { Hash, Hex } from "viem";
 import { anvil, sepolia } from "viem/chains";
+import { verifyMerkleProof } from "../../packages/sdk/merkle";
 import type {
+	batchProofOptions,
 	commitOptions,
+	getBatchOptions,
 	getModelOptions,
 	getProofStatusOptions,
+	listBatchesOptions,
 	proveModelBiasOptions,
 	verifyProofOptions,
 } from "./cli-args";
@@ -25,6 +30,9 @@ export type ProveModelBiasOpts = TypeOf<typeof proveModelBiasOptions>;
 export type GetProofStatusOpts = TypeOf<typeof getProofStatusOptions>;
 export type VerifyProofOpts = TypeOf<typeof verifyProofOptions>;
 export type CommitOpts = TypeOf<typeof commitOptions>;
+export type ListBatchesOpts = TypeOf<typeof listBatchesOptions>;
+export type GetBatchOpts = TypeOf<typeof getBatchOptions>;
+export type BatchProofOpts = TypeOf<typeof batchProofOptions>;
 
 const isOnChain = process.env.ONCHAIN === "true";
 const zkFairSDK = new SDK({
@@ -333,10 +341,90 @@ export async function getModel(options: GetModelOpts) {
 	if (
 		model.proofHash &&
 		model.proofHash !==
-			"0x0000000000000000000000000000000000000000000000000000000000000000"
+		"0x0000000000000000000000000000000000000000000000000000000000000000"
 	) {
 		console.log(`Proof Hash: ${model.proofHash}`);
 	}
 
 	return model;
+}
+
+// ============ Auditor helpers ============
+type BatchMeta = {
+	id: string;
+	startIndex: number;
+	endIndex: number;
+	count: number;
+	root: Hex;
+	leafAlgo: "SHA-256";
+	leafSchema: "MSGPACK";
+	createdAt: number;
+};
+function hexToBytes(hex: string): Uint8Array {
+	const clean = hex.startsWith("0x") ? hex.slice(2) : hex;
+	const out = new Uint8Array(clean.length / 2);
+	for (let i = 0; i < out.length; i++) out[i] = Number.parseInt(clean.slice(i * 2, i * 2 + 2), 16);
+	return out;
+}
+function f32(n: number): number {
+	const arr = new Float32Array(1);
+	arr[0] = n;
+	return arr[0];
+}
+function recordLeafPlainHex(rec: { queryId: string; modelId: number; inputHash: string; prediction: number; timestamp: number; }): string {
+	const tuple: unknown[] = [
+		"ZKFAIR:RECORD:V1",
+		rec.queryId,
+		rec.modelId,
+		hexToBytes(rec.inputHash as Hex),
+		f32(rec.prediction),
+		rec.timestamp,
+	];
+	const enc = encode(tuple);
+	const hash = Bun.sha(enc) as Uint8Array; // SHA-256
+	return [...hash].map((b) => b.toString(16).padStart(2, "0")).join("").toLowerCase();
+}
+
+export async function auditListBatches(opts: ListBatchesOpts) {
+	const url = `${opts.providerUrl.replace(/\/$/, "")}/audit/batches`;
+	const res = await fetch(url);
+	if (!res.ok) throw new Error(`Provider error: ${res.status} ${res.statusText}`);
+	const data = (await res.json()) as { batches: BatchMeta[] };
+	console.log(`\n📦 Batches (${data.batches.length}):`);
+	for (const b of data.batches) {
+		console.log(`- id=${b.id} root=${b.root} count=${b.count} createdAt=${new Date(b.createdAt).toISOString()}`);
+	}
+	return data.batches;
+}
+
+export async function auditGetBatch(opts: GetBatchOpts) {
+	const url = `${opts.providerUrl.replace(/\/$/, "")}/audit/batches/${opts.id}`;
+	const res = await fetch(url);
+	if (!res.ok) throw new Error(`Provider error: ${res.status} ${res.statusText}`);
+	const b = (await res.json()) as BatchMeta;
+	console.log(`\n🧾 Batch ${b.id}`);
+	console.log(JSON.stringify(b, null, 2));
+	return b;
+}
+
+export async function auditVerifyBatchMembership(opts: BatchProofOpts) {
+	const base = opts.providerUrl.replace(/\/$/, "");
+	// 1) Get proof
+	const proofRes = await fetch(`${base}/audit/batch-proof?batchId=${encodeURIComponent(opts.batchId)}&queryId=${encodeURIComponent(opts.queryId)}`);
+	if (!proofRes.ok) throw new Error(`Provider error: ${proofRes.status} ${proofRes.statusText}`);
+	const { root, proof } = (await proofRes.json()) as {
+		root: Hex; proof: { sibling: string; position: "left" | "right" }[];
+	};
+	// 2) Fetch record to compute leaf
+	const recRes = await fetch(`${base}/records/${encodeURIComponent(opts.queryId)}`);
+	if (!recRes.ok) throw new Error(`Provider error: ${recRes.status} ${recRes.statusText}`);
+	const rec = (await recRes.json()) as {
+		queryId: string; modelId: number; inputHash: Hex; prediction: number; timestamp: number;
+	};
+	const leaf = recordLeafPlainHex(rec);
+	// 3) Verify proof
+	const ok = await verifyMerkleProof(leaf, root, proof, "SHA-256");
+	console.log(`\n🔎 Membership verification for queryId=${opts.queryId} in batch=${opts.batchId}: ${ok ? "VALID" : "INVALID"}`);
+	if (!ok) process.exitCode = 1;
+	return ok;
 }
