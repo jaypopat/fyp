@@ -5,10 +5,12 @@
 	"private": true,
 	"exports": {
 		".": "./index.ts",
+		"./types": "./public-types.ts",
 		"./browser": "./browser.ts",
 		"./model": "./model.ts",
 		"./client": "./client.ts",
-		"./merkle": "./merkle.ts"
+		"./merkle": "./merkle.ts",
+		"./utils": "./utils.ts"
 	},
 	"devDependencies": {
 		"@types/bun": "^1.3.0",

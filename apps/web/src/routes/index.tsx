@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { cn } from "@/lib/utils";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
 	flexRender,
@@ -30,6 +29,7 @@ import {
 	type SDKModel,
 	type SDKModelRaw,
 } from "@/lib/sdk-types";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
 	loader: async () => {
@@ -146,8 +146,8 @@ function HomeComponent() {
 				cell: ({ row }) => {
 					const timestamp = row.getValue("registrationTimestamp") as number;
 					const date = new Date(timestamp * 1000);
-						return (
-							<div className={cn("text-sm", LABEL_EMPHASIS)}>
+					return (
+						<div className={cn("text-sm", LABEL_EMPHASIS)}>
 							{date.toLocaleDateString("en-US", {
 								month: "short",
 								day: "numeric",
@@ -206,9 +206,7 @@ function HomeComponent() {
 			<div className="mx-auto max-w-[1600px]">
 				{/* Header */}
 				<div className="mb-10">
-					<h1 className={HEADLINE}>
-						ZK AI Fairness Registry
-					</h1>
+					<h1 className={HEADLINE}>ZK AI Fairness Registry</h1>
 					<p className={SUBHEAD}>
 						Explore verified AI models and their fairness compliance status
 					</p>

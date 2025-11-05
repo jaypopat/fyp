@@ -12,21 +12,9 @@ export function getModelStatusBadge(status: number) {
 				</Badge>
 			);
 		case 1: // Verified
-			return (
-				<Badge
-					variant="default"
-				>
-					Verified
-				</Badge>
-			);
+			return <Badge variant="default">Verified</Badge>;
 		case 2: // Non-Compliant
-			return (
-				<Badge
-					variant="destructive"
-				>
-					Non-Compliant
-				</Badge>
-			);
+			return <Badge variant="destructive">Non-Compliant</Badge>;
 		default:
 			return (
 				<Badge variant="outline" className="text-foreground/60">

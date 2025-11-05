@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils";
 const CARD_HEADER_CLASSES =
 	"@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] border-b-2 border-border pb-6";
 
-const CARD_FOOTER_CLASSES = "flex items-center border-t-2 border-border px-6 pt-6";
+const CARD_FOOTER_CLASSES =
+	"flex items-center border-t-2 border-border px-6 pt-6";
 
 function Card({ className, ...props }: React.ComponentProps<"div">) {
 	return (

@@ -3,8 +3,10 @@ import type * as React from "react";
 import { cn } from "@/lib/utils";
 
 const TABLE_HEADER_CLASSES = "[&_tr]:border-b-2 [&_tr]:border-border";
-const TABLE_ROW_CLASSES = "border-b-2 border-border transition-colors hover:bg-main/5 data-[state=selected]:bg-main/10";
-const TABLE_CELL_CLASSES = "whitespace-nowrap py-4 px-3 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]";
+const TABLE_ROW_CLASSES =
+	"border-b-2 border-border transition-colors hover:bg-main/5 data-[state=selected]:bg-main/10";
+const TABLE_CELL_CLASSES =
+	"whitespace-nowrap py-4 px-3 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]";
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
 	return (

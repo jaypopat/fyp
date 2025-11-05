@@ -6,7 +6,8 @@ import type * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-const DROPDOWN_LABEL_CLASSES = "px-2 py-1.5 text-sm font-medium data-[inset]:pl-8";
+const DROPDOWN_LABEL_CLASSES =
+	"px-2 py-1.5 text-sm font-medium data-[inset]:pl-8";
 
 function DropdownMenu({
 	...props

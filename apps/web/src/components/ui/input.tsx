@@ -12,7 +12,12 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
 		<input
 			type={type}
 			data-slot="input"
-			className={cn(INPUT_CLASSES, INPUT_FOCUS_CLASSES, INPUT_INVALID_CLASSES, className)}
+			className={cn(
+				INPUT_CLASSES,
+				INPUT_FOCUS_CLASSES,
+				INPUT_INVALID_CLASSES,
+				className,
+			)}
 			{...props}
 		/>
 	);

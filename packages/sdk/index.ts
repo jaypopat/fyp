@@ -1,11 +1,10 @@
-import type { Hex } from "viem";
+import { AuditAPI } from "./audit";
 import { CommitAPI } from "./commit";
 import { ContractClient } from "./contract";
 import { EventsAPI } from "./events";
 import type { InferenceClient } from "./inference";
 import { ModelAPI } from "./model";
 import { ProofAPI } from "./proof";
-import { QueriesAPI } from "./queries";
 import type { ZkFairOptions } from "./types";
 import { VerifyAPI } from "./verify";
 
@@ -15,8 +14,8 @@ export class SDK {
 	public proof: ProofAPI;
 	public commit: CommitAPI;
 	public verify: VerifyAPI;
-	public queries: QueriesAPI;
 	public events: EventsAPI;
+	public audit: AuditAPI;
 	public inference: InferenceClient | undefined;
 
 	constructor(options: ZkFairOptions) {
@@ -26,7 +25,7 @@ export class SDK {
 		this.proof = new ProofAPI(this.contracts);
 		this.commit = new CommitAPI(this.contracts);
 		this.verify = new VerifyAPI(this.contracts);
-		this.queries = new QueriesAPI(this.contracts);
 		this.events = new EventsAPI(this.contracts);
+		this.audit = new AuditAPI(this.contracts);
 	}
 }

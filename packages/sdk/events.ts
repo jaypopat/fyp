@@ -1,50 +1,93 @@
-import type { GetEventArgs } from "viem";
 import type { ContractClient } from "./contract";
+import type { ExtractAllEventArgs } from "./types";
 
 type ZkFairAbi = typeof import("@zkfair/contracts/abi").zkFairAbi;
 
-export type ModelRegisteredEvent = GetEventArgs<ZkFairAbi, "ModelRegistered">;
-export type ModelVerifiedEvent = GetEventArgs<ZkFairAbi, "ModelVerified">;
-export type AuditRequestedEvent = GetEventArgs<ZkFairAbi, "AuditRequested">;
+// Export all event types with Required fields (non-optional)
+export type ModelRegisteredEvent = ExtractAllEventArgs<
+	ZkFairAbi,
+	"ModelRegistered"
+>;
+export type ModelCertifiedEvent = ExtractAllEventArgs<
+	ZkFairAbi,
+	"ModelCertified"
+>;
+export type BatchCommittedEvent = ExtractAllEventArgs<
+	ZkFairAbi,
+	"BatchCommitted"
+>;
+export type AuditRequestedEvent = ExtractAllEventArgs<
+	ZkFairAbi,
+	"AuditRequested"
+>;
+export type AuditProofSubmittedEvent = ExtractAllEventArgs<
+	ZkFairAbi,
+	"AuditProofSubmitted"
+>;
+export type AuditExpiredEvent = ExtractAllEventArgs<ZkFairAbi, "AuditExpired">;
+export type ProviderSlashedEvent = ExtractAllEventArgs<
+	ZkFairAbi,
+	"ProviderSlashed"
+>;
+export type StakeWithdrawnEvent = ExtractAllEventArgs<
+	ZkFairAbi,
+	"StakeWithdrawn"
+>;
 
+/**
+ * High-level events API
+ * Provides clean interface for watching and querying contract events
+ */
 export class EventsAPI {
 	constructor(private contracts: ContractClient) {}
 
-	/**
-	 * Watch for new model registrations
-	 * Returns unwatch function to stop listening
-	 */
 	watchModelRegistered(callback: (event: ModelRegisteredEvent) => void) {
 		return this.contracts.watchModelRegistered(callback);
 	}
 
-	/**
-	 * Watch for model verification results
-	 * Returns unwatch function to stop listening
-	 */
-	watchModelVerified(callback: (event: ModelVerifiedEvent) => void) {
-		return this.contracts.watchModelVerified(callback);
+	watchModelCertified(callback: (event: ModelCertifiedEvent) => void) {
+		return this.contracts.watchModelCertified(callback);
 	}
 
-	/**
-	 * Watch for audit requests (when contract supports it)
-	 * Returns unwatch function to stop listening
-	 */
+	watchBatchCommitted(callback: (event: BatchCommittedEvent) => void) {
+		return this.contracts.watchBatchCommitted(callback);
+	}
+
 	watchAuditRequested(callback: (event: AuditRequestedEvent) => void) {
-		return this.contracts.watchAuditRequested({} as any); // todo - add callback once event is added to smart contract
+		return this.contracts.watchAuditRequested(callback);
 	}
 
-	/**
-	 * Get historical ModelRegistered events
-	 */
+	watchAuditProofSubmitted(
+		callback: (event: AuditProofSubmittedEvent) => void,
+	) {
+		return this.contracts.watchAuditProofSubmitted(callback);
+	}
+
+	watchAuditExpired(callback: (event: AuditExpiredEvent) => void) {
+		return this.contracts.watchAuditExpired(callback);
+	}
+
+	watchProviderSlashed(callback: (event: ProviderSlashedEvent) => void) {
+		return this.contracts.watchProviderSlashed(callback);
+	}
+
+	watchStakeWithdrawn(callback: (event: StakeWithdrawnEvent) => void) {
+		return this.contracts.watchStakeWithdrawn(callback);
+	}
+
+	// ============================================
+	// HISTORICAL EVENT QUERIES
+	// ============================================
+
 	async getModelRegisteredHistory(fromBlock?: bigint, toBlock?: bigint) {
 		return this.contracts.getModelRegisteredEvents(fromBlock, toBlock);
 	}
 
-	/**
-	 * Get historical ModelVerified events
-	 */
-	async getModelVerifiedHistory(fromBlock?: bigint, toBlock?: bigint) {
-		return this.contracts.getModelVerifiedEvents(fromBlock, toBlock);
+	async getBatchCommittedHistory(fromBlock?: bigint, toBlock?: bigint) {
+		return this.contracts.getBatchCommittedEvents(fromBlock, toBlock);
+	}
+
+	async getAuditRequestedHistory(fromBlock?: bigint, toBlock?: bigint) {
+		return this.contracts.getAuditRequestedEvents(fromBlock, toBlock);
 	}
 }

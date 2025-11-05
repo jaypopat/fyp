@@ -43,26 +43,17 @@ export class CommitAPI {
 		// Attempt to register the model - if it already exists, provide a clear error
 		let hash: Hash;
 		try {
-			// TODO modify fn to take in threshold too
-			hash = await this.contracts.createModelAndCommit(
+			hash = await this.contracts.registerModel(
 				options.model.name,
 				options.model.description,
 				dataSetMerkleRoot,
 				weightsHash,
-				// fairnessThreshold
+				fairnessThreshold.targetDisparity,
 			);
 		} catch (err) {
-			// Check if this is the "model already exists" error from the contract
-			if (
-				err instanceof Error &&
-				err.message.includes("ZKFair__ModelAlreadyExists")
-			) {
-				throw new Error(
-					`Model with weights hash ${weightsHash} is already registered. Use a different model or check existing commitments.`,
-				);
-			}
-			// Re-throw any other error
-			throw err;
+			throw new Error(
+				`Failed to register model commitment: ${(err as Error).message}`,
+			);
 		}
 
 		// Store artifacts in ~/.zkfair/<weights-hash>/

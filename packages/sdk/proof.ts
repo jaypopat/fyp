@@ -55,14 +55,11 @@ export class ProofAPI {
 	}
 	async getStatus(weightsHash: Hash) {
 		try {
-			const status = await this.contracts.getProofStatus(weightsHash);
+			const status = (await this.contracts.getModelByHash(weightsHash)).status;
 			return status;
 		} catch (error) {
 			console.error("Error fetching proof status:", error);
 			throw new Error("Failed to retrieve proof status from contract");
 		}
-	}
-	async submitAuditProof(data: any) {
-		console.warn("Submitting audit proof is not yet implemented");
 	}
 }

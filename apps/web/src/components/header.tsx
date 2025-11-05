@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { config } from "@/config";
 import { ModeToggle } from "./mode-toggle";
 
-const HEADER_CLASSES = "border-b-2 border-border bg-secondary-background shadow-[var(--shadow)]";
+const HEADER_CLASSES =
+	"border-b-2 border-border bg-secondary-background shadow-[var(--shadow)]";
 
 export default function Header() {
 	const pathname = useRouterState({
@@ -16,7 +17,11 @@ export default function Header() {
 	return (
 		<header className={HEADER_CLASSES}>
 			<div className="flex h-14 w-full items-center justify-between px-4">
-				<Link to="/" className="flex items-center gap-3 font-semibold text-sm" aria-label="ZKFair home">
+				<Link
+					to="/"
+					className="flex items-center gap-3 font-semibold text-sm"
+					aria-label="ZKFair home"
+				>
 					<span className="rounded-[var(--radius-base)] border-2 border-border bg-main/10 px-2 py-1 text-main shadow-[var(--shadow)]">
 						ZKFair
 					</span>

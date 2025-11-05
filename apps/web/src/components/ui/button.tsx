@@ -10,37 +10,30 @@ const BASE_BUTTON_CLASSES =
 const LINK_BUTTON_CLASSES =
 	"text-main underline-offset-4 hover:underline border-0 shadow-none hover:translate-x-0 hover:translate-y-0";
 
-const buttonVariants = cva(
-	BASE_BUTTON_CLASSES,
-	{
-		variants: {
-			variant: {
-				default: "bg-main text-main-foreground",
-				destructive:
-					"bg-chart-2 text-white",
-				outline:
-					"bg-secondary-background text-foreground",
-				secondary:
-					"bg-background text-foreground",
-				ghost:
-					"bg-transparent text-foreground hover:bg-main/10",
-				plain:
-					"border-0 bg-transparent text-foreground shadow-none hover:bg-transparent",
-				link: LINK_BUTTON_CLASSES,
-			},
-			size: {
-				default: "h-9 px-4 py-2 has-[>svg]:px-3",
-				sm: "h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5",
-				lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
-				icon: "size-9",
-			},
+const buttonVariants = cva(BASE_BUTTON_CLASSES, {
+	variants: {
+		variant: {
+			default: "bg-main text-main-foreground",
+			destructive: "bg-chart-2 text-white",
+			outline: "bg-secondary-background text-foreground",
+			secondary: "bg-background text-foreground",
+			ghost: "bg-transparent text-foreground hover:bg-main/10",
+			plain:
+				"border-0 bg-transparent text-foreground shadow-none hover:bg-transparent",
+			link: LINK_BUTTON_CLASSES,
 		},
-		defaultVariants: {
-			variant: "default",
-			size: "default",
+		size: {
+			default: "h-9 px-4 py-2 has-[>svg]:px-3",
+			sm: "h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5",
+			lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
+			icon: "size-9",
 		},
 	},
-);
+	defaultVariants: {
+		variant: "default",
+		size: "default",
+	},
+});
 
 function Button({
 	className,
