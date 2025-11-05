@@ -92,7 +92,7 @@ function DevPage() {
 			const res = await fetch(`${baseUrl}/predict`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ modelId: predictModelId, input }),
+				body: JSON.stringify({ modelId: 1, input }),
 			});
 			const data = await res.json();
 			setPredictResult(data);

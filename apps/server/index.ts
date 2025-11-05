@@ -4,16 +4,12 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import * as ort from "onnxruntime-node";
-import {
-	createBatchIfNeeded,
-	initBatches,
-	toAuditRecord,
-} from "./lib/batching";
-import { appendRecord, getRecords, initDB } from "./lib/db";
+import { getQueries, initDatabase, insertQuery } from "./db";
+import { createBatchesIfNeeded, toAuditRecord } from "./lib/batch-service";
 import { ensureProviderKeys } from "./lib/keys";
 import { loadAllModels } from "./lib/models";
 import { sdk } from "./lib/sdk";
-import type { Hex, QueryLogRecord } from "./lib/types";
+import type { Hex } from "./lib/types";
 
 const app = new Hono();
 
@@ -24,9 +20,8 @@ app.use("*", logger());
 // Load all models on startup
 const models = await loadAllModels();
 
-// Init DB and provider keys
-await initDB();
-await initBatches();
+// Initialize database
+await initDatabase();
 
 const providerKeys = await ensureProviderKeys();
 const itmacProvider = new Provider(providerKeys);
@@ -40,7 +35,7 @@ sdk.events.watchAuditRequested(async (event) => {
 
 		const batchStartIndex = batchId * batchSize;
 
-		const records = await getRecords({
+		const records = await getQueries({
 			offset: batchStartIndex,
 			limit: batchSize,
 		});
@@ -103,7 +98,7 @@ app.post("/predict", async (c) => {
 	try {
 		const body = await c.req.json();
 		const { modelId, input, clientCommit, clientRand, queryId } = body as {
-			modelId: string | number;
+			modelId: number;
 			input: unknown;
 			clientCommit?: Hex;
 			clientRand?: Hex;
@@ -121,7 +116,7 @@ app.post("/predict", async (c) => {
 		}
 
 		// Get model
-		const session = models.get(String(modelId));
+		const session = models.get(modelId);
 		if (!session) {
 			return c.json({ error: `Model ${modelId} not found` }, 404);
 		}
@@ -198,23 +193,24 @@ app.post("/predict", async (c) => {
 
 		console.log(`🧠 Inference for model ${modelId}: ${prediction}`);
 
-		// Persist minimal query data only (batches/Merkle later)
-		const record: QueryLogRecord = {
+		// Store query in database
+		const seqNum = await insertQuery({
 			queryId: qid,
-			modelId: Number(modelId),
-			input: input as number[],
+			modelId: modelId,
+			inputHash,
 			prediction: Number(prediction),
 			timestamp: now,
-			inputHash,
-		};
-		await appendRecord(record);
+		});
+		console.log(`📝 Stored query ${qid} as sequence #${seqNum}`);
+
 		const batchSize = Number(process.env.BATCH_SIZE || 100);
-		await createBatchIfNeeded(batchSize);
+		await createBatchesIfNeeded(batchSize);
 
 		return c.json({
 			modelId,
 			prediction: Number(prediction),
 			timestamp: now,
+			seqNum,
 			inputHash,
 			queryId: qid,
 			itmac,
