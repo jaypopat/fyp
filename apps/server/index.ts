@@ -5,7 +5,7 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import * as ort from "onnxruntime-node";
 import { getQueries, initDatabase, insertQuery } from "./db";
-import { createBatchesIfNeeded, toAuditRecord } from "./lib/batch-service";
+import { createBatchIfNeeded, toAuditRecord } from "./lib/batch.service";
 import { ensureProviderKeys } from "./lib/keys";
 import { loadAllModels } from "./lib/models";
 import { sdk } from "./lib/sdk";
@@ -21,7 +21,7 @@ app.use("*", logger());
 const models = await loadAllModels();
 
 // Initialize database
-await initDatabase();
+initDatabase();
 
 const providerKeys = await ensureProviderKeys();
 const itmacProvider = new Provider(providerKeys);
@@ -147,19 +147,19 @@ app.post("/predict", async (c) => {
 		const qid = queryId ?? globalThis.crypto?.randomUUID?.() ?? `${now}`;
 		let itmac:
 			| {
-					providerRand: Hex;
+				providerRand: Hex;
+				coins: Hex;
+				transcript: {
+					queryId: string;
+					modelId: number;
+					inputHash: Hex;
+					prediction: number;
+					timestamp: number;
 					coins: Hex;
-					transcript: {
-						queryId: string;
-						modelId: number;
-						inputHash: Hex;
-						prediction: number;
-						timestamp: number;
-						coins: Hex;
-					};
-					bundle: { mac: Hex; providerSignature: Hex };
-					providerPublicKey: Hex;
-			  }
+				};
+				bundle: { mac: Hex; providerSignature: Hex };
+				providerPublicKey: Hex;
+			}
 			| undefined;
 		if (clientCommit && clientRand) {
 			try {
@@ -203,8 +203,7 @@ app.post("/predict", async (c) => {
 		});
 		console.log(`📝 Stored query ${qid} as sequence #${seqNum}`);
 
-		const batchSize = Number(process.env.BATCH_SIZE || 100);
-		await createBatchesIfNeeded(batchSize);
+		await createBatchIfNeeded();
 
 		return c.json({
 			modelId,

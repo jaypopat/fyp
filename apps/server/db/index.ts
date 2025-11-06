@@ -10,7 +10,7 @@ export {
 	getBatchBySequence,
 	getBatchCount,
 	updateBatchTxHash,
-} from "./batches";
+} from "./batch.repository";
 // Client
 export { db } from "./client";
 
