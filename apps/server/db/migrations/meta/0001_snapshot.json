@@ -1,0 +1,204 @@
+{
+	"version": "6",
+	"dialect": "sqlite",
+	"id": "229da067-c479-486c-99e7-4d37d3ae769e",
+	"prevId": "273009e1-d49e-4802-a923-e4e88a1f42c8",
+	"tables": {
+		"batches": {
+			"name": "batches",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"start_seq": {
+					"name": "start_seq",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"end_seq": {
+					"name": "end_seq",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"merkle_root": {
+					"name": "merkle_root",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"record_count": {
+					"name": "record_count",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"leaf_algo": {
+					"name": "leaf_algo",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": "'SHA-256'"
+				},
+				"leaf_schema": {
+					"name": "leaf_schema",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": "'MSGPACK'"
+				},
+				"tx_hash": {
+					"name": "tx_hash",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"committed_at": {
+					"name": "committed_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				}
+			},
+			"indexes": {},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"checkConstraints": {}
+		},
+		"query_logs": {
+			"name": "query_logs",
+			"columns": {
+				"seq": {
+					"name": "seq",
+					"type": "integer",
+					"primaryKey": true,
+					"notNull": true,
+					"autoincrement": true
+				},
+				"query_id": {
+					"name": "query_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"model_id": {
+					"name": "model_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"input_hash": {
+					"name": "input_hash",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"prediction": {
+					"name": "prediction",
+					"type": "real",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"timestamp": {
+					"name": "timestamp",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": "(unixepoch() * 1000)"
+				},
+				"batch_id": {
+					"name": "batch_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				}
+			},
+			"indexes": {
+				"query_logs_query_id_unique": {
+					"name": "query_logs_query_id_unique",
+					"columns": ["query_id"],
+					"isUnique": true
+				},
+				"idx_batch_id": {
+					"name": "idx_batch_id",
+					"columns": ["batch_id"],
+					"isUnique": false
+				},
+				"idx_model_id": {
+					"name": "idx_model_id",
+					"columns": ["model_id"],
+					"isUnique": false
+				},
+				"idx_timestamp": {
+					"name": "idx_timestamp",
+					"columns": ["timestamp"],
+					"isUnique": false
+				},
+				"idx_unbatched": {
+					"name": "idx_unbatched",
+					"columns": ["seq"],
+					"isUnique": false,
+					"where": "\"query_logs\".\"batch_id\" IS NULL"
+				}
+			},
+			"foreignKeys": {
+				"query_logs_batch_id_batches_id_fk": {
+					"name": "query_logs_batch_id_batches_id_fk",
+					"tableFrom": "query_logs",
+					"tableTo": "batches",
+					"columnsFrom": ["batch_id"],
+					"columnsTo": ["id"],
+					"onDelete": "no action",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"checkConstraints": {}
+		}
+	},
+	"views": {},
+	"enums": {},
+	"_meta": {
+		"schemas": {},
+		"tables": {},
+		"columns": {}
+	},
+	"internal": {
+		"indexes": {}
+	}
+}

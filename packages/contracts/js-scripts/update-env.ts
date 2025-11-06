@@ -51,6 +51,10 @@ async function main() {
 		network === "sepolia" ? "ONCHAIN_CONTRACT_ADDRESS" : "CONTRACT_ADDRESS";
 	updateEnvFile(cliEnvPath, cliKey, contractAddress);
 
+	// Update server .env
+	const serverEnvPath = join(import.meta.dir, "../../../apps/server/.env");
+	updateEnvFile(serverEnvPath, "CONTRACT_ADDRESS", contractAddress);
+
 	console.log(`\n🎉 ${network} contract address synced successfully!`);
 	console.log(`   Contract: ${contractAddress}`);
 }

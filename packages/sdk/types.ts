@@ -1,4 +1,8 @@
-import type { Hash, Hex } from "viem";
+/**
+ * Internal types for cross-file usage within SDK package
+ * External consumers should use "@zkfair/sdk/types" instead
+ */
+import type { GetEventArgs, Hash, Hex } from "viem";
 import type { Chain } from "viem/chains";
 
 export type ZkFairOptions = {
@@ -20,3 +24,12 @@ export type CommitOptions = {
 };
 export type hashAlgos = CommitOptions["schema"]["cryptoAlgo"];
 export type encodingSchemas = CommitOptions["schema"]["encodingSchema"];
+
+export type ExtractAllEventArgs<
+	TAbi extends readonly unknown[],
+	TEventName extends string,
+> = GetEventArgs<
+	TAbi,
+	TEventName,
+	{ EnableUnion: false; IndexedOnly: false; Required: true }
+>;

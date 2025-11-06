@@ -358,19 +358,137 @@ export const ownableAbi = [
 ] as const;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Pausable
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const pausableAbi = [
+	{
+		type: "function",
+		inputs: [],
+		name: "paused",
+		outputs: [{ name: "", internalType: "bool", type: "bool" }],
+		stateMutability: "view",
+	},
+	{
+		type: "event",
+		anonymous: false,
+		inputs: [
+			{
+				name: "account",
+				internalType: "address",
+				type: "address",
+				indexed: false,
+			},
+		],
+		name: "Paused",
+	},
+	{
+		type: "event",
+		anonymous: false,
+		inputs: [
+			{
+				name: "account",
+				internalType: "address",
+				type: "address",
+				indexed: false,
+			},
+		],
+		name: "Unpaused",
+	},
+	{ type: "error", inputs: [], name: "EnforcedPause" },
+	{ type: "error", inputs: [], name: "ExpectedPause" },
+] as const;
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ReentrancyGuard
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const reentrancyGuardAbi = [
+	{ type: "error", inputs: [], name: "ReentrancyGuardReentrantCall" },
+] as const;
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // ZKFair
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const zkFairAbi = [
 	{
 		type: "constructor",
-		inputs: [
+		inputs: [{ name: "_verifier", internalType: "address", type: "address" }],
+		stateMutability: "nonpayable",
+	},
+	{
+		type: "function",
+		inputs: [],
+		name: "AUDIT_RESPONSE_DEADLINE",
+		outputs: [{ name: "", internalType: "uint256", type: "uint256" }],
+		stateMutability: "view",
+	},
+	{
+		type: "function",
+		inputs: [],
+		name: "PROVIDER_STAKE",
+		outputs: [{ name: "", internalType: "uint256", type: "uint256" }],
+		stateMutability: "view",
+	},
+	{
+		type: "function",
+		inputs: [],
+		name: "REQUIRED_SAMPLES",
+		outputs: [{ name: "", internalType: "uint256", type: "uint256" }],
+		stateMutability: "view",
+	},
+	{
+		type: "function",
+		inputs: [{ name: "", internalType: "uint256", type: "uint256" }],
+		name: "audits",
+		outputs: [
+			{ name: "batchId", internalType: "uint256", type: "uint256" },
+			{ name: "requestedAt", internalType: "uint256", type: "uint256" },
+			{ name: "deadline", internalType: "uint256", type: "uint256" },
+			{ name: "challenger", internalType: "address", type: "address" },
+			{ name: "responded", internalType: "bool", type: "bool" },
 			{
-				name: "_verifier",
-				internalType: "contract IVerifier",
-				type: "address",
+				name: "status",
+				internalType: "enum ZKFair.AuditStatus",
+				type: "uint8",
 			},
+			{ name: "proofHash", internalType: "bytes32", type: "bytes32" },
 		],
+		stateMutability: "view",
+	},
+	{
+		type: "function",
+		inputs: [{ name: "", internalType: "uint256", type: "uint256" }],
+		name: "batches",
+		outputs: [
+			{ name: "modelId", internalType: "uint256", type: "uint256" },
+			{ name: "merkleRoot", internalType: "bytes32", type: "bytes32" },
+			{ name: "queryCount", internalType: "uint256", type: "uint256" },
+			{ name: "timestampStart", internalType: "uint256", type: "uint256" },
+			{ name: "timestampEnd", internalType: "uint256", type: "uint256" },
+			{ name: "committedAt", internalType: "uint256", type: "uint256" },
+			{ name: "audited", internalType: "bool", type: "bool" },
+			{
+				name: "auditStatus",
+				internalType: "enum ZKFair.AuditStatus",
+				type: "uint8",
+			},
+			{ name: "activeAuditId", internalType: "uint256", type: "uint256" },
+		],
+		stateMutability: "view",
+	},
+	{
+		type: "function",
+		inputs: [
+			{ name: "modelId", internalType: "uint256", type: "uint256" },
+			{ name: "merkleRoot", internalType: "bytes32", type: "bytes32" },
+			{ name: "queryCount", internalType: "uint256", type: "uint256" },
+			{ name: "timestampStart", internalType: "uint256", type: "uint256" },
+			{ name: "timestampEnd", internalType: "uint256", type: "uint256" },
+		],
+		name: "commitBatch",
+		outputs: [{ name: "batchId", internalType: "uint256", type: "uint256" }],
 		stateMutability: "nonpayable",
 	},
 	{
@@ -379,35 +497,96 @@ export const zkFairAbi = [
 		name: "getAllModels",
 		outputs: [
 			{
-				name: "models",
+				name: "_models",
 				internalType: "struct ZKFair.Model[]",
 				type: "tuple[]",
 				components: [
 					{ name: "name", internalType: "string", type: "string" },
-					{ name: "author", internalType: "address", type: "address" },
+					{ name: "provider", internalType: "address", type: "address" },
 					{ name: "description", internalType: "string", type: "string" },
+					{ name: "weightsHash", internalType: "bytes32", type: "bytes32" },
 					{
 						name: "datasetMerkleRoot",
 						internalType: "bytes32",
 						type: "bytes32",
 					},
-					{ name: "weightsHash", internalType: "bytes32", type: "bytes32" },
+					{
+						name: "fairnessThreshold",
+						internalType: "uint256",
+						type: "uint256",
+					},
 					{
 						name: "status",
 						internalType: "enum ZKFair.ModelStatus",
 						type: "uint8",
 					},
+					{ name: "stake", internalType: "uint256", type: "uint256" },
+					{ name: "registeredAt", internalType: "uint256", type: "uint256" },
+					{ name: "verifiedAt", internalType: "uint256", type: "uint256" },
 					{
-						name: "registrationTimestamp",
-						internalType: "uint256",
-						type: "uint256",
+						name: "certificationProofHash",
+						internalType: "bytes32",
+						type: "bytes32",
 					},
+				],
+			},
+		],
+		stateMutability: "view",
+	},
+	{
+		type: "function",
+		inputs: [{ name: "auditId", internalType: "uint256", type: "uint256" }],
+		name: "getAudit",
+		outputs: [
+			{
+				name: "",
+				internalType: "struct ZKFair.Audit",
+				type: "tuple",
+				components: [
+					{ name: "batchId", internalType: "uint256", type: "uint256" },
 					{
-						name: "verificationTimestamp",
-						internalType: "uint256",
-						type: "uint256",
+						name: "sampleIndices",
+						internalType: "uint256[]",
+						type: "uint256[]",
+					},
+					{ name: "requestedAt", internalType: "uint256", type: "uint256" },
+					{ name: "deadline", internalType: "uint256", type: "uint256" },
+					{ name: "challenger", internalType: "address", type: "address" },
+					{ name: "responded", internalType: "bool", type: "bool" },
+					{
+						name: "status",
+						internalType: "enum ZKFair.AuditStatus",
+						type: "uint8",
 					},
 					{ name: "proofHash", internalType: "bytes32", type: "bytes32" },
+				],
+			},
+		],
+		stateMutability: "view",
+	},
+	{
+		type: "function",
+		inputs: [{ name: "batchId", internalType: "uint256", type: "uint256" }],
+		name: "getBatch",
+		outputs: [
+			{
+				name: "",
+				internalType: "struct ZKFair.Batch",
+				type: "tuple",
+				components: [
+					{ name: "modelId", internalType: "uint256", type: "uint256" },
+					{ name: "merkleRoot", internalType: "bytes32", type: "bytes32" },
+					{ name: "queryCount", internalType: "uint256", type: "uint256" },
+					{ name: "timestampStart", internalType: "uint256", type: "uint256" },
+					{ name: "timestampEnd", internalType: "uint256", type: "uint256" },
+					{ name: "committedAt", internalType: "uint256", type: "uint256" },
+					{ name: "audited", internalType: "bool", type: "bool" },
+					{
+						name: "auditStatus",
+						internalType: "enum ZKFair.AuditStatus",
+						type: "uint8",
+					},
+					{ name: "activeAuditId", internalType: "uint256", type: "uint256" },
 				],
 			},
 		],
@@ -416,101 +595,120 @@ export const zkFairAbi = [
 	{
 		type: "function",
 		inputs: [{ name: "modelId", internalType: "uint256", type: "uint256" }],
-		name: "getModel",
-		outputs: [
-			{
-				name: "model",
-				internalType: "struct ZKFair.Model",
-				type: "tuple",
-				components: [
-					{ name: "name", internalType: "string", type: "string" },
-					{ name: "author", internalType: "address", type: "address" },
-					{ name: "description", internalType: "string", type: "string" },
-					{
-						name: "datasetMerkleRoot",
-						internalType: "bytes32",
-						type: "bytes32",
-					},
-					{ name: "weightsHash", internalType: "bytes32", type: "bytes32" },
-					{
-						name: "status",
-						internalType: "enum ZKFair.ModelStatus",
-						type: "uint8",
-					},
-					{
-						name: "registrationTimestamp",
-						internalType: "uint256",
-						type: "uint256",
-					},
-					{
-						name: "verificationTimestamp",
-						internalType: "uint256",
-						type: "uint256",
-					},
-					{ name: "proofHash", internalType: "bytes32", type: "bytes32" },
-				],
-			},
-		],
-		stateMutability: "view",
-	},
-	{
-		type: "function",
-		inputs: [{ name: "weightsHash", internalType: "bytes32", type: "bytes32" }],
-		name: "getModelByHash",
-		outputs: [
-			{
-				name: "model",
-				internalType: "struct ZKFair.Model",
-				type: "tuple",
-				components: [
-					{ name: "name", internalType: "string", type: "string" },
-					{ name: "author", internalType: "address", type: "address" },
-					{ name: "description", internalType: "string", type: "string" },
-					{
-						name: "datasetMerkleRoot",
-						internalType: "bytes32",
-						type: "bytes32",
-					},
-					{ name: "weightsHash", internalType: "bytes32", type: "bytes32" },
-					{
-						name: "status",
-						internalType: "enum ZKFair.ModelStatus",
-						type: "uint8",
-					},
-					{
-						name: "registrationTimestamp",
-						internalType: "uint256",
-						type: "uint256",
-					},
-					{
-						name: "verificationTimestamp",
-						internalType: "uint256",
-						type: "uint256",
-					},
-					{ name: "proofHash", internalType: "bytes32", type: "bytes32" },
-				],
-			},
-		],
-		stateMutability: "view",
-	},
-	{
-		type: "function",
-		inputs: [{ name: "author", internalType: "address", type: "address" }],
-		name: "getModelsByAuthor",
+		name: "getBatchesByModel",
 		outputs: [{ name: "", internalType: "uint256[]", type: "uint256[]" }],
 		stateMutability: "view",
 	},
 	{
 		type: "function",
-		inputs: [{ name: "weightsHash", internalType: "bytes32", type: "bytes32" }],
-		name: "getProofStatusByWeightsHash",
+		inputs: [{ name: "modelId", internalType: "uint256", type: "uint256" }],
+		name: "getModel",
 		outputs: [
 			{
-				name: "status",
-				internalType: "enum ZKFair.ModelStatus",
-				type: "uint8",
+				name: "",
+				internalType: "struct ZKFair.Model",
+				type: "tuple",
+				components: [
+					{ name: "name", internalType: "string", type: "string" },
+					{ name: "provider", internalType: "address", type: "address" },
+					{ name: "description", internalType: "string", type: "string" },
+					{ name: "weightsHash", internalType: "bytes32", type: "bytes32" },
+					{
+						name: "datasetMerkleRoot",
+						internalType: "bytes32",
+						type: "bytes32",
+					},
+					{
+						name: "fairnessThreshold",
+						internalType: "uint256",
+						type: "uint256",
+					},
+					{
+						name: "status",
+						internalType: "enum ZKFair.ModelStatus",
+						type: "uint8",
+					},
+					{ name: "stake", internalType: "uint256", type: "uint256" },
+					{ name: "registeredAt", internalType: "uint256", type: "uint256" },
+					{ name: "verifiedAt", internalType: "uint256", type: "uint256" },
+					{
+						name: "certificationProofHash",
+						internalType: "bytes32",
+						type: "bytes32",
+					},
+				],
 			},
 		],
+		stateMutability: "view",
+	},
+	{
+		type: "function",
+		inputs: [{ name: "weightsHash", internalType: "bytes32", type: "bytes32" }],
+		name: "getModelByWeightsHash",
+		outputs: [
+			{
+				name: "model",
+				internalType: "struct ZKFair.Model",
+				type: "tuple",
+				components: [
+					{ name: "name", internalType: "string", type: "string" },
+					{ name: "provider", internalType: "address", type: "address" },
+					{ name: "description", internalType: "string", type: "string" },
+					{ name: "weightsHash", internalType: "bytes32", type: "bytes32" },
+					{
+						name: "datasetMerkleRoot",
+						internalType: "bytes32",
+						type: "bytes32",
+					},
+					{
+						name: "fairnessThreshold",
+						internalType: "uint256",
+						type: "uint256",
+					},
+					{
+						name: "status",
+						internalType: "enum ZKFair.ModelStatus",
+						type: "uint8",
+					},
+					{ name: "stake", internalType: "uint256", type: "uint256" },
+					{ name: "registeredAt", internalType: "uint256", type: "uint256" },
+					{ name: "verifiedAt", internalType: "uint256", type: "uint256" },
+					{
+						name: "certificationProofHash",
+						internalType: "bytes32",
+						type: "bytes32",
+					},
+				],
+			},
+		],
+		stateMutability: "view",
+	},
+	{
+		type: "function",
+		inputs: [{ name: "weightsHash", internalType: "bytes32", type: "bytes32" }],
+		name: "getModelIdByWeightsHash",
+		outputs: [{ name: "", internalType: "uint256", type: "uint256" }],
+		stateMutability: "view",
+	},
+	{
+		type: "function",
+		inputs: [{ name: "provider", internalType: "address", type: "address" }],
+		name: "getModelsByProvider",
+		outputs: [{ name: "", internalType: "uint256[]", type: "uint256[]" }],
+		stateMutability: "view",
+	},
+	{
+		type: "function",
+		inputs: [],
+		name: "getTotalAudits",
+		outputs: [{ name: "", internalType: "uint256", type: "uint256" }],
+		stateMutability: "view",
+	},
+	{
+		type: "function",
+		inputs: [],
+		name: "getTotalBatches",
+		outputs: [{ name: "", internalType: "uint256", type: "uint256" }],
 		stateMutability: "view",
 	},
 	{
@@ -522,6 +720,33 @@ export const zkFairAbi = [
 	},
 	{
 		type: "function",
+		inputs: [{ name: "", internalType: "uint256", type: "uint256" }],
+		name: "models",
+		outputs: [
+			{ name: "name", internalType: "string", type: "string" },
+			{ name: "provider", internalType: "address", type: "address" },
+			{ name: "description", internalType: "string", type: "string" },
+			{ name: "weightsHash", internalType: "bytes32", type: "bytes32" },
+			{ name: "datasetMerkleRoot", internalType: "bytes32", type: "bytes32" },
+			{ name: "fairnessThreshold", internalType: "uint256", type: "uint256" },
+			{
+				name: "status",
+				internalType: "enum ZKFair.ModelStatus",
+				type: "uint8",
+			},
+			{ name: "stake", internalType: "uint256", type: "uint256" },
+			{ name: "registeredAt", internalType: "uint256", type: "uint256" },
+			{ name: "verifiedAt", internalType: "uint256", type: "uint256" },
+			{
+				name: "certificationProofHash",
+				internalType: "bytes32",
+				type: "bytes32",
+			},
+		],
+		stateMutability: "view",
+	},
+	{
+		type: "function",
 		inputs: [],
 		name: "owner",
 		outputs: [{ name: "", internalType: "address", type: "address" }],
@@ -529,15 +754,30 @@ export const zkFairAbi = [
 	},
 	{
 		type: "function",
+		inputs: [],
+		name: "pause",
+		outputs: [],
+		stateMutability: "nonpayable",
+	},
+	{
+		type: "function",
+		inputs: [],
+		name: "paused",
+		outputs: [{ name: "", internalType: "bool", type: "bool" }],
+		stateMutability: "view",
+	},
+	{
+		type: "function",
 		inputs: [
 			{ name: "name", internalType: "string", type: "string" },
 			{ name: "description", internalType: "string", type: "string" },
-			{ name: "datasetMerkleRoot", internalType: "bytes32", type: "bytes32" },
 			{ name: "weightsHash", internalType: "bytes32", type: "bytes32" },
+			{ name: "datasetMerkleRoot", internalType: "bytes32", type: "bytes32" },
+			{ name: "fairnessThreshold", internalType: "uint256", type: "uint256" },
 		],
 		name: "registerModel",
 		outputs: [{ name: "modelId", internalType: "uint256", type: "uint256" }],
-		stateMutability: "nonpayable",
+		stateMutability: "payable",
 	},
 	{
 		type: "function",
@@ -548,23 +788,44 @@ export const zkFairAbi = [
 	},
 	{
 		type: "function",
-		inputs: [],
-		name: "s_verifier",
-		outputs: [
-			{ name: "", internalType: "contract IVerifier", type: "address" },
-		],
-		stateMutability: "view",
+		inputs: [{ name: "batchId", internalType: "uint256", type: "uint256" }],
+		name: "requestAudit",
+		outputs: [{ name: "auditId", internalType: "uint256", type: "uint256" }],
+		stateMutability: "nonpayable",
+	},
+	{
+		type: "function",
+		inputs: [{ name: "newVerifier", internalType: "address", type: "address" }],
+		name: "setVerifier",
+		outputs: [],
+		stateMutability: "nonpayable",
+	},
+	{
+		type: "function",
+		inputs: [{ name: "auditId", internalType: "uint256", type: "uint256" }],
+		name: "slashExpiredAudit",
+		outputs: [],
+		stateMutability: "nonpayable",
 	},
 	{
 		type: "function",
 		inputs: [
-			{
-				name: "newVerifier",
-				internalType: "contract IVerifier",
-				type: "address",
-			},
+			{ name: "auditId", internalType: "uint256", type: "uint256" },
+			{ name: "proof", internalType: "bytes", type: "bytes" },
+			{ name: "publicInputs", internalType: "bytes32[]", type: "bytes32[]" },
 		],
-		name: "setVerifier",
+		name: "submitAuditProof",
+		outputs: [],
+		stateMutability: "nonpayable",
+	},
+	{
+		type: "function",
+		inputs: [
+			{ name: "modelId", internalType: "uint256", type: "uint256" },
+			{ name: "proof", internalType: "bytes", type: "bytes" },
+			{ name: "publicInputs", internalType: "bytes32[]", type: "bytes32[]" },
+		],
+		name: "submitCertificationProof",
 		outputs: [],
 		stateMutability: "nonpayable",
 	},
@@ -577,13 +838,25 @@ export const zkFairAbi = [
 	},
 	{
 		type: "function",
-		inputs: [
-			{ name: "weightsHash", internalType: "bytes32", type: "bytes32" },
-			{ name: "proof", internalType: "bytes", type: "bytes" },
-			{ name: "publicInputs", internalType: "bytes32[]", type: "bytes32[]" },
+		inputs: [],
+		name: "unpause",
+		outputs: [],
+		stateMutability: "nonpayable",
+	},
+	{
+		type: "function",
+		inputs: [],
+		name: "verifier",
+		outputs: [
+			{ name: "", internalType: "contract IVerifier", type: "address" },
 		],
-		name: "verifyModel",
-		outputs: [{ name: "", internalType: "bool", type: "bool" }],
+		stateMutability: "view",
+	},
+	{
+		type: "function",
+		inputs: [{ name: "modelId", internalType: "uint256", type: "uint256" }],
+		name: "withdrawStake",
+		outputs: [],
 		stateMutability: "nonpayable",
 	},
 	{
@@ -591,32 +864,101 @@ export const zkFairAbi = [
 		anonymous: false,
 		inputs: [
 			{
+				name: "auditId",
+				internalType: "uint256",
+				type: "uint256",
+				indexed: true,
+			},
+			{
+				name: "batchId",
+				internalType: "uint256",
+				type: "uint256",
+				indexed: true,
+			},
+			{
+				name: "slasher",
+				internalType: "address",
+				type: "address",
+				indexed: true,
+			},
+		],
+		name: "AuditExpired",
+	},
+	{
+		type: "event",
+		anonymous: false,
+		inputs: [
+			{
+				name: "auditId",
+				internalType: "uint256",
+				type: "uint256",
+				indexed: true,
+			},
+			{ name: "passed", internalType: "bool", type: "bool", indexed: false },
+		],
+		name: "AuditProofSubmitted",
+	},
+	{
+		type: "event",
+		anonymous: false,
+		inputs: [
+			{
+				name: "auditId",
+				internalType: "uint256",
+				type: "uint256",
+				indexed: true,
+			},
+			{
+				name: "batchId",
+				internalType: "uint256",
+				type: "uint256",
+				indexed: true,
+			},
+			{
+				name: "sampleIndices",
+				internalType: "uint256[]",
+				type: "uint256[]",
+				indexed: false,
+			},
+			{
+				name: "deadline",
+				internalType: "uint256",
+				type: "uint256",
+				indexed: false,
+			},
+		],
+		name: "AuditRequested",
+	},
+	{
+		type: "event",
+		anonymous: false,
+		inputs: [
+			{
+				name: "batchId",
+				internalType: "uint256",
+				type: "uint256",
+				indexed: true,
+			},
+			{
 				name: "modelId",
 				internalType: "uint256",
 				type: "uint256",
 				indexed: true,
 			},
 			{
-				name: "author",
-				internalType: "address",
-				type: "address",
-				indexed: true,
-			},
-			{ name: "name", internalType: "string", type: "string", indexed: false },
-			{
-				name: "datasetMerkleRoot",
+				name: "merkleRoot",
 				internalType: "bytes32",
 				type: "bytes32",
 				indexed: false,
 			},
 			{
-				name: "weightsHash",
-				internalType: "bytes32",
-				type: "bytes32",
+				name: "queryCount",
+				internalType: "uint256",
+				type: "uint256",
 				indexed: false,
 			},
 		],
-		name: "ModelRegistered",
+		name: "BatchCommitted",
 	},
 	{
 		type: "event",
@@ -628,7 +970,6 @@ export const zkFairAbi = [
 				type: "uint256",
 				indexed: true,
 			},
-			{ name: "passed", internalType: "bool", type: "bool", indexed: false },
 			{
 				name: "proofHash",
 				internalType: "bytes32",
@@ -636,7 +977,38 @@ export const zkFairAbi = [
 				indexed: false,
 			},
 		],
-		name: "ModelVerified",
+		name: "ModelCertified",
+	},
+	{
+		type: "event",
+		anonymous: false,
+		inputs: [
+			{
+				name: "modelId",
+				internalType: "uint256",
+				type: "uint256",
+				indexed: true,
+			},
+			{
+				name: "provider",
+				internalType: "address",
+				type: "address",
+				indexed: true,
+			},
+			{
+				name: "weightsHash",
+				internalType: "bytes32",
+				type: "bytes32",
+				indexed: false,
+			},
+			{
+				name: "fairnessThreshold",
+				internalType: "uint256",
+				type: "uint256",
+				indexed: false,
+			},
+		],
+		name: "ModelRegistered",
 	},
 	{
 		type: "event",
@@ -658,6 +1030,124 @@ export const zkFairAbi = [
 		name: "OwnershipTransferred",
 	},
 	{
+		type: "event",
+		anonymous: false,
+		inputs: [
+			{
+				name: "account",
+				internalType: "address",
+				type: "address",
+				indexed: false,
+			},
+		],
+		name: "Paused",
+	},
+	{
+		type: "event",
+		anonymous: false,
+		inputs: [
+			{
+				name: "modelId",
+				internalType: "uint256",
+				type: "uint256",
+				indexed: true,
+			},
+			{
+				name: "provider",
+				internalType: "address",
+				type: "address",
+				indexed: true,
+			},
+			{
+				name: "amount",
+				internalType: "uint256",
+				type: "uint256",
+				indexed: false,
+			},
+			{
+				name: "reason",
+				internalType: "string",
+				type: "string",
+				indexed: false,
+			},
+		],
+		name: "ProviderSlashed",
+	},
+	{
+		type: "event",
+		anonymous: false,
+		inputs: [
+			{
+				name: "modelId",
+				internalType: "uint256",
+				type: "uint256",
+				indexed: true,
+			},
+			{
+				name: "provider",
+				internalType: "address",
+				type: "address",
+				indexed: true,
+			},
+			{
+				name: "amount",
+				internalType: "uint256",
+				type: "uint256",
+				indexed: false,
+			},
+		],
+		name: "StakeWithdrawn",
+	},
+	{
+		type: "event",
+		anonymous: false,
+		inputs: [
+			{
+				name: "account",
+				internalType: "address",
+				type: "address",
+				indexed: false,
+			},
+		],
+		name: "Unpaused",
+	},
+	{
+		type: "event",
+		anonymous: false,
+		inputs: [
+			{
+				name: "oldVerifier",
+				internalType: "address",
+				type: "address",
+				indexed: true,
+			},
+			{
+				name: "newVerifier",
+				internalType: "address",
+				type: "address",
+				indexed: true,
+			},
+		],
+		name: "VerifierUpdated",
+	},
+	{ type: "error", inputs: [], name: "ActiveAuditExists" },
+	{ type: "error", inputs: [], name: "AlreadyAudited" },
+	{ type: "error", inputs: [], name: "AlreadyResponded" },
+	{ type: "error", inputs: [], name: "AuditNotFound" },
+	{ type: "error", inputs: [], name: "BatchNotFound" },
+	{ type: "error", inputs: [], name: "DeadlineNotPassed" },
+	{ type: "error", inputs: [], name: "DeadlinePassed" },
+	{ type: "error", inputs: [], name: "EnforcedPause" },
+	{ type: "error", inputs: [], name: "ExpectedPause" },
+	{ type: "error", inputs: [], name: "HasPendingAudits" },
+	{ type: "error", inputs: [], name: "InsufficientStake" },
+	{ type: "error", inputs: [], name: "InvalidInput" },
+	{ type: "error", inputs: [], name: "InvalidModelStatus" },
+	{ type: "error", inputs: [], name: "InvalidProof" },
+	{ type: "error", inputs: [], name: "ModelAlreadyExists" },
+	{ type: "error", inputs: [], name: "ModelNotFound" },
+	{ type: "error", inputs: [], name: "NoStakeToWithdraw" },
+	{
 		type: "error",
 		inputs: [{ name: "owner", internalType: "address", type: "address" }],
 		name: "OwnableInvalidOwner",
@@ -667,9 +1157,7 @@ export const zkFairAbi = [
 		inputs: [{ name: "account", internalType: "address", type: "address" }],
 		name: "OwnableUnauthorizedAccount",
 	},
-	{ type: "error", inputs: [], name: "ZKFair__InvalidInput" },
-	{ type: "error", inputs: [], name: "ZKFair__InvalidProof" },
-	{ type: "error", inputs: [], name: "ZKFair__ModelAlreadyExists" },
-	{ type: "error", inputs: [], name: "ZKFair__ModelNotFound" },
-	{ type: "error", inputs: [], name: "ZKFair__UnauthorizedAccess" },
+	{ type: "error", inputs: [], name: "ReentrancyGuardReentrantCall" },
+	{ type: "error", inputs: [], name: "TransferFailed" },
+	{ type: "error", inputs: [], name: "UnauthorizedAccess" },
 ] as const;

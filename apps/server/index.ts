@@ -1,16 +1,16 @@
 import { encode } from "@msgpack/msgpack";
 import { Provider } from "@zkfair/itmac";
-import { SDK } from "@zkfair/sdk";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import * as ort from "onnxruntime-node";
-import { appendRecord, initDB, type QueryLogRecord } from "./lib/db";
-import { makeItmacBundle, verifyClientCommitment } from "./lib/itmac";
+import { getQueries, initDatabase, insertQuery } from "./db";
+import { createBatchIfNeeded, toAuditRecord } from "./lib/batch.service";
 import { ensureProviderKeys } from "./lib/keys";
 import { loadAllModels } from "./lib/models";
+import { sdk } from "./lib/sdk";
+import type { Hex } from "./lib/types";
 
-type Hex = `0x${string}`;
 const app = new Hono();
 
 // Middleware
@@ -20,28 +20,60 @@ app.use("*", logger());
 // Load all models on startup
 const models = await loadAllModels();
 
-// Init DB and provider keys
-await initDB();
+// Initialize database
+initDatabase();
+
 const providerKeys = await ensureProviderKeys();
 const itmacProvider = new Provider(providerKeys);
 
-const sdk = new SDK({
-	contractAddress: process.env.CONTRACT_ADDRESS as Hex,
-	privateKey: process.env.PRIVATE_KEY as Hex,
-	rpcUrl: process.env.RPC_URL || "http://localhost:8545",
-});
-
-// Watch for audit requests - this is the only event the provider needs to respond to
+// Start listening for audit requests from contract
 sdk.events.watchAuditRequested(async (event) => {
 	console.log("🔍 Audit requested:", event);
-	// TODO: Implement audit response logic
-	// 1. Get queries from db.json for the time range
-	// 2. Build Merkle tree
-	// 3. Generate fairness proof
-	// 4. Submit proof on-chain via sdk.proof.submitAuditProof()
-});
+	try {
+		const batchId = Number(event.batchId);
+		const batchSize = Number(process.env.BATCH_SIZE || 100);
 
-console.log("✅ Contract event listeners initialized (watching for audits)");
+		const batchStartIndex = batchId * batchSize;
+
+		const records = await getQueries({
+			offset: batchStartIndex,
+			limit: batchSize,
+		});
+
+		if (records.length === 0) {
+			throw new Error(
+				`No records found for batch at offset ${batchStartIndex}`,
+			);
+		}
+
+		console.log(`Loaded ${records.length} records from database`);
+
+		// 2. Convert to AuditRecord format for SDK
+		const auditRecords = records.map(toAuditRecord);
+
+		// 3. Build Merkle tree for the batch
+		const { root } = await sdk.audit.buildBatch(auditRecords);
+		console.log(`Built Merkle tree with root ${root}`);
+
+		const dummyProof = `0x${"00".repeat(256)}`;
+		const publicInputs: string[] = [];
+
+		console.log("✓ Generated fairness ZK proof (TODO: implement circuit)");
+
+		// 5. Submit proof on-chain
+		console.log("🔗 Submitting proof to contract...");
+		const _txHash = await sdk.audit.submitAuditProof(
+			event.auditId,
+			dummyProof as `0x${string}`,
+			publicInputs as `0x${string}`[],
+		);
+	} catch (error) {
+		console.error("Audit response failed:", error);
+	}
+});
+// ============================================
+// ENDPOINTS
+// ============================================
 
 app.get("/health", (c) => {
 	return c.json({
@@ -51,14 +83,22 @@ app.get("/health", (c) => {
 	});
 });
 
+app.get("/models", (c) => {
+	return c.json({
+		models: Array.from(models.keys()).map((id) => ({
+			modelId: id,
+		})),
+	});
+});
+
 /**
- * Inference endpoint
+ * Inference endpoint with IT-MAC authentication
  */
 app.post("/predict", async (c) => {
 	try {
 		const body = await c.req.json();
 		const { modelId, input, clientCommit, clientRand, queryId } = body as {
-			modelId: string | number;
+			modelId: number;
 			input: unknown;
 			clientCommit?: Hex;
 			clientRand?: Hex;
@@ -76,7 +116,7 @@ app.post("/predict", async (c) => {
 		}
 
 		// Get model
-		const session = models.get(String(modelId));
+		const session = models.get(modelId);
 		if (!session) {
 			return c.json({ error: `Model ${modelId} not found` }, 404);
 		}
@@ -122,47 +162,54 @@ app.post("/predict", async (c) => {
 			  }
 			| undefined;
 		if (clientCommit && clientRand) {
-			// Ensure clientRand matches commitment
-			if (!verifyClientCommitment(clientCommit as Hex, clientRand as Hex)) {
-				return c.json({ error: "Invalid commitment" }, 400);
+			try {
+				// Use clean plug-and-play ITMAC API
+				const { flip, transcript, bundle } =
+					itmacProvider.createAuthenticatedTranscript({
+						clientCommit: clientCommit as Hex,
+						clientRand: clientRand as Hex,
+						queryId: qid,
+						modelId: Number(modelId),
+						inputHash,
+						prediction: Number(prediction),
+						timestamp: now,
+					});
+
+				itmac = {
+					providerRand: flip.providerRand,
+					coins: flip.coins,
+					transcript,
+					bundle,
+					providerPublicKey: providerKeys.publicKey,
+				};
+			} catch (error) {
+				// Invalid commitment or ITMAC error
+				return c.json(
+					{ error: (error as Error).message || "ITMAC verification failed" },
+					400,
+				);
 			}
-			const { flip, transcript, bundle } = makeItmacBundle({
-				provider: itmacProvider,
-				clientCommit: clientCommit as Hex,
-				clientRand: clientRand as Hex,
-				transcript: {
-					queryId: qid,
-					modelId: Number(modelId),
-					inputHash,
-					prediction: Number(prediction),
-					timestamp: now,
-				},
-			});
-			itmac = {
-				providerRand: flip.providerRand,
-				coins: flip.coins,
-				transcript,
-				bundle,
-				providerPublicKey: providerKeys.publicKey,
-			};
 		}
 
 		console.log(`🧠 Inference for model ${modelId}: ${prediction}`);
 
-		// Persist minimal query data only (batches/Merkle later)
-		const record: QueryLogRecord = {
+		// Store query in database
+		const seqNum = await insertQuery({
 			queryId: qid,
-			modelId: Number(modelId),
-			input: input as number[],
+			modelId: modelId,
+			inputHash,
 			prediction: Number(prediction),
 			timestamp: now,
-		};
-		await appendRecord(record);
+		});
+		console.log(`📝 Stored query ${qid} as sequence #${seqNum}`);
+
+		await createBatchIfNeeded();
 
 		return c.json({
 			modelId,
 			prediction: Number(prediction),
 			timestamp: now,
+			seqNum,
 			inputHash,
 			queryId: qid,
 			itmac,
@@ -178,20 +225,13 @@ app.post("/predict", async (c) => {
 	}
 });
 
-app.get("/models", (c) => {
-	return c.json({
-		models: Array.from(models.keys()).map((id) => ({
-			modelId: id,
-		})),
-	});
-});
+// ============================================
+// SERVER STARTUP
+// ============================================
 
-// No auditor endpoints for now; batches with Merkle will be added later
-
-// Start server
 const port = Number(process.env.PORT) || 5000;
 
-console.log("🚀 Starting ONNX inference server...");
+console.log("🚀 Starting ZKFair inference server...");
 
 export default {
 	port,
@@ -199,5 +239,3 @@ export default {
 };
 
 console.log(`✅ Server running on http://localhost:${port}`);
-console.log(`📍 Inference: POST http://localhost:${port}/predict`);
-console.log(`📍 Health: GET http://localhost:${port}/health`);

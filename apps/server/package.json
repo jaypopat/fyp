@@ -4,7 +4,9 @@
 	"type": "module",
 	"private": true,
 	"devDependencies": {
-		"@types/bun": "latest"
+		"@types/bun": "latest",
+		"better-sqlite3": "^12.4.1",
+		"drizzle-kit": "^0.31.6"
 	},
 	"peerDependencies": {
 		"typescript": "^5"
@@ -13,12 +15,16 @@
 		"@msgpack/msgpack": "^3.1.2",
 		"@zkfair/itmac": "workspace:*",
 		"@zkfair/sdk": "workspace:*",
+		"drizzle-orm": "^0.44.7",
 		"hono": "^4.9.11",
 		"onnxruntime-node": "^1.23.0"
 	},
 	"scripts": {
-		"dev": "bun --hot index.ts",
+		"dev": "bun --hot index.ts && bun run db:seed",
 		"start": "bun index.ts",
-		"build": "bun run build.ts"
+		"build": "bun run build.ts",
+		"db:seed": "bun db/seed.ts",
+		"db:studio": "bunx drizzle-kit studio",
+		"db:migrate": "bunx drizzle-kit migrate"
 	}
 }

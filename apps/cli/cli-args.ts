@@ -1,7 +1,9 @@
 import { boolean, positional, string } from "@drizzle-team/brocli";
 
 export const getModelOptions = {
-	modelHash: positional("model-hash").desc("Hash of the model weights (0x...)"),
+	modelHash: positional("model-hash").desc(
+		"Hash of the model weights (0x...) - will prompt if not provided",
+	),
 	weightsFile: string("weights")
 		.alias("w")
 		.desc("Path to weights bin file (alternative to hash)"),
@@ -56,19 +58,42 @@ export const proveModelBiasOptions = {
 } as const;
 
 export const getProofStatusOptions = {
-	proofHash: positional("proof-hash").desc("Hash of the proof to check"),
-	weights: positional("weights")
-		.required()
-		.desc("Path of the weights bin file to get associated proof"),
+	proofHash: positional("proof-hash").desc(
+		"Hash of the proof to check - will prompt if not provided",
+	),
+	weights: positional("weights").desc(
+		"Path of the weights bin file to get associated proof",
+	),
 };
 
 export const verifyProofOptions = {
 	weights: string("weights")
 		.alias("w")
 		.desc("Path to weights bin file (for weights commitment)"),
-	proofHash: positional("proof-hash").desc("Proof hash"),
-	publicInputs: positional("public-inputs")
-		.required()
-		.desc("Comma-separated public inputs OR path to JSON file"),
+	proofHash: positional("proof-hash").desc(
+		"Proof hash - will prompt if not provided",
+	),
+	publicInputs: positional("public-inputs").desc(
+		"Comma-separated public inputs OR path to JSON file - will prompt if not provided",
+	),
 	local: boolean("local").desc("Verify proof locally instead of onchain (DEV)"),
 };
+
+export const queryModelOptions = {
+	providerUrl: string("provider-url")
+		.alias("u")
+		.default("http://localhost:5000")
+		.desc("Base URL of the provider server"),
+	modelId: positional("model-id").desc(
+		"Model ID (hash of weights) - will prompt if not provided",
+	),
+	input: positional("input").desc(
+		"Comma-separated input values (e.g. 0.5,1.2,0.3) - will prompt if not provided",
+	),
+	macKey: string("mac-key")
+		.alias("m")
+		.desc("Optional MAC key (32-byte hex) for HMAC verification"),
+	queryId: string("query-id")
+		.alias("q")
+		.desc("Optional query ID (defaults to random UUID)"),
+} as const;

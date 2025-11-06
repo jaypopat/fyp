@@ -1,7 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Check, Copy } from "lucide-react";
+import { zkFairAbi } from "@zkfair/contracts/abi";
+import { AlertCircle, ArrowLeft, Check, Copy, Shield } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { Hash } from "viem";
+import {
+	useAccount,
+	useWaitForTransactionReceipt,
+	useWriteContract,
+} from "wagmi";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -10,15 +17,36 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
 import { config } from "@/config";
 import { predict } from "@/lib/inference";
-import { getModelStatusBadge } from "@/lib/model-status";
-import { createSDK } from "@/lib/sdk";
+import { getAuditStatusBadge, getModelStatusBadge } from "@/lib/model-status";
+import { sdk } from "@/lib/sdk";
 import {
 	normalizeModel,
 	type SDKModel,
 	type SDKModelRaw,
 } from "@/lib/sdk-types";
+
+type BatchData = {
+	batchId: string;
+	modelId: string;
+	merkleRoot: string;
+	queryCount: string;
+	timestampStart: string;
+	timestampEnd: string;
+	committedAt: string;
+	audited: boolean;
+	auditStatus: number;
+	activeAuditId: string;
+};
 
 export const Route = createFileRoute("/model/$modelId")({
 	loader: async ({ params }) => {
@@ -26,19 +54,59 @@ export const Route = createFileRoute("/model/$modelId")({
 		if (!modelId?.startsWith("0x")) {
 			throw new Error("Model ID must be a 0x-prefixed hash");
 		}
-
-		const sdk = createSDK();
 		const model = (await sdk.model.get(modelId as Hash)) as SDKModelRaw;
 		const normalized = normalizeModel(model);
 
-		return { model: normalized } satisfies { model: SDKModel };
+		// Fetch batches from blockchain
+		let batches: BatchData[] = [];
+		try {
+			// Get the actual model ID (uint256) from the weights hash
+			console.log("Fetching batches for model hash:", modelId);
+			const modelIdBigInt = await sdk.model.getIdFromHash(modelId as Hash);
+			console.log("Model ID (uint256):", modelIdBigInt.toString());
+
+			const batchIds = await sdk.batch.getIdsByModel(modelIdBigInt);
+			console.log(
+				"Batch IDs:",
+				batchIds.map((id) => id.toString()),
+			);
+
+			const batchData = await sdk.batch.getByModel(modelIdBigInt);
+			console.log("Batch data:", batchData);
+
+			batches = batchData.map((batch: any, index: number) => ({
+				batchId: batchIds[index].toString(),
+				modelId: batch.modelId.toString(),
+				merkleRoot: batch.merkleRoot,
+				queryCount: batch.queryCount.toString(),
+				timestampStart: batch.timestampStart.toString(),
+				timestampEnd: batch.timestampEnd.toString(),
+				committedAt: batch.committedAt.toString(),
+				audited: batch.audited,
+				auditStatus: batch.auditStatus,
+				activeAuditId: batch.activeAuditId.toString(),
+			}));
+
+			console.log("Processed batches:", batches);
+		} catch (error) {
+			console.error("Failed to fetch batches:", error);
+			console.error("Error details:", error);
+		}
+
+		return { model: normalized, batches } satisfies {
+			model: SDKModel;
+			batches: BatchData[];
+		};
 	},
 	component: ModelDetailComponent,
 });
 
 function ModelDetailComponent() {
 	const { modelId = "" } = Route.useParams();
-	const { model } = Route.useLoaderData() as { model: SDKModel };
+	const { model, batches } = Route.useLoaderData() as {
+		model: SDKModel;
+		batches: BatchData[];
+	};
 	const [copiedField, setCopiedField] = useState<string | null>(null);
 	const resetTimerRef = useRef<number | null>(null);
 
@@ -51,6 +119,22 @@ function ModelDetailComponent() {
 		queryId: string;
 	} | null>(null);
 
+	// Wallet connection
+	const { isConnected, address } = useAccount();
+
+	// Challenge state
+	const [challengingBatch, setChallengingBatch] = useState<string | null>(null);
+	const {
+		writeContract,
+		data: hash,
+		isPending,
+		error: writeError,
+	} = useWriteContract();
+	const { isLoading: isConfirming, isSuccess: isConfirmed } =
+		useWaitForTransactionReceipt({
+			hash,
+		});
+
 	useEffect(() => {
 		return () => {
 			if (resetTimerRef.current) {
@@ -58,6 +142,42 @@ function ModelDetailComponent() {
 			}
 		};
 	}, []);
+
+	// Handle transaction confirmation
+	useEffect(() => {
+		if (isConfirmed && challengingBatch) {
+			alert(`Challenge submitted for batch ${challengingBatch}!`);
+			setChallengingBatch(null);
+		}
+	}, [isConfirmed, challengingBatch]);
+
+	// Handle transaction errors
+	useEffect(() => {
+		if (writeError) {
+			console.error("Challenge transaction error:", writeError);
+			console.error("Error details:", {
+				name: writeError.name,
+				message: writeError.message,
+				cause: writeError.cause,
+				details: (writeError as Error & { details?: string }).details,
+			});
+
+			// Try to extract more useful error message
+			let errorMsg = writeError.message;
+			const errWithCause = writeError as Error & {
+				cause?: { reason?: string };
+				shortMessage?: string;
+			};
+			if (errWithCause.cause?.reason) {
+				errorMsg = errWithCause.cause.reason;
+			} else if (errWithCause.shortMessage) {
+				errorMsg = errWithCause.shortMessage;
+			}
+
+			alert(`Challenge failed: ${errorMsg}`);
+			setChallengingBatch(null);
+		}
+	}, [writeError]);
 
 	if (!model) {
 		return (
@@ -96,22 +216,51 @@ function ModelDetailComponent() {
 		}
 	};
 
+	const handleChallenge = async (batchId: string) => {
+		if (!isConnected) {
+			alert("Please connect your wallet to challenge a batch");
+			return;
+		}
+
+		try {
+			setChallengingBatch(batchId);
+
+			console.log("Challenging batch:", batchId);
+			console.log("Contract address:", config.contractAddress);
+			console.log("Connected account:", address);
+
+			// Use wagmi to write contract with connected wallet
+			writeContract({
+				address: config.contractAddress as Hash,
+				abi: zkFairAbi,
+				functionName: "requestAudit",
+				args: [BigInt(batchId)],
+				gas: BigInt(500000), // Explicit gas limit
+			});
+		} catch (error) {
+			console.error("Challenge failed:", error);
+			alert(`Challenge failed: ${(error as Error).message}`);
+			setChallengingBatch(null);
+		}
+	};
+
 	return (
 		<div className="container mx-auto space-y-6 px-4 py-8">
+			{/* Header Card */}
 			<Card>
-				<CardHeader className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-					<div className="space-y-3">
-						<Button variant="ghost" size="sm" className="w-fit" asChild>
-							<Link to="/" className="inline-flex items-center gap-2">
-								<ArrowLeft className="h-4 w-4" />
-								<span>Back to models</span>
-							</Link>
-						</Button>
-						<CardTitle className="font-semibold text-3xl text-foreground leading-tight">
-							{model.name}
-						</CardTitle>
-						<CardDescription className="space-y-1">
-							<span className="text-muted-foreground text-sm">
+				<CardHeader className="pb-3">
+					<div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+						<div className="space-y-4">
+							<Button variant="ghost" size="sm" className="-ml-3 w-fit" asChild>
+								<Link to="/" className="inline-flex items-center gap-2">
+									<ArrowLeft className="h-4 w-4" />
+									<span>Back to models</span>
+								</Link>
+							</Button>
+							<CardTitle className="font-semibold text-2xl text-foreground leading-tight">
+								{model.name}
+							</CardTitle>
+							<CardDescription className="text-sm">
 								Registered by{" "}
 								<a
 									href={`${config.explorerBase}/address/${model.author}`}
@@ -120,32 +269,29 @@ function ModelDetailComponent() {
 									className="underline-offset-4 hover:underline"
 									title="View author on explorer"
 								>
-									<code className="rounded bg-muted px-2 py-1 text-sm">
+									<code className="rounded bg-muted px-1.5 py-0.5 text-xs">
 										{model.author}
 									</code>
 								</a>
-							</span>
-							<span className="block text-muted-foreground text-sm">
-								Model ID: {modelId}
-							</span>
-						</CardDescription>
+							</CardDescription>
+						</div>
+						<div className="shrink-0">{getModelStatusBadge(model.status)}</div>
 					</div>
-					<div className="shrink-0">{getModelStatusBadge(model.status)}</div>
 				</CardHeader>
-				<CardContent className="text-muted-foreground text-sm">
-					{model.description || "No description provided."}
-				</CardContent>
+				{model.description && (
+					<CardContent className="pt-0 text-muted-foreground text-sm">
+						{model.description}
+					</CardContent>
+				)}
 			</Card>
 
-			<div className="grid gap-6 md:grid-cols-2">
+			{/* Main Grid - Metadata + Inference + Lifecycle in 3 columns */}
+			<div className="grid gap-4 lg:grid-cols-3">
 				<Card>
-					<CardHeader>
-						<CardTitle className="font-semibold text-foreground text-lg">
-							Model Metadata
-						</CardTitle>
-						<CardDescription>Hashes and dataset commitments</CardDescription>
+					<CardHeader className="pb-3">
+						<CardTitle className="font-semibold text-base">Metadata</CardTitle>
 					</CardHeader>
-					<CardContent className="space-y-4">
+					<CardContent className="space-y-3">
 						<HashField
 							label="Weights Hash"
 							value={model.weightsHash}
@@ -169,15 +315,10 @@ function ModelDetailComponent() {
 				</Card>
 
 				<Card>
-					<CardHeader>
-						<CardTitle className="font-semibold text-foreground text-lg">
-							Lifecycle
-						</CardTitle>
-						<CardDescription>
-							Key registration and verification milestones
-						</CardDescription>
+					<CardHeader className="pb-3">
+						<CardTitle className="font-semibold text-base">Lifecycle</CardTitle>
 					</CardHeader>
-					<CardContent className="space-y-4">
+					<CardContent className="space-y-3">
 						<LifecycleRow label="Registered" value={registrationLabel} />
 						<LifecycleRow
 							label="Verification"
@@ -187,64 +328,27 @@ function ModelDetailComponent() {
 					</CardContent>
 				</Card>
 
-				<Card>
-					<CardHeader>
-						<CardTitle className="font-semibold text-foreground text-lg">
-							Try Inference
+				<Card className="flex flex-col">
+					<CardHeader className="pb-3">
+						<CardTitle className="font-semibold text-base">
+							Try Inference{" "}
 						</CardTitle>
-						<CardDescription>
-							Enter comma-separated numbers matching the model input schema.
-						</CardDescription>
 					</CardHeader>
-					<CardContent className="space-y-3">
+					<CardContent className="flex flex-1 flex-col space-y-2">
 						<input
 							className="w-full rounded border px-3 py-2 text-sm"
-							placeholder="e.g. 39, 7, 77516, 9, 2174, 0, 40, 1, ..."
+							placeholder="e.g. 39, 7, 77516, 9, ..."
 							value={inputCSV}
 							onChange={(e) => setInputCSV(e.target.value)}
 						/>
-						<Button
-							disabled={loading}
-							onClick={async () => {
-								setLoading(true);
-								setResult(null);
-								try {
-									const values = inputCSV
-										.split(",")
-										.map((v) => v.trim())
-										.filter((v) => v.length > 0)
-										.map((v) => Number(v));
-									if (!values.length || values.some((x) => Number.isNaN(x))) {
-										throw new Error("Provide valid numeric input");
-									}
-									const providerUrl = config.providerUrl; // auto-selects local vs prod
-									const resultData = await predict({
-										providerUrl,
-										modelId,
-										input: values,
-									});
-									setResult({
-										prediction: resultData.prediction,
-										verified: resultData.verified,
-										queryId: resultData.queryId,
-									});
-								} catch (err) {
-									console.error(err);
-									setResult(null);
-								} finally {
-									setLoading(false);
-								}
-							}}
-						>
-							{loading ? "Predicting…" : "Predict"}
-						</Button>
 						{result && (
-							<div className="text-foreground text-sm">
+							<div className="rounded bg-muted p-3 text-xs">
 								<p>
-									Prediction: <b>{result.prediction}</b>
+									<span className="font-medium">Prediction:</span>{" "}
+									<b>{result.prediction}</b>
 								</p>
 								<p>
-									Verified:{" "}
+									<span className="font-medium">Verified:</span>{" "}
 									<b
 										className={
 											result.verified ? "text-green-600" : "text-red-600"
@@ -253,17 +357,159 @@ function ModelDetailComponent() {
 										{String(result.verified)}
 									</b>
 								</p>
-								<p>
-									Query ID:{" "}
-									<code className="rounded bg-muted px-1 py-0.5">
-										{result.queryId}
+								<p className="truncate" title={result.queryId}>
+									<span className="font-medium">Query:</span>{" "}
+									<code className="text-xs">
+										{result.queryId.slice(0, 16)}...
 									</code>
 								</p>
 							</div>
 						)}
+						<div className="mt-auto">
+							<Button
+								disabled={loading}
+								className="w-full"
+								size="sm"
+								onClick={async () => {
+									setLoading(true);
+									setResult(null);
+									try {
+										const values = inputCSV
+											.split(",")
+											.map((v) => v.trim())
+											.filter((v) => v.length > 0)
+											.map((v) => Number(v));
+										if (!values.length || values.some((x) => Number.isNaN(x))) {
+											throw new Error("Provide valid numeric input");
+										}
+										const providerUrl = config.providerUrl;
+										const resultData = await predict({
+											providerUrl,
+											modelId,
+											input: values,
+										});
+										setResult({
+											prediction: resultData.prediction,
+											verified: resultData.verified,
+											queryId: resultData.queryId,
+										});
+									} catch (err) {
+										console.error(err);
+										setResult(null);
+									} finally {
+										setLoading(false);
+									}
+								}}
+							>
+								{loading ? "Predicting…" : "Predict"}
+							</Button>
+						</div>
 					</CardContent>
 				</Card>
 			</div>
+
+			{batches.length > 0 && (
+				<Card>
+					<CardHeader className="pb-3">
+						<CardTitle className="flex items-center gap-2 font-semibold text-base">
+							<Shield className="h-4 w-4" />
+							Batch Commitments ({batches.length})
+						</CardTitle>
+						<CardDescription className="text-xs">
+							Provider-committed query batches. Challenge any batch to verify
+							fairness.
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<div className="overflow-x-auto">
+							<Table>
+								<TableHeader>
+									<TableRow className="text-xs">
+										<TableHead className="w-20">Batch</TableHead>
+										<TableHead className="w-24">Queries</TableHead>
+										<TableHead>Merkle Root</TableHead>
+										<TableHead className="w-40">Committed</TableHead>
+										<TableHead className="w-20 text-center">Status</TableHead>
+										<TableHead className="w-32">Actions</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{batches.map((batch) => (
+										<TableRow key={batch.batchId} className="text-xs">
+											<TableCell className="font-medium">
+												#{batch.batchId}
+											</TableCell>
+											<TableCell>{batch.queryCount}</TableCell>
+											<TableCell>
+												<code className="rounded bg-muted px-1.5 py-0.5 text-xs">
+													{formatHash(batch.merkleRoot, "—")}
+												</code>
+											</TableCell>
+											<TableCell className="text-xs">
+												{new Date(
+													Number(batch.committedAt) * 1000,
+												).toLocaleString(undefined, {
+													month: "short",
+													day: "numeric",
+													hour: "2-digit",
+													minute: "2-digit",
+												})}
+											</TableCell>
+											<TableCell className="text-center">
+												{batch.audited ? (
+													getAuditStatusBadge(batch.auditStatus)
+												) : (
+													<Badge variant="outline" className="text-xs">
+														Pending
+													</Badge>
+												)}
+											</TableCell>
+											<TableCell>
+												{!batch.audited ? (
+													<Button
+														size="sm"
+														variant="outline"
+														onClick={() => handleChallenge(batch.batchId)}
+														disabled={
+															!isConnected ||
+															(isPending &&
+																challengingBatch === batch.batchId) ||
+															(isConfirming &&
+																challengingBatch === batch.batchId)
+														}
+														className="h-7 gap-1 text-xs"
+													>
+														<AlertCircle className="h-3 w-3" />
+														{!isConnected
+															? "Connect"
+															: (isPending || isConfirming) &&
+																	challengingBatch === batch.batchId
+																? "..."
+																: "Challenge"}
+													</Button>
+												) : batch.auditStatus === 1 ? (
+													<span className="text-green-600 text-xs">
+														✓ Verified
+													</span>
+												) : (
+													<a
+														href={`${config.explorerBase}/tx/${batch.activeAuditId}`}
+														target="_blank"
+														rel="noreferrer"
+														className="text-blue-600 text-xs underline-offset-4 hover:underline"
+													>
+														View Audit
+													</a>
+												)}
+											</TableCell>
+										</TableRow>
+									))}
+								</TableBody>
+							</Table>
+						</div>
+					</CardContent>
+				</Card>
+			)}
 		</div>
 	);
 }

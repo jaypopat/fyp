@@ -11,4 +11,9 @@ export class ModelAPI {
 	async list() {
 		return await this.contracts.getModels();
 	}
+
+	async getIdFromHash(weightHash: Hash): Promise<bigint> {
+		const modelId = await this.contracts.getModelIdByHash(weightHash);
+		return modelId;
+	}
 }

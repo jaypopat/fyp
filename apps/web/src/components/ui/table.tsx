@@ -2,6 +2,12 @@ import type * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+const TABLE_HEADER_CLASSES = "[&_tr]:border-b-2 [&_tr]:border-border";
+const TABLE_ROW_CLASSES =
+	"border-b-2 border-border transition-colors hover:bg-main/5 data-[state=selected]:bg-main/10";
+const TABLE_CELL_CLASSES =
+	"whitespace-nowrap py-4 px-3 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]";
+
 function Table({ className, ...props }: React.ComponentProps<"table">) {
 	return (
 		<div
@@ -21,7 +27,7 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
 	return (
 		<thead
 			data-slot="table-header"
-			className={cn("[&_tr]:border-b", className)}
+			className={cn(TABLE_HEADER_CLASSES, className)}
 			{...props}
 		/>
 	);
@@ -54,10 +60,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
 	return (
 		<tr
 			data-slot="table-row"
-			className={cn(
-				"border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
-				className,
-			)}
+			className={cn(TABLE_ROW_CLASSES, className)}
 			{...props}
 		/>
 	);
@@ -68,7 +71,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
 		<th
 			data-slot="table-head"
 			className={cn(
-				"h-10 whitespace-nowrap px-2 text-left align-middle font-medium text-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+				"h-12 whitespace-nowrap px-2 text-left align-middle font-medium text-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
 				className,
 			)}
 			{...props}
@@ -80,10 +83,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
 	return (
 		<td
 			data-slot="table-cell"
-			className={cn(
-				"whitespace-nowrap p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
-				className,
-			)}
+			className={cn(TABLE_CELL_CLASSES, className)}
 			{...props}
 		/>
 	);

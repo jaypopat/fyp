@@ -4,6 +4,9 @@ import type * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+const CHECKBOX_CLASSES =
+	"peer size-4 shrink-0 rounded-[6px] border-2 border-border outline-none transition-shadow focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-main data-[state=checked]:bg-main data-[state=checked]:text-main-foreground shadow-[var(--shadow)]";
+
 function Checkbox({
 	className,
 	...props
@@ -11,10 +14,7 @@ function Checkbox({
 	return (
 		<CheckboxPrimitive.Root
 			data-slot="checkbox"
-			className={cn(
-				"peer size-4 shrink-0 rounded-[4px] border border-input shadow-xs outline-none transition-shadow focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:bg-input/30 dark:data-[state=checked]:bg-primary dark:aria-invalid:ring-destructive/40",
-				className,
-			)}
+			className={cn(CHECKBOX_CLASSES, className)}
 			{...props}
 		>
 			<CheckboxPrimitive.Indicator

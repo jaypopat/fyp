@@ -1,6 +1,12 @@
+import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
+import { WagmiProvider } from "wagmi";
+import "@rainbow-me/rainbowkit/styles.css";
+import "./index.css";
 import Loader from "./components/loader";
+import { wagmiConfig } from "./lib/wagmi";
 import { routeTree } from "./routeTree.gen";
 
 const router = createRouter({
@@ -16,6 +22,14 @@ declare module "@tanstack/react-router" {
 	}
 }
 
+const queryClient = new QueryClient({
+	defaultOptions: {
+		queries: {
+			refetchOnWindowFocus: false,
+		},
+	},
+});
+
 const rootElement = document.getElementById("app");
 
 if (!rootElement) {
@@ -24,5 +38,14 @@ if (!rootElement) {
 
 if (!rootElement.innerHTML) {
 	const root = ReactDOM.createRoot(rootElement);
-	root.render(<RouterProvider router={router} />);
+
+	root.render(
+		<WagmiProvider config={wagmiConfig}>
+			<QueryClientProvider client={queryClient}>
+				<RainbowKitProvider>
+					<RouterProvider router={router} />
+				</RainbowKitProvider>
+			</QueryClientProvider>
+		</WagmiProvider>,
+	);
 }
