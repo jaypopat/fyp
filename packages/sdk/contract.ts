@@ -265,6 +265,18 @@ export class ContractClient {
 	}
 
 	/**
+	 * Get model ID by weights hash
+	 */
+	async getModelIdByHash(weightsHash: Hash) {
+		return this.publicClient.readContract({
+			address: this.contractAddress,
+			abi: zkFairAbi,
+			functionName: "getModelIdByWeightsHash",
+			args: [weightsHash],
+		})
+	}
+
+	/**
 	 * Get batch details
 	 */
 	async getBatch(batchId: bigint) {

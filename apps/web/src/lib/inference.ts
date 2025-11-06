@@ -1,5 +1,5 @@
 import type { Hex } from "viem";
-import { createSDK } from "./sdk";
+import { sdk } from "./sdk";
 
 export type WebPredictParams = {
 	providerUrl: string;
@@ -20,7 +20,6 @@ export type Result = {
 };
 
 export async function predict(params: WebPredictParams): Promise<Result> {
-	const sdk = createSDK();
 	const inference = sdk.initInference(params.providerPubKey);
 	return await inference.predict({
 		providerUrl: params.providerUrl,

@@ -14,8 +14,6 @@ import {
 } from "../db";
 import { sdk } from "./sdk";
 
-
-
 /**
  * Convert QueryLog to AuditRecord format for SDK
  */
@@ -33,7 +31,7 @@ export function toAuditRecord(query: QueryLog): AuditRecord {
  * Create a batch from unbatched queries if we have enough
  */
 export async function createBatchIfNeeded(): Promise<Batch | undefined> {
-  const batchSize = Number(process.env.BATCH_SIZE) ?? 100;
+  const batchSize = Number(process.env.BATCH_SIZE) || 100;
   const unbatchedCount = await getUnbatchedCount();
 
   if (unbatchedCount < batchSize) {
@@ -72,7 +70,11 @@ export async function createBatchIfNeeded(): Promise<Batch | undefined> {
   // Get time range and model ID
   const startTime = Math.min(...queries.map((q) => q.timestamp));
   const endTime = Math.max(...queries.map((q) => q.timestamp));
-  const modelId = queries[0]?.modelId!;
+  const firstQuery = queries[0];
+  if (!firstQuery) {
+    throw new Error("No queries found in batch");
+  }
+  const modelId = firstQuery.modelId;
 
   console.log(`📝 Creating batch ${batchId}...`);
 
@@ -83,7 +85,7 @@ export async function createBatchIfNeeded(): Promise<Batch | undefined> {
       startSeq,
       endSeq,
       merkleRoot: root,
-      recordCount: batchSize,
+      recordCount: queries.length,
       leafAlgo: "SHA-256",
       leafSchema: "MSGPACK",
       txHash: null,
@@ -102,7 +104,7 @@ export async function createBatchIfNeeded(): Promise<Batch | undefined> {
     .commitBatch(
       BigInt(modelId),
       root,
-      BigInt(batchSize),
+      BigInt(queries.length),
       BigInt(startTime),
       BigInt(endTime),
     )

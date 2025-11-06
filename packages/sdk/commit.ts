@@ -8,7 +8,7 @@ import type { CommitOptions, encodingSchemas, hashAlgos } from "./types";
 import { getArtifactDir, hashBytes, parseCSV } from "./utils";
 
 export class CommitAPI {
-	constructor(private contracts: ContractClient) {}
+	constructor(private contracts: ContractClient) { }
 
 	async makeCommitment(
 		dataSetPath: string,
@@ -43,12 +43,18 @@ export class CommitAPI {
 		// Attempt to register the model - if it already exists, provide a clear error
 		let hash: Hash;
 		try {
+			// Convert fairness threshold from decimal to percentage integer
+			// Contract expects uint256 between 1-100 representing percentage
+			const fairnessThresholdPercent = Math.ceil(
+				fairnessThreshold.targetDisparity * 100,
+			);
+
 			hash = await this.contracts.registerModel(
 				options.model.name,
 				options.model.description,
-				dataSetMerkleRoot,
 				weightsHash,
-				fairnessThreshold.targetDisparity,
+				dataSetMerkleRoot,
+				fairnessThresholdPercent,
 			);
 		} catch (err) {
 			throw new Error(

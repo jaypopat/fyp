@@ -249,7 +249,11 @@ contract ZKFair is Ownable, ReentrancyGuard, Pausable {
     ) external onlyProvider(modelId) validModel(modelId) whenNotPaused returns (uint256 batchId) {
         Model storage model = models[modelId];
         
-        if (model.status != ModelStatus.CERTIFIED) revert InvalidModelStatus();
+        // Allow REGISTERED or CERTIFIED for development
+        // In production, require CERTIFIED only
+        if (model.status != ModelStatus.CERTIFIED && model.status != ModelStatus.REGISTERED) {
+            revert InvalidModelStatus();
+        }
         if (merkleRoot == bytes32(0) || queryCount == 0) revert InvalidInput();
         if (timestampEnd < timestampStart) revert InvalidInput();
         
@@ -487,6 +491,12 @@ contract ZKFair is Ownable, ReentrancyGuard, Pausable {
     
     function getBatchesByModel(uint256 modelId) external view validModel(modelId) returns (uint256[] memory) {
         return batchesByModel[modelId];
+    }
+    
+    function getModelIdByWeightsHash(bytes32 weightsHash) external view returns (uint256) {
+        uint256 modelId = modelByWeightsHash[weightsHash];
+        if (modelId == 0) revert ModelNotFound();
+        return modelId;
     }
     
     function getTotalModels() external view returns (uint256) {

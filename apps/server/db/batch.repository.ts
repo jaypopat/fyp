@@ -1,9 +1,3 @@
-/**
- * Batch Repository - Clean CRUD operations for batches
- *
- * Type-safe database operations using Drizzle ORM
- */
-
 import { asc, eq, sql } from "drizzle-orm";
 import { db } from "./client";
 import { type Batch, batches, type NewBatch } from "./schema";
