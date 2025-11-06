@@ -23,13 +23,13 @@ import {
 } from "@/components/ui/table";
 import { config } from "@/config";
 import { getModelStatusBadge } from "@/lib/model-status";
+import { sdk } from "@/lib/sdk";
 import {
 	normalizeModels,
 	type SDKModel,
 	type SDKModelRaw,
 } from "@/lib/sdk-types";
 import { cn } from "@/lib/utils";
-import { sdk } from "@/lib/sdk";
 
 export const Route = createFileRoute("/")({
 	loader: async () => {

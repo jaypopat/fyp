@@ -1,9 +1,9 @@
 {
-    "models": [
-        {
-            "id": 1,
-            "name": "adult-income",
-            "path": "../../examples/adult-income/model.onnx"
-        }
-    ]
+	"models": [
+		{
+			"id": 1,
+			"name": "adult-income",
+			"path": "../../examples/adult-income/model.onnx"
+		}
+	]
 }

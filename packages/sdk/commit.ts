@@ -8,7 +8,7 @@ import type { CommitOptions, encodingSchemas, hashAlgos } from "./types";
 import { getArtifactDir, hashBytes, parseCSV } from "./utils";
 
 export class CommitAPI {
-	constructor(private contracts: ContractClient) { }
+	constructor(private contracts: ContractClient) {}
 
 	async makeCommitment(
 		dataSetPath: string,

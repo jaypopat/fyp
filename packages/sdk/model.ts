@@ -2,7 +2,7 @@ import type { Hash } from "viem";
 import type { ContractClient } from "./contract";
 
 export class ModelAPI {
-	constructor(private contracts: ContractClient) { }
+	constructor(private contracts: ContractClient) {}
 
 	async get(weightHash: Hash) {
 		return await this.contracts.getModelByHash(weightHash);

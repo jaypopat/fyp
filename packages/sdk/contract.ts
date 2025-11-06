@@ -273,7 +273,7 @@ export class ContractClient {
 			abi: zkFairAbi,
 			functionName: "getModelIdByWeightsHash",
 			args: [weightsHash],
-		})
+		});
 	}
 
 	/**

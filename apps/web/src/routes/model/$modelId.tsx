@@ -1,7 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { zkFairAbi } from "@zkfair/contracts/abi";
 import { AlertCircle, ArrowLeft, Check, Copy, Shield } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { Hash } from "viem";
+import {
+	useAccount,
+	useWaitForTransactionReceipt,
+	useWriteContract,
+} from "wagmi";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -18,10 +25,9 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { config } from "@/config";
 import { predict } from "@/lib/inference";
-import { getModelStatusBadge, getAuditStatusBadge } from "@/lib/model-status";
+import { getAuditStatusBadge, getModelStatusBadge } from "@/lib/model-status";
 import { sdk } from "@/lib/sdk";
 import {
 	normalizeModel,
@@ -58,13 +64,16 @@ export const Route = createFileRoute("/model/$modelId")({
 			console.log("Fetching batches for model hash:", modelId);
 			const modelIdBigInt = await sdk.model.getIdFromHash(modelId as Hash);
 			console.log("Model ID (uint256):", modelIdBigInt.toString());
-			
+
 			const batchIds = await sdk.batch.getIdsByModel(modelIdBigInt);
-			console.log("Batch IDs:", batchIds.map(id => id.toString()));
-			
+			console.log(
+				"Batch IDs:",
+				batchIds.map((id) => id.toString()),
+			);
+
 			const batchData = await sdk.batch.getByModel(modelIdBigInt);
 			console.log("Batch data:", batchData);
-			
+
 			batches = batchData.map((batch: any, index: number) => ({
 				batchId: batchIds[index].toString(),
 				modelId: batch.modelId.toString(),
@@ -77,7 +86,7 @@ export const Route = createFileRoute("/model/$modelId")({
 				auditStatus: batch.auditStatus,
 				activeAuditId: batch.activeAuditId.toString(),
 			}));
-			
+
 			console.log("Processed batches:", batches);
 		} catch (error) {
 			console.error("Failed to fetch batches:", error);
@@ -94,7 +103,10 @@ export const Route = createFileRoute("/model/$modelId")({
 
 function ModelDetailComponent() {
 	const { modelId = "" } = Route.useParams();
-	const { model, batches } = Route.useLoaderData() as { model: SDKModel; batches: BatchData[] };
+	const { model, batches } = Route.useLoaderData() as {
+		model: SDKModel;
+		batches: BatchData[];
+	};
 	const [copiedField, setCopiedField] = useState<string | null>(null);
 	const resetTimerRef = useRef<number | null>(null);
 
@@ -107,8 +119,21 @@ function ModelDetailComponent() {
 		queryId: string;
 	} | null>(null);
 
+	// Wallet connection
+	const { isConnected, address } = useAccount();
+
 	// Challenge state
 	const [challengingBatch, setChallengingBatch] = useState<string | null>(null);
+	const {
+		writeContract,
+		data: hash,
+		isPending,
+		error: writeError,
+	} = useWriteContract();
+	const { isLoading: isConfirming, isSuccess: isConfirmed } =
+		useWaitForTransactionReceipt({
+			hash,
+		});
 
 	useEffect(() => {
 		return () => {
@@ -117,6 +142,42 @@ function ModelDetailComponent() {
 			}
 		};
 	}, []);
+
+	// Handle transaction confirmation
+	useEffect(() => {
+		if (isConfirmed && challengingBatch) {
+			alert(`Challenge submitted for batch ${challengingBatch}!`);
+			setChallengingBatch(null);
+		}
+	}, [isConfirmed, challengingBatch]);
+
+	// Handle transaction errors
+	useEffect(() => {
+		if (writeError) {
+			console.error("Challenge transaction error:", writeError);
+			console.error("Error details:", {
+				name: writeError.name,
+				message: writeError.message,
+				cause: writeError.cause,
+				details: (writeError as Error & { details?: string }).details,
+			});
+
+			// Try to extract more useful error message
+			let errorMsg = writeError.message;
+			const errWithCause = writeError as Error & {
+				cause?: { reason?: string };
+				shortMessage?: string;
+			};
+			if (errWithCause.cause?.reason) {
+				errorMsg = errWithCause.cause.reason;
+			} else if (errWithCause.shortMessage) {
+				errorMsg = errWithCause.shortMessage;
+			}
+
+			alert(`Challenge failed: ${errorMsg}`);
+			setChallengingBatch(null);
+		}
+	}, [writeError]);
 
 	if (!model) {
 		return (
@@ -156,15 +217,29 @@ function ModelDetailComponent() {
 	};
 
 	const handleChallenge = async (batchId: string) => {
+		if (!isConnected) {
+			alert("Please connect your wallet to challenge a batch");
+			return;
+		}
+
 		try {
 			setChallengingBatch(batchId);
-			// Note: This will fail without a wallet - we'll add wallet support later
-			await sdk.batch.requestAudit(BigInt(batchId));
-			alert(`Challenge submitted for batch ${batchId}!`);
+
+			console.log("Challenging batch:", batchId);
+			console.log("Contract address:", config.contractAddress);
+			console.log("Connected account:", address);
+
+			// Use wagmi to write contract with connected wallet
+			writeContract({
+				address: config.contractAddress as Hash,
+				abi: zkFairAbi,
+				functionName: "requestAudit",
+				args: [BigInt(batchId)],
+				gas: BigInt(500000), // Explicit gas limit
+			});
 		} catch (error) {
 			console.error("Challenge failed:", error);
 			alert(`Challenge failed: ${(error as Error).message}`);
-		} finally {
 			setChallengingBatch(null);
 		}
 	};
@@ -214,7 +289,7 @@ function ModelDetailComponent() {
 			<div className="grid gap-4 lg:grid-cols-3">
 				<Card>
 					<CardHeader className="pb-3">
-						<CardTitle className="text-base font-semibold">Metadata</CardTitle>
+						<CardTitle className="font-semibold text-base">Metadata</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-3">
 						<HashField
@@ -241,7 +316,7 @@ function ModelDetailComponent() {
 
 				<Card>
 					<CardHeader className="pb-3">
-						<CardTitle className="text-base font-semibold">Lifecycle</CardTitle>
+						<CardTitle className="font-semibold text-base">Lifecycle</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-3">
 						<LifecycleRow label="Registered" value={registrationLabel} />
@@ -255,10 +330,9 @@ function ModelDetailComponent() {
 
 				<Card className="flex flex-col">
 					<CardHeader className="pb-3">
-						<CardTitle className="text-base font-semibold">Try Inference</CardTitle>
-						<CardDescription className="text-xs">
-							Enter comma-separated numbers
-						</CardDescription>
+						<CardTitle className="font-semibold text-base">
+							Try Inference{" "}
+						</CardTitle>
 					</CardHeader>
 					<CardContent className="flex flex-1 flex-col space-y-2">
 						<input
@@ -285,7 +359,9 @@ function ModelDetailComponent() {
 								</p>
 								<p className="truncate" title={result.queryId}>
 									<span className="font-medium">Query:</span>{" "}
-									<code className="text-xs">{result.queryId.slice(0, 16)}...</code>
+									<code className="text-xs">
+										{result.queryId.slice(0, 16)}...
+									</code>
 								</p>
 							</div>
 						)}
@@ -335,7 +411,7 @@ function ModelDetailComponent() {
 			{batches.length > 0 && (
 				<Card>
 					<CardHeader className="pb-3">
-						<CardTitle className="flex items-center gap-2 text-base font-semibold">
+						<CardTitle className="flex items-center gap-2 font-semibold text-base">
 							<Shield className="h-4 w-4" />
 							Batch Commitments ({batches.length})
 						</CardTitle>
@@ -394,13 +470,22 @@ function ModelDetailComponent() {
 														size="sm"
 														variant="outline"
 														onClick={() => handleChallenge(batch.batchId)}
-														disabled={challengingBatch === batch.batchId}
+														disabled={
+															!isConnected ||
+															(isPending &&
+																challengingBatch === batch.batchId) ||
+															(isConfirming &&
+																challengingBatch === batch.batchId)
+														}
 														className="h-7 gap-1 text-xs"
 													>
 														<AlertCircle className="h-3 w-3" />
-														{challengingBatch === batch.batchId
-															? "..."
-															: "Challenge"}
+														{!isConnected
+															? "Connect"
+															: (isPending || isConfirming) &&
+																	challengingBatch === batch.batchId
+																? "..."
+																: "Challenge"}
 													</Button>
 												) : batch.auditStatus === 1 ? (
 													<span className="text-green-600 text-xs">
