@@ -34,7 +34,9 @@ export async function loadAllModels() {
 	for (const modelMetadata of registryData.models) {
 		const modelId = modelMetadata.id;
 		try {
-			const fullPath = join(examplesPath, modelMetadata.path);
+			// Strip the ../../examples/ prefix from registry path
+			const relativePath = modelMetadata.path.replace(/^\.\.\/\.\.\/examples\//, "");
+			const fullPath = join(examplesPath, relativePath);
 
 			await loadModel(modelId, fullPath);
 		} catch (err) {
