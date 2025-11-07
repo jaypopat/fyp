@@ -50,9 +50,9 @@ function HomeComponent() {
 				accessorKey: "name",
 				header: ({ column }) => (
 					<Button
-						variant="plain"
+						variant="ghost"
 						onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-						className="h-12 items-center p-0"
+						className="h-auto items-center p-0"
 					>
 						Model Details
 						<ArrowUpDown className="ml-2 h-4 w-4" />
@@ -92,9 +92,9 @@ function HomeComponent() {
 				accessorKey: "status",
 				header: ({ column }) => (
 					<Button
-						variant="plain"
+						variant="ghost"
 						onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-						className="h-12 items-center p-0"
+						className="h-auto items-center p-0"
 					>
 						Status
 						<ArrowUpDown className="ml-2 h-4 w-4" />
@@ -134,9 +134,9 @@ function HomeComponent() {
 				accessorKey: "registrationTimestamp",
 				header: ({ column }) => (
 					<Button
-						variant="plain"
+						variant="ghost"
 						onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-						className="h-12 items-center p-0"
+						className="h-auto items-center p-0"
 					>
 						Registered
 						<ArrowUpDown className="ml-2 h-4 w-4" />

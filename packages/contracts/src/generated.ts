@@ -754,20 +754,6 @@ export const zkFairAbi = [
 	},
 	{
 		type: "function",
-		inputs: [],
-		name: "pause",
-		outputs: [],
-		stateMutability: "nonpayable",
-	},
-	{
-		type: "function",
-		inputs: [],
-		name: "paused",
-		outputs: [{ name: "", internalType: "bool", type: "bool" }],
-		stateMutability: "view",
-	},
-	{
-		type: "function",
 		inputs: [
 			{ name: "name", internalType: "string", type: "string" },
 			{ name: "description", internalType: "string", type: "string" },
@@ -833,13 +819,6 @@ export const zkFairAbi = [
 		type: "function",
 		inputs: [{ name: "newOwner", internalType: "address", type: "address" }],
 		name: "transferOwnership",
-		outputs: [],
-		stateMutability: "nonpayable",
-	},
-	{
-		type: "function",
-		inputs: [],
-		name: "unpause",
 		outputs: [],
 		stateMutability: "nonpayable",
 	},
@@ -1034,19 +1013,6 @@ export const zkFairAbi = [
 		anonymous: false,
 		inputs: [
 			{
-				name: "account",
-				internalType: "address",
-				type: "address",
-				indexed: false,
-			},
-		],
-		name: "Paused",
-	},
-	{
-		type: "event",
-		anonymous: false,
-		inputs: [
-			{
 				name: "modelId",
 				internalType: "uint256",
 				type: "uint256",
@@ -1103,19 +1069,6 @@ export const zkFairAbi = [
 		anonymous: false,
 		inputs: [
 			{
-				name: "account",
-				internalType: "address",
-				type: "address",
-				indexed: false,
-			},
-		],
-		name: "Unpaused",
-	},
-	{
-		type: "event",
-		anonymous: false,
-		inputs: [
-			{
 				name: "oldVerifier",
 				internalType: "address",
 				type: "address",
@@ -1137,8 +1090,6 @@ export const zkFairAbi = [
 	{ type: "error", inputs: [], name: "BatchNotFound" },
 	{ type: "error", inputs: [], name: "DeadlineNotPassed" },
 	{ type: "error", inputs: [], name: "DeadlinePassed" },
-	{ type: "error", inputs: [], name: "EnforcedPause" },
-	{ type: "error", inputs: [], name: "ExpectedPause" },
 	{ type: "error", inputs: [], name: "HasPendingAudits" },
 	{ type: "error", inputs: [], name: "InsufficientStake" },
 	{ type: "error", inputs: [], name: "InvalidInput" },

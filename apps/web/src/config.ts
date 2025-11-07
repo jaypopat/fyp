@@ -28,7 +28,7 @@ const _config: Config = {
 		explorerBase: "https://app.tryethernal.com",
 	},
 	sepolia: {
-		contractAddress: "0xc8d9688e0a5e96b1cca56d98eae62ce980088537",
+		contractAddress: "0x74173c436dc39d963541bf95150b0f56f8ee199d",
 		rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com",
 		chain: sepolia,
 		providerUrl: "https://zkfair-provider.fly.dev",

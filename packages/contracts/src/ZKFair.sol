@@ -3,12 +3,11 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
 import {IVerifier} from "./Verifier.sol";
 
 /// @title ZKFair - Zero-Knowledge Fairness Auditing for ML Models
 /// @notice Implements OATH protocol: Certification, Query Batching, Continuous Auditing
-contract ZKFair is Ownable, ReentrancyGuard, Pausable {
+contract ZKFair is Ownable, ReentrancyGuard {
     
     // ============================================
     // STATE VARIABLES
@@ -176,7 +175,7 @@ contract ZKFair is Ownable, ReentrancyGuard, Pausable {
         bytes32 weightsHash,
         bytes32 datasetMerkleRoot,
         uint256 fairnessThreshold
-    ) external payable whenNotPaused nonReentrant returns (uint256 modelId) {
+    ) external payable  nonReentrant returns (uint256 modelId) {
         if (bytes(name).length == 0 || weightsHash == bytes32(0) || datasetMerkleRoot == bytes32(0)) {
             revert InvalidInput();
         }
@@ -214,7 +213,7 @@ contract ZKFair is Ownable, ReentrancyGuard, Pausable {
         uint256 modelId,
         bytes calldata proof,
         bytes32[] calldata publicInputs
-    ) external onlyProvider(modelId) validModel(modelId) whenNotPaused {
+    ) external onlyProvider(modelId) validModel(modelId)  {
         Model storage model = models[modelId];
         
         if (model.status != ModelStatus.REGISTERED) revert InvalidModelStatus();
@@ -246,7 +245,7 @@ contract ZKFair is Ownable, ReentrancyGuard, Pausable {
         uint256 queryCount,
         uint256 timestampStart,
         uint256 timestampEnd
-    ) external onlyProvider(modelId) validModel(modelId) whenNotPaused returns (uint256 batchId) {
+    ) external onlyProvider(modelId) validModel(modelId)  returns (uint256 batchId) {
         Model storage model = models[modelId];
         
         // Allow REGISTERED or CERTIFIED for development
@@ -287,7 +286,6 @@ contract ZKFair is Ownable, ReentrancyGuard, Pausable {
     function requestAudit(uint256 batchId)
         external
         validBatch(batchId)
-        whenNotPaused
         returns (uint256 auditId)
     {
         Batch storage batch = batches[batchId];
@@ -520,13 +518,5 @@ contract ZKFair is Ownable, ReentrancyGuard, Pausable {
         address oldVerifier = address(verifier);
         verifier = IVerifier(newVerifier);
         emit VerifierUpdated(oldVerifier, newVerifier);
-    }
-    
-    function pause() external onlyOwner {
-        _pause();
-    }
-    
-    function unpause() external onlyOwner {
-        _unpause();
     }
 }

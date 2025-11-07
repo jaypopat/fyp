@@ -3,7 +3,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
 import { WagmiProvider } from "wagmi";
-import "@rainbow-me/rainbowkit/styles.css";
 import "./index.css";
 import Loader from "./components/loader";
 import { wagmiConfig } from "./lib/wagmi";

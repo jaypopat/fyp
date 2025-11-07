@@ -8,7 +8,7 @@ import {
 	http,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { anvil } from "viem/chains";
+import { anvil, sepolia } from "viem/chains";
 import type {
 	AuditExpiredEvent,
 	AuditProofSubmittedEvent,
@@ -29,7 +29,7 @@ export class ContractClient {
 
 	constructor(options: ZkFairOptions) {
 		this.contractAddress = options?.contractAddress as Address;
-		this.chain = options?.chain ?? anvil;
+		this.chain = options.rpcUrl?.includes("localhost") ? anvil : sepolia;
 
 		this.publicClient = createPublicClient({
 			chain: this.chain,
