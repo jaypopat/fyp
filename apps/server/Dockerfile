@@ -14,6 +14,7 @@ WORKDIR /app
 
 COPY --from=builder /build/apps/server/dist ./dist
 COPY --from=builder /build/examples ./examples
+COPY --from=builder /build/apps/server/db/migrations ./db/migrations
 
 #  Create minimal package.json
 RUN echo '{"type":"module","dependencies":{"onnxruntime-node":"^1.23.0"}}' > package.json
