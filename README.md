@@ -3,10 +3,12 @@
 zkFair is a framework and toolchain for generating and verifying **zero-knowledge proofs of ML model fairness**.
 This repository is a [Turborepo](https://turbo.build/) with multiple apps and packages.
 
+📚 [Full Documentation](https://docs.fyp.jaypopat.me)
 ---
 
 ## What does this solve
 This platform provides a privacy-preserving way for model providers to prove their AI models are fair, while giving users confidence to interact with verifiably unbiased systems. We decentralize trust by making the entire process permissionless: anyone can register as a provider, challenge models through audits (zk-powered!).
+[Learn more about the architecture →](https://docs.fyp.jaypopat.me/architecture)**
 
 ## How it works
 
