@@ -9,7 +9,7 @@
 	"scripts": {
 		"check": "biome check --write .",
 		"lint": "biome check",
-		"dev": "concurrently --kill-others \"anvil\" \"sleep 3 && turbo dev\"",
+		"dev": "concurrently --kill-others \"anvil -b 12\" \"sleep 3 && turbo dev\"",
 		"build": "turbo build",
 		"check-types": "turbo check-types",
 		"dev:native": "turbo -F native dev",

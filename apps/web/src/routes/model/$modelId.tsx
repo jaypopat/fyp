@@ -120,7 +120,7 @@ function ModelDetailComponent() {
 	} | null>(null);
 
 	// Wallet connection
-	const { isConnected, address } = useAccount();
+	const { address } = useAccount();
 
 	// Challenge state
 	const [challengingBatch, setChallengingBatch] = useState<string | null>(null);
@@ -217,11 +217,6 @@ function ModelDetailComponent() {
 	};
 
 	const handleChallenge = async (batchId: string) => {
-		if (!isConnected) {
-			alert("Please connect your wallet to challenge a batch");
-			return;
-		}
-
 		try {
 			setChallengingBatch(batchId);
 
@@ -235,7 +230,6 @@ function ModelDetailComponent() {
 				abi: zkFairAbi,
 				functionName: "requestAudit",
 				args: [BigInt(batchId)],
-				gas: BigInt(500000), // Explicit gas limit
 			});
 		} catch (error) {
 			console.error("Challenge failed:", error);
@@ -466,27 +460,36 @@ function ModelDetailComponent() {
 											</TableCell>
 											<TableCell>
 												{!batch.audited ? (
-													<Button
-														size="sm"
-														variant="outline"
-														onClick={() => handleChallenge(batch.batchId)}
-														disabled={
-															!isConnected ||
-															(isPending &&
-																challengingBatch === batch.batchId) ||
-															(isConfirming &&
-																challengingBatch === batch.batchId)
-														}
-														className="h-7 gap-1 text-xs"
-													>
-														<AlertCircle className="h-3 w-3" />
-														{!isConnected
-															? "Connect"
-															: (isPending || isConfirming) &&
-																	challengingBatch === batch.batchId
+													batch.activeAuditId !== "0" ? (
+														<Button
+															size="sm"
+															variant="secondary"
+															disabled
+															className="h-7 gap-1 text-xs"
+														>
+															<AlertCircle className="h-3 w-3" />
+															Audit Pending
+														</Button>
+													) : (
+														<Button
+															size="sm"
+															variant="outline"
+															onClick={() => handleChallenge(batch.batchId)}
+															disabled={
+																(isPending &&
+																	challengingBatch === batch.batchId) ||
+																(isConfirming &&
+																	challengingBatch === batch.batchId)
+															}
+															className="h-7 gap-1 text-xs"
+														>
+															<AlertCircle className="h-3 w-3" />
+															{(isPending || isConfirming) &&
+															challengingBatch === batch.batchId
 																? "..."
 																: "Challenge"}
-													</Button>
+														</Button>
+													)
 												) : batch.auditStatus === 1 ? (
 													<span className="text-green-600 text-xs">
 														✓ Verified
