@@ -72,7 +72,6 @@ export const batches = sqliteTable("batches", {
 	committedAt: integer("committed_at", { mode: "number" }),
 });
 
-// Type exports for use in application code
 export type QueryLog = typeof queryLogs.$inferSelect;
 export type NewQueryLog = typeof queryLogs.$inferInsert;
 export type Batch = typeof batches.$inferSelect;

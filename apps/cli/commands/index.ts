@@ -1,5 +1,4 @@
 import { command } from "@drizzle-team/brocli";
-import { query } from "./client";
 import { getModel, listModels } from "./model";
 import { getProofStatus, proveModelBias } from "./proof";
 
@@ -13,12 +12,6 @@ export const proof = command({
 	name: "proof",
 	desc: "Manage proofs",
 	subcommands: [proveModelBias, getProofStatus],
-});
-
-export const client = command({
-	name: "client",
-	desc: "Client operations (query models, run inference)",
-	subcommands: [query],
 });
 
 export { commit } from "./commit";

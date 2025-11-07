@@ -1,6 +1,5 @@
 import { SDK } from "@zkfair/sdk";
 import type { Hash, Hex } from "viem";
-import { anvil, sepolia } from "viem/chains";
 
 const isOnChain = process.env.ONCHAIN === "true";
 
@@ -16,5 +15,4 @@ export const zkFairSDK = new SDK({
 		(isOnChain
 			? (process.env.ONCHAIN_PRIVATE_KEY as Hex)
 			: (process.env.PRIVATE_KEY as Hex)) || "",
-	chain: isOnChain ? sepolia : anvil,
 });

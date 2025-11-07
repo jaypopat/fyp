@@ -35,7 +35,7 @@ export async function withSpinner<T>(
 	}
 }
 
-export function validateHash(hash: string) {
+export function validateHash(hash: string): Hash {
 	if (!hash.startsWith("0x")) {
 		throw new Error(`Invalid format for hash. It must begin with '0x'.`);
 	}

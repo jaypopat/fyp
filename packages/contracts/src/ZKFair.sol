@@ -2,13 +2,12 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import {IVerifier} from "./Verifier.sol";
 
 /// @title ZKFair - Zero-Knowledge Fairness Auditing for ML Models
 /// @notice Implements OATH protocol: Certification, Query Batching, Continuous Auditing
-contract ZKFair is Ownable, ReentrancyGuard, Pausable {
+contract ZKFair is Ownable, Pausable {
     
     // ============================================
     // STATE VARIABLES
@@ -348,7 +347,7 @@ contract ZKFair is Ownable, ReentrancyGuard, Pausable {
         uint256 auditId,
         bytes calldata proof,
         bytes32[] calldata publicInputs
-    ) external validAudit(auditId) nonReentrant {
+    ) external validAudit(auditId) whenNotPaused {
         Audit storage audit = audits[auditId];
         Batch storage batch = batches[audit.batchId];
         Model storage model = models[batch.modelId];
@@ -378,7 +377,7 @@ contract ZKFair is Ownable, ReentrancyGuard, Pausable {
     /// @notice Slash provider for missing audit deadline (permissionless)
     /// @dev Anyone can call after deadline - challenger gets slashed stake as reward
     /// @param auditId ID of the expired audit
-    function slashExpiredAudit(uint256 auditId) external validAudit(auditId) nonReentrant {
+    function slashExpiredAudit(uint256 auditId) external validAudit(auditId) whenNotPaused {
         Audit storage audit = audits[auditId];
         Batch storage batch = batches[audit.batchId];
         
@@ -421,7 +420,7 @@ contract ZKFair is Ownable, ReentrancyGuard, Pausable {
         external
         onlyProvider(modelId)
         validModel(modelId)
-        nonReentrant
+        whenNotPaused
     {
         Model storage model = models[modelId];
         
