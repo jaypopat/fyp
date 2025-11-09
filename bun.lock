@@ -124,20 +124,6 @@
         "typescript": "^5",
       },
     },
-    "packages/x402": {
-      "name": "@zkfair/x402",
-      "version": "1.0.0",
-      "dependencies": {
-        "hono": "^4.9.11",
-        "viem": "^2.38.3",
-      },
-      "devDependencies": {
-        "@types/bun": "latest",
-      },
-      "peerDependencies": {
-        "typescript": "^5",
-      },
-    },
     "packages/zk-circuits": {
       "name": "@zkfair/zk-circuits",
     },
@@ -1004,8 +990,6 @@
     "@zkfair/contracts": ["@zkfair/contracts@workspace:packages/contracts"],
 
     "@zkfair/sdk": ["@zkfair/sdk@workspace:packages/sdk"],
-
-    "@zkfair/x402": ["@zkfair/x402@workspace:packages/x402"],
 
     "@zkfair/zk-circuits": ["@zkfair/zk-circuits@workspace:packages/zk-circuits"],
 
