@@ -1,5 +1,5 @@
 import { run } from "@drizzle-team/brocli";
-import {commit, model, proof, verify } from "./commands";
+import { commit, model, proof, verify } from "./commands";
 
 run([model, proof, commit, verify], {
 	name: "zkfair",

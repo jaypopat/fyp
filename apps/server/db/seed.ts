@@ -8,7 +8,7 @@ const count = Number(process.env.SEED_COUNT) || 100;
 
 console.log(`Seeding ${count} queries...`);
 
-const modelId = 1; // Using the adult-income model 
+const modelId = 1; // Using the adult-income model
 const startTime = Date.now();
 
 // Prepare query data

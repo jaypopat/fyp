@@ -1,12 +1,9 @@
 import type { Hex } from "viem";
-import { sdk } from "./sdk";
 
 export type WebPredictParams = {
 	providerUrl: string;
 	modelId: string | number;
 	input: number[];
-	verifyMac?: boolean;
-	providerPubKey?: Hex;
 };
 
 export type Result = {
@@ -15,16 +12,22 @@ export type Result = {
 	timestamp: number;
 	inputHash: Hex;
 	queryId: string;
-	verified: boolean;
-	itmac?: { providerRand: Hex; coins: Hex };
 };
 
 export async function predict(params: WebPredictParams): Promise<Result> {
-	const inference = sdk.initInference(params.providerPubKey);
-	return await inference.predict({
-		providerUrl: params.providerUrl,
-		modelId: params.modelId,
-		input: params.input,
-		verifyMac: params.verifyMac,
+	const res = await fetch(`${params.providerUrl}/predict`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({
+			modelId: params.modelId,
+			input: params.input,
+		}),
 	});
+
+	if (!res.ok) {
+		throw new Error(`Provider error: ${res.status} ${res.statusText}`);
+	}
+
+	const data = (await res.json()) as Result;
+	return data;
 }

@@ -48,8 +48,7 @@ packages/
   contracts/   → Solidity contracts for verifying proofs and storing model metadata
   sdk/         → TypeScript SDK for web/server and cli to interact with contracts
   zk-circuits/ → Noir circuits for ZK logic (registration and ongoing audit circuits)
-  itmac/       → ITMAC Protocol functions used by the provider/auditor/client for any interactions
-
+  
 ````
 
 ---

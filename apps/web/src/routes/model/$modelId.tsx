@@ -115,7 +115,6 @@ function ModelDetailComponent() {
 	const [loading, setLoading] = useState(false);
 	const [result, setResult] = useState<{
 		prediction: number;
-		verified: boolean;
 		queryId: string;
 	} | null>(null);
 
@@ -341,16 +340,6 @@ function ModelDetailComponent() {
 									<span className="font-medium">Prediction:</span>{" "}
 									<b>{result.prediction}</b>
 								</p>
-								<p>
-									<span className="font-medium">Verified:</span>{" "}
-									<b
-										className={
-											result.verified ? "text-green-600" : "text-red-600"
-										}
-									>
-										{String(result.verified)}
-									</b>
-								</p>
 								<p className="truncate" title={result.queryId}>
 									<span className="font-medium">Query:</span>{" "}
 									<code className="text-xs">
@@ -384,7 +373,6 @@ function ModelDetailComponent() {
 										});
 										setResult({
 											prediction: resultData.prediction,
-											verified: resultData.verified,
 											queryId: resultData.queryId,
 										});
 									} catch (err) {
