@@ -25,7 +25,6 @@
 		"@noir-lang/noir_js": "^1.0.0-beta.11",
 		"@zkfair/contracts": "workspace:*",
 		"@zkfair/zk-circuits": "workspace:*",
-		"@zkfair/itmac": "workspace:*",
 		"papaparse": "^5.5.3",
 		"viem": "^2.38.3"
 	}

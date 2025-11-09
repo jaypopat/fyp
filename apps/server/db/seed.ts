@@ -61,9 +61,6 @@ while (true) {
 
 if (batchCount > 0) {
 	console.log(`Created ${batchCount} batch(es)`);
-	console.log("\n⏳ Waiting for blockchain commits to complete...");
-	// Wait a bit for async blockchain commits to complete
-	await new Promise((resolve) => setTimeout(resolve, 5000));
 	console.log("✅ Done!");
 } else {
 	console.log(

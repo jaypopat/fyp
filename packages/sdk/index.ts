@@ -3,7 +3,6 @@ import { BatchAPI } from "./batch";
 import { CommitAPI } from "./commit";
 import { ContractClient } from "./contract";
 import { EventsAPI } from "./events";
-import type { InferenceClient } from "./inference";
 import { ModelAPI } from "./model";
 import { ProofAPI } from "./proof";
 import type { ZkFairOptions } from "./types";
@@ -18,7 +17,6 @@ export class SDK {
 	public verify: VerifyAPI;
 	public events: EventsAPI;
 	public audit: AuditAPI;
-	public inference: InferenceClient | undefined;
 
 	constructor(options: ZkFairOptions) {
 		this.contracts = new ContractClient(options);

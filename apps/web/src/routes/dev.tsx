@@ -26,7 +26,6 @@ function DevPage() {
 				timestamp: number;
 				inputHash: string;
 				queryId: string;
-				itmac?: unknown;
 		  }
 		| { error: string };
 

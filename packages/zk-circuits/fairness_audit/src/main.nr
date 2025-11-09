@@ -1,11 +1,20 @@
-fn main(x: Field, y: pub Field) {
-    assert(x != y);
-}
+fn main(
+    // ===== PRIVATE INPUTS =====
+        // query data at the indexes requested
+        // merkle proofs for each data point
+        // merkle path indices ie 0 or 1 for left/right
+        // model threshold group and b
 
-#[test]
-fn test_main() {
-    main(1, 2);
+    // ===== PUBLIC INPUTS =====
+        // merkle root of batch commitment
+        // requested indexes arr
+        // fairness threshold epsilon
+) {
 
-    // Uncomment to make test fail
-    // main(1, 1);
+
+// we do merkle inclusion assertions first
+
+// do the same fairness counter logic for bias (as did in circuit 1)
+// assert if threshold is met
+
 }

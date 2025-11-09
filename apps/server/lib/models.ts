@@ -35,7 +35,10 @@ export async function loadAllModels() {
 		const modelId = modelMetadata.id;
 		try {
 			// Strip the ../../examples/ prefix from registry path
-			const relativePath = modelMetadata.path.replace(/^\.\.\/\.\.\/examples\//, "");
+			const relativePath = modelMetadata.path.replace(
+				/^\.\.\/\.\.\/examples\//,
+				"",
+			);
 			const fullPath = join(examplesPath, relativePath);
 
 			await loadModel(modelId, fullPath);

@@ -1,7 +1,5 @@
-import type { Hex } from "viem";
 import { BatchAPI } from "./batch";
 import { ContractClient } from "./contract";
-import { InferenceClient } from "./inference";
 import { ModelAPI } from "./model";
 import type { ZkFairOptions } from "./types";
 
@@ -11,17 +9,11 @@ export class BrowserSDK {
 	public readonly model: ModelAPI;
 	public readonly batch: BatchAPI;
 	private readonly contracts: ContractClient;
-	public inference: InferenceClient | undefined;
 
 	constructor(options: BrowserSDKOptions) {
 		this.contracts = new ContractClient(options);
 		this.model = new ModelAPI(this.contracts);
 		this.batch = new BatchAPI(this.contracts);
-	}
-
-	initInference(providerPubKey?: Hex, macKey?: Hex) {
-		this.inference = new InferenceClient(providerPubKey, macKey);
-		return this.inference;
 	}
 }
 

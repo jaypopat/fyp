@@ -13,14 +13,13 @@
 	},
 	"dependencies": {
 		"@msgpack/msgpack": "^3.1.2",
-		"@zkfair/itmac": "workspace:*",
 		"@zkfair/sdk": "workspace:*",
 		"drizzle-orm": "^0.44.7",
 		"hono": "^4.9.11",
 		"onnxruntime-node": "^1.23.0"
 	},
 	"scripts": {
-		"dev": "bun --hot index.ts && bun run db:seed",
+		"dev": "bun --hot index.ts",
 		"start": "bun index.ts",
 		"build": "bun run build.ts",
 		"db:seed": "bun db/seed.ts",

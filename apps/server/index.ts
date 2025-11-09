@@ -1,12 +1,10 @@
 import { encode } from "@msgpack/msgpack";
-import { Provider } from "@zkfair/itmac";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import * as ort from "onnxruntime-node";
 import { getQueries, initDatabase, insertQuery } from "./db";
 import { createBatchIfNeeded, toAuditRecord } from "./lib/batch.service";
-import { ensureProviderKeys } from "./lib/keys";
 import { loadAllModels } from "./lib/models";
 import { sdk } from "./lib/sdk";
 import type { Hex } from "./lib/types";
@@ -22,9 +20,6 @@ const models = await loadAllModels();
 
 // Initialize database
 initDatabase();
-
-const providerKeys = await ensureProviderKeys();
-const itmacProvider = new Provider(providerKeys);
 
 // Start listening for audit requests from contract
 sdk.events.watchAuditRequested(async (event) => {
@@ -92,16 +87,14 @@ app.get("/models", (c) => {
 });
 
 /**
- * Inference endpoint with IT-MAC authentication
+ * Inference endpoint
  */
 app.post("/predict", async (c) => {
 	try {
 		const body = await c.req.json();
-		const { modelId, input, clientCommit, clientRand, queryId } = body as {
+		const { modelId, input, queryId } = body as {
 			modelId: number;
 			input: unknown;
-			clientCommit?: Hex;
-			clientRand?: Hex;
 			queryId?: string;
 		};
 
@@ -137,7 +130,6 @@ app.post("/predict", async (c) => {
 		const outputTensor = results.label || results.output0;
 		const prediction = outputTensor?.data[0] as number;
 
-		// Build IT-MAC artifacts if client provided coin-flip inputs
 		const now = Date.now();
 		// Canonical input hash: encode float32 array via msgpack
 		const asF32 = Array.from(new Float32Array(input as number[]));
@@ -145,51 +137,6 @@ app.post("/predict", async (c) => {
 		const inputHash =
 			`0x${[...inputHashBytes].map((b) => b.toString(16).padStart(2, "0")).join("")}` as Hex;
 		const qid = queryId ?? globalThis.crypto?.randomUUID?.() ?? `${now}`;
-		let itmac:
-			| {
-					providerRand: Hex;
-					coins: Hex;
-					transcript: {
-						queryId: string;
-						modelId: number;
-						inputHash: Hex;
-						prediction: number;
-						timestamp: number;
-						coins: Hex;
-					};
-					bundle: { mac: Hex; providerSignature: Hex };
-					providerPublicKey: Hex;
-			  }
-			| undefined;
-		if (clientCommit && clientRand) {
-			try {
-				// Use clean plug-and-play ITMAC API
-				const { flip, transcript, bundle } =
-					itmacProvider.createAuthenticatedTranscript({
-						clientCommit: clientCommit as Hex,
-						clientRand: clientRand as Hex,
-						queryId: qid,
-						modelId: Number(modelId),
-						inputHash,
-						prediction: Number(prediction),
-						timestamp: now,
-					});
-
-				itmac = {
-					providerRand: flip.providerRand,
-					coins: flip.coins,
-					transcript,
-					bundle,
-					providerPublicKey: providerKeys.publicKey,
-				};
-			} catch (error) {
-				// Invalid commitment or ITMAC error
-				return c.json(
-					{ error: (error as Error).message || "ITMAC verification failed" },
-					400,
-				);
-			}
-		}
 
 		console.log(`🧠 Inference for model ${modelId}: ${prediction}`);
 
@@ -212,7 +159,6 @@ app.post("/predict", async (c) => {
 			seqNum,
 			inputHash,
 			queryId: qid,
-			itmac,
 		});
 	} catch (error) {
 		console.error("Inference error:", error);
