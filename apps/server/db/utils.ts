@@ -5,7 +5,7 @@ import { db } from "./client";
  * Initialize database - run migrations
  */
 export function initDatabase() {
-	console.log("🔄 Running database migrations...");
+	console.log(" Running database migrations...");
 
 	const migrationsFolder =
 		process.env.NODE_ENV === "production"
@@ -14,7 +14,7 @@ export function initDatabase() {
 
 	migrate(db, { migrationsFolder });
 
-	console.log("✅ Database initialized");
+	console.log(" Database initialized");
 }
 
 /**

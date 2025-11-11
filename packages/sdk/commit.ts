@@ -213,7 +213,7 @@ export class CommitAPI {
 				),
 			),
 		]);
-		console.log(`✅ Artifacts saved to ${dir}`);
+		console.log(` Artifacts saved to ${dir}`);
 	}
 
 	private async hashWeights(weightsBuffer: Uint8Array): Promise<Hash> {

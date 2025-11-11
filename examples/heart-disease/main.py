@@ -124,12 +124,12 @@
 # # Save a copy of the dataset for CLI usage
 # data.to_csv('dataset.csv', index=False)
 
-# print(f"\n✅ Generated weights.bin, fairness_threshold.json, model.json, and dataset.csv")
-# print(f"\n📊 Model Performance:")
+# print(f"\n Generated weights.bin, fairness_threshold.json, model.json, and dataset.csv")
+# print(f"\n Model Performance:")
 # print(f"   Training samples: {len(X_train)}")
 # print(f"   Test samples: {len(X_test)}")
 # print(f"   Model accuracy: {model.score(X_test_scaled, y_test):.4f}")
-# print(f"\n⚖️  Fairness Metrics:")
+# print(f"\n  Fairness Metrics:")
 # print(f"   Primary metric: {fairness_config['metric']}")
 # print(f"   Target disparity: {fairness_config['targetDisparity']}")
 # print(f"   Protected attribute: {fairness_config['protectedAttribute']}")

@@ -158,7 +158,7 @@ export function useModelBatches(weightsHash: Hash, initialModelId?: bigint) {
 						`Audit ${passed ? "passed" : "failed"} for batch #${batch.batchId}`,
 						{
 							description: passed
-								? "Fairness verified ✓"
+								? "Fairness verified "
 								: "Fairness violation detected",
 						},
 					);

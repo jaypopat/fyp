@@ -65,7 +65,7 @@ export function useModels() {
 	useEffect(() => {
 		const unwatch = sdk.events.watchModelCertified(() => {
 			toast.success("Model certified!", {
-				description: "Training verification completed ✓",
+				description: "Training verification completed ",
 			});
 		});
 

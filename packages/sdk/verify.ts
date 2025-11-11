@@ -51,7 +51,7 @@ export class VerifyAPI {
 			proofFile.publicInputs,
 		);
 		console.log(
-			`✅ Certification proof submitted successfully. Tx hash: ${txHash}`,
+			` Certification proof submitted successfully. Tx hash: ${txHash}`,
 		);
 		return true;
 	}

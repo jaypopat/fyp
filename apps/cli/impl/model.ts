@@ -13,7 +13,7 @@ import { zkFairSDK } from "./sdk";
 export type GetModelOpts = TypeOf<typeof getModelOptions>;
 
 export async function listModels() {
-	console.log("📋 Fetching all registered models...");
+	console.log(" Fetching all registered models...");
 
 	const models = await withSpinner(
 		"Loading models",
@@ -23,7 +23,7 @@ export async function listModels() {
 		"Models loaded successfully",
 	);
 
-	console.log(`\n📊 Found ${models.length} registered models:`);
+	console.log(`\n Found ${models.length} registered models:`);
 	console.log("==========================================");
 
 	if (models.length === 0) {
@@ -55,10 +55,10 @@ export async function getModel(options: GetModelOpts) {
 
 	if (options.modelHash) {
 		hashToUse = validateHash(options.modelHash);
-		console.log(`🔍 Using provided model hash: ${hashToUse}`);
+		console.log(` Using provided model hash: ${hashToUse}`);
 	} else if (options.weightsFile) {
 		hashToUse = await computeFileHash(options.weightsFile);
-		console.log(`🔍 Computed hash from weights file: ${hashToUse}`);
+		console.log(` Computed hash from weights file: ${hashToUse}`);
 	} else {
 		// Interactive: Select from available models
 		const models = await withSpinner(
@@ -94,7 +94,7 @@ export async function getModel(options: GetModelOpts) {
 		"Model details retrieved",
 	);
 
-	console.log("\n📋 Model Details:");
+	console.log("\n Model Details:");
 	console.log("================");
 	console.log(`Name: ${model.name}`);
 	console.log(`Author: ${model.provider}`);

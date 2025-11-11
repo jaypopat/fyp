@@ -62,7 +62,7 @@ while (true) {
 
 if (batchCount > 0) {
 	console.log(`Created ${batchCount} batch(es)`);
-	console.log("✅ Done!");
+	console.log(" Done!");
 } else {
 	console.log(
 		`No batches created (need ${process.env.BATCH_SIZE || 100} unbatched queries for a batch)`,

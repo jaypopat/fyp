@@ -23,7 +23,7 @@ async function registerModel(params: {
 		creator?: string;
 	};
 }): Promise<Hash> {
-	console.log("🚀 Registering new model...");
+	console.log(" Registering new model...");
 
 	const absWeightsPath = path.resolve(params.weightsPath);
 	const absDatasetPath = path.resolve(params.datasetPath);
@@ -65,14 +65,14 @@ async function registerModel(params: {
 		"Model files read successfully",
 	);
 
-	console.log("\n✅ Model Registration Successful!");
+	console.log("\n Model Registration Successful!");
 	console.log(`   Transaction Hash: ${txHash}`);
 	console.log(`   Name: ${params.modelMetadata.name || "Unnamed Model"}`);
 	return txHash;
 }
 
 export async function commit(opts: CommitOpts) {
-	console.log("📦 Committing model and dataset...");
+	console.log(" Committing model and dataset...");
 
 	const modelFiles = await discoverModelFiles({
 		dir: opts.dir,
@@ -103,7 +103,7 @@ export async function commit(opts: CommitOpts) {
 	});
 
 	if (!confirmed) {
-		console.log("\n❌ Commitment cancelled.");
+		console.log("\n Commitment cancelled.");
 		process.exit(0);
 	}
 
@@ -114,12 +114,12 @@ export async function commit(opts: CommitOpts) {
 		modelMetadata: modelFiles.modelMetadata,
 	});
 
-	console.log("\n✅ Commitment Complete!");
+	console.log("\n Commitment Complete!");
 	return txHash;
 }
 
 export async function proveModelBias(opts: ProveModelBiasOpts) {
-	console.log("🔬 Starting model fairness proof process...");
+	console.log(" Starting model fairness proof process...");
 
 	const modelFiles = await discoverModelFiles({
 		dir: opts.dir,
@@ -141,6 +141,6 @@ export async function proveModelBias(opts: ProveModelBiasOpts) {
 		modelMetadata: modelFiles.modelMetadata,
 	});
 
-	console.log("\n🎯 Fairness Proof Process Complete!");
+	console.log("\n Fairness Proof Process Complete!");
 	console.log("   Next steps: Generate ZK proof and submit for verification");
 }

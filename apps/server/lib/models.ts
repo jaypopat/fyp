@@ -28,8 +28,8 @@ export async function loadAllModels() {
 		examplesPath = join(process.cwd(), "../../examples/");
 	}
 
-	console.log(`📂 Looking for models in: ${examplesPath}`);
-	console.log(`📂 Working directory: ${process.cwd()}`);
+	console.log(` Looking for models in: ${examplesPath}`);
+	console.log(` Working directory: ${process.cwd()}`);
 
 	for (const modelMetadata of registryData.models) {
 		const modelId = modelMetadata.id;

@@ -65,7 +65,7 @@ onnx_pred = sess.run([output_name], {input_name: test_sample})[0]
 sklearn_pred = model.predict(test_sample)
 print(f"ONNX prediction: {onnx_pred[0]}, Sklearn prediction: {sklearn_pred[0]}")
 
-print("\n🔧 Computing fairness metrics and post-processing thresholds...\n")
+print("\n Computing fairness metrics and post-processing thresholds...\n")
 
 # Get predictions and continuous scores
 y_pred = model.predict(X_test)
@@ -94,7 +94,7 @@ target_disparity = max(0.05, demographic_parity * 0.8)
 # ===== Algorithm 1: Fairness-Aware Post-Processing =====
 # Compute per-group thresholds (t_a, t_b) that achieve demographic parity
 
-print("📐 Computing per-group thresholds (Algorithm 1)...")
+print(" Computing per-group thresholds (Algorithm 1)...")
 
 # Separate scores and labels by group
 group_0_scores = scores[group_0_mask]
@@ -124,8 +124,8 @@ target_fpr = common_fpr[best_idx]
 threshold_group_a = float(np.interp(target_fpr, fpr_0, thresholds_0))
 threshold_group_b = float(np.interp(target_fpr, fpr_1, thresholds_1))
 
-print(f"   ✓ Group 0 (a) threshold: {threshold_group_a:.4f}")
-print(f"   ✓ Group 1 (b) threshold: {threshold_group_b:.4f}")
+print(f"    Group 0 (a) threshold: {threshold_group_a:.4f}")
+print(f"    Group 1 (b) threshold: {threshold_group_b:.4f}")
 
 # Save fairness config with per-group thresholds
 fairness_config = {
@@ -167,23 +167,23 @@ X_test['income'] = y_test
 X_test.to_csv('calibration_dataset.csv', index=False)
 
 # Print results
-print("\n✅ Generated files:")
+print("\n Generated files:")
 print("   - weights.bin (model parameters)")
 print("   - model.onnx (ONNX format)")
 print("   - fairness_threshold.json (with per-group thresholds)")
 print("   - model.json (metadata)")
 print("   - calibration_dataset.csv (D_val for OATH)\n")
 
-print("📊 Model Performance:")
+print(" Model Performance:")
 print(f"   Test accuracy: {model.score(X_test.drop('income', axis=1), y_test):.4f}")
 print(f"   Number of features: {n_features}\n")
 
-print("⚖️  Fairness Metrics:")
+print("  Fairness Metrics:")
 print(f"   Demographic Parity: {demographic_parity:.4f}")
 print(f"   Equalized Odds: {equalized_odds:.4f}")
 print(f"   Group 0 positive rate: {group_0_pos_rate:.4f}")
 print(f"   Group 1 positive rate: {group_1_pos_rate:.4f}\n")
 
-print("🔐 Post-Processing Thresholds (for ZK commitment):")
+print(" Post-Processing Thresholds (for ZK commitment):")
 print(f"   Group A threshold (t_a): {threshold_group_a:.4f}")
 print(f"   Group B threshold (t_b): {threshold_group_b:.4f}")

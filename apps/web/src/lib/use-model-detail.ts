@@ -46,7 +46,7 @@ export function useModelDetail(weightsHash: Hash) {
 							if (!prev) return prev;
 
 							toast.success(`${prev.name} certified!`, {
-								description: "Training verification completed ✓",
+								description: "Training verification completed ",
 							});
 
 							return { ...prev, status: 1 };

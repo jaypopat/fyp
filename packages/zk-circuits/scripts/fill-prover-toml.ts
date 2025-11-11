@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 
-// Configuration
+// Config
 const MAX_DATASET_SIZE = 1200;
 const NUM_FEATURES = 14;
 const NUM_WEIGHTS = 14;
@@ -48,11 +48,11 @@ async function loadModelWeights(): Promise<number[]> {
 			throw new Error("Weights not found in model.json");
 		}
 
-		console.log(`✓ Loaded ${weights.length} model weights`);
+		console.log(` Loaded ${weights.length} model weights`);
 		return weights;
 	} catch (error) {
 		console.warn(
-			"⚠ Could not load model weights, using placeholder values:",
+			" Could not load model weights, using placeholder values:",
 			error,
 		);
 		return Array(NUM_WEIGHTS).fill(0.1);
@@ -70,17 +70,14 @@ async function loadFairnessThresholds(): Promise<{
 	try {
 		const file = Bun.file(FAIRNESS_THRESHOLD_PATH);
 		const thresholds = await file.json();
-		console.log("✓ Loaded fairness thresholds");
+		console.log(" Loaded fairness thresholds");
 		return {
 			epsilon: thresholds.epsilon || 0.05,
 			thresholdA: thresholds.threshold_group_a || 0.5,
 			thresholdB: thresholds.threshold_group_b || 0.5,
 		};
 	} catch (error) {
-		console.warn(
-			"⚠ Could not load fairness thresholds, using defaults:",
-			error,
-		);
+		console.warn(" Could not load fairness thresholds, using defaults:", error);
 		return {
 			epsilon: 0.05,
 			thresholdA: 0.5,
@@ -151,18 +148,18 @@ function format1DArrayForTOML(arr: (string | number)[]): string {
  * Main function
  */
 async function main() {
-	console.log("🔧 Filling Prover.toml with calibration data...\n");
+	console.log(" Filling Prover.toml with calibration data...\n");
 
 	// 1. Load calibration dataset
-	console.log("📂 Loading calibration dataset...");
+	console.log(" Loading calibration dataset...");
 	const file = Bun.file(CALIBRATION_CSV_PATH);
 	const csvContent = await file.text();
 	const { headers, rows } = parseCSV(csvContent);
-	console.log(`✓ Loaded ${rows.length} rows with ${headers.length} columns`);
+	console.log(` Loaded ${rows.length} rows with ${headers.length} columns`);
 
 	// 2. Limit to MAX_DATASET_SIZE
 	const limitedRows = rows.slice(0, MAX_DATASET_SIZE);
-	console.log(`✓ Using first ${limitedRows.length} rows for circuit\n`);
+	console.log(` Using first ${limitedRows.length} rows for circuit\n`);
 
 	// 3. Extract features, labels, and sensitive attributes
 	const features: number[][] = [];
@@ -191,38 +188,38 @@ async function main() {
 	}
 
 	// 5. Generate salts for each data point
-	console.log("🔐 Generating salts for data points...");
+	console.log(" Generating salts for data points...");
 	const salts = limitedRows.map(() => generateSalt());
 	while (salts.length < MAX_DATASET_SIZE) {
 		salts.push("");
 	}
-	console.log(`✓ Generated ${limitedRows.length} salts\n`);
+	console.log(` Generated ${limitedRows.length} salts\n`);
 
 	// 6. Load model weights
-	console.log("🧠 Loading model weights...");
+	console.log(" Loading model weights...");
 	const weights = await loadModelWeights();
 	const weightsHash = computeWeightsHash(weights);
-	console.log(`✓ Weights hash: ${weightsHash}\n`);
+	console.log(` Weights hash: ${weightsHash}\n`);
 
 	// 7. Load fairness thresholds
-	console.log("⚖️  Loading fairness thresholds...");
+	console.log("  Loading fairness thresholds...");
 	const { epsilon, thresholdA, thresholdB } = await loadFairnessThresholds();
-	console.log(`✓ Epsilon: ${epsilon}`);
-	console.log(`✓ Threshold Group A: ${thresholdA}`);
-	console.log(`✓ Threshold Group B: ${thresholdB}\n`);
+	console.log(` Epsilon: ${epsilon}`);
+	console.log(` Threshold Group A: ${thresholdA}`);
+	console.log(` Threshold Group B: ${thresholdB}\n`);
 
 	// 8. Compute dataset Merkle root
-	console.log("🌳 Computing dataset Merkle root...");
+	console.log(" Computing dataset Merkle root...");
 	const merkleRoot = computeDatasetMerkleRoot(
 		features,
 		labels,
 		sensitiveAttrs,
 		salts,
 	);
-	console.log(`✓ Merkle root: ${merkleRoot}\n`);
+	console.log(` Merkle root: ${merkleRoot}\n`);
 
 	// 9. Generate Prover.toml content
-	console.log("📝 Generating Prover.toml content...");
+	console.log(" Generating Prover.toml content...");
 
 	const proverTomlContent = `# Auto-generated Prover.toml
 # Generated at: ${new Date().toISOString()}
@@ -256,11 +253,11 @@ _fairness_threshold_epsilon = "${epsilon}"
 `;
 
 	// 10. Write to file
-	console.log("💾 Writing to Prover.toml...");
+	console.log(" Writing to Prover.toml...");
 	await Bun.write(PROVER_TOML_PATH, proverTomlContent);
-	console.log("✓ Prover.toml written successfully!\n");
+	console.log(" Prover.toml written successfully!\n");
 
-	console.log("✅ Done! You can now run: cd training && nargo prove");
+	console.log(" Done! You can now run: cd training && nargo prove");
 }
 
 // Run the script

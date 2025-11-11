@@ -55,7 +55,7 @@ export async function getProofStatus(options: GetProofStatusOpts) {
 		"Proof status retrieved",
 	);
 
-	console.log("\n📊 Proof Status Results:");
+	console.log("\n Proof Status Results:");
 	console.log(`   Weights Hash: ${result.weightsHash}`);
 	console.log(`   Status: ${result.status}`);
 
@@ -94,7 +94,7 @@ export async function verifyProof(options: VerifyProofOpts) {
 		);
 
 		if (modelsWithProofs.length === 0) {
-			console.log("\n⚠️  No models with proofs found.");
+			console.log("\n  No models with proofs found.");
 			console.log("Available models (without proofs):");
 			for (const m of models) {
 				console.log(`  - ${m.name || "Unnamed"}`);
@@ -132,7 +132,7 @@ export async function verifyProof(options: VerifyProofOpts) {
 		publicInputs = inputStr.split(",");
 	}
 
-	console.log("🔐 Starting proof verification...");
+	console.log(" Starting proof verification...");
 	console.log(`   Hash: ${hashToVerify}`);
 	console.log(`   Public Inputs: [${publicInputs.join(", ")}]`);
 	console.log(`   Mode: ${options.local ? "Local" : "On-chain"}`);
@@ -145,7 +145,7 @@ export async function verifyProof(options: VerifyProofOpts) {
 		"Proof verified successfully",
 	);
 
-	console.log("\n✅ Proof Verification Successful!");
+	console.log("\n Proof Verification Successful!");
 	console.log(
 		"   The submitted proof is valid and the model meets fairness constraints.",
 	);
