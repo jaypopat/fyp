@@ -1,8 +1,8 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// BaseHonkVerifier
+// BaseFairnessVerifier
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const baseHonkVerifierAbi = [
+export const baseFairnessVerifierAbi = [
 	{
 		type: "function",
 		inputs: [
@@ -20,10 +20,10 @@ export const baseHonkVerifierAbi = [
 ] as const;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// HonkVerifier
+// BaseTrainingVerifier
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const honkVerifierAbi = [
+export const baseTrainingVerifierAbi = [
 	{
 		type: "function",
 		inputs: [
@@ -38,6 +38,44 @@ export const honkVerifierAbi = [
 	{ type: "error", inputs: [], name: "PublicInputsLengthWrong" },
 	{ type: "error", inputs: [], name: "ShpleminiFailed" },
 	{ type: "error", inputs: [], name: "SumcheckFailed" },
+] as const;
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// FairnessVerifier
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const fairnessVerifierAbi = [
+	{
+		type: "function",
+		inputs: [
+			{ name: "proof", internalType: "bytes", type: "bytes" },
+			{ name: "publicInputs", internalType: "bytes32[]", type: "bytes32[]" },
+		],
+		name: "verify",
+		outputs: [{ name: "", internalType: "bool", type: "bool" }],
+		stateMutability: "view",
+	},
+	{ type: "error", inputs: [], name: "ProofLengthWrong" },
+	{ type: "error", inputs: [], name: "PublicInputsLengthWrong" },
+	{ type: "error", inputs: [], name: "ShpleminiFailed" },
+	{ type: "error", inputs: [], name: "SumcheckFailed" },
+] as const;
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// IFairnessVerifier
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const iFairnessVerifierAbi = [
+	{
+		type: "function",
+		inputs: [
+			{ name: "_proof", internalType: "bytes", type: "bytes" },
+			{ name: "_publicInputs", internalType: "bytes32[]", type: "bytes32[]" },
+		],
+		name: "verify",
+		outputs: [{ name: "", internalType: "bool", type: "bool" }],
+		stateMutability: "view",
+	},
 ] as const;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -284,10 +322,10 @@ export const iMulticall3Abi = [
 ] as const;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// IVerifier
+// ITrainingVerifier
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const iVerifierAbi = [
+export const iTrainingVerifierAbi = [
 	{
 		type: "function",
 		inputs: [
@@ -400,11 +438,24 @@ export const pausableAbi = [
 ] as const;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// ReentrancyGuard
+// TrainingVerifier
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export const reentrancyGuardAbi = [
-	{ type: "error", inputs: [], name: "ReentrancyGuardReentrantCall" },
+export const trainingVerifierAbi = [
+	{
+		type: "function",
+		inputs: [
+			{ name: "proof", internalType: "bytes", type: "bytes" },
+			{ name: "publicInputs", internalType: "bytes32[]", type: "bytes32[]" },
+		],
+		name: "verify",
+		outputs: [{ name: "", internalType: "bool", type: "bool" }],
+		stateMutability: "view",
+	},
+	{ type: "error", inputs: [], name: "ProofLengthWrong" },
+	{ type: "error", inputs: [], name: "PublicInputsLengthWrong" },
+	{ type: "error", inputs: [], name: "ShpleminiFailed" },
+	{ type: "error", inputs: [], name: "SumcheckFailed" },
 ] as const;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -414,7 +465,10 @@ export const reentrancyGuardAbi = [
 export const zkFairAbi = [
 	{
 		type: "constructor",
-		inputs: [{ name: "_verifier", internalType: "address", type: "address" }],
+		inputs: [
+			{ name: "_trainingVerifier", internalType: "address", type: "address" },
+			{ name: "_fairnessVerifier", internalType: "address", type: "address" },
+		],
 		stateMutability: "nonpayable",
 	},
 	{
@@ -490,6 +544,15 @@ export const zkFairAbi = [
 		name: "commitBatch",
 		outputs: [{ name: "batchId", internalType: "uint256", type: "uint256" }],
 		stateMutability: "nonpayable",
+	},
+	{
+		type: "function",
+		inputs: [],
+		name: "fairnessVerifier",
+		outputs: [
+			{ name: "", internalType: "contract IFairnessVerifier", type: "address" },
+		],
+		stateMutability: "view",
 	},
 	{
 		type: "function",
@@ -796,7 +859,14 @@ export const zkFairAbi = [
 	{
 		type: "function",
 		inputs: [{ name: "newVerifier", internalType: "address", type: "address" }],
-		name: "setVerifier",
+		name: "setFairnessVerifier",
+		outputs: [],
+		stateMutability: "nonpayable",
+	},
+	{
+		type: "function",
+		inputs: [{ name: "newVerifier", internalType: "address", type: "address" }],
+		name: "setTrainingVerifier",
 		outputs: [],
 		stateMutability: "nonpayable",
 	},
@@ -831,6 +901,15 @@ export const zkFairAbi = [
 	},
 	{
 		type: "function",
+		inputs: [],
+		name: "trainingVerifier",
+		outputs: [
+			{ name: "", internalType: "contract ITrainingVerifier", type: "address" },
+		],
+		stateMutability: "view",
+	},
+	{
+		type: "function",
 		inputs: [{ name: "newOwner", internalType: "address", type: "address" }],
 		name: "transferOwnership",
 		outputs: [],
@@ -842,15 +921,6 @@ export const zkFairAbi = [
 		name: "unpause",
 		outputs: [],
 		stateMutability: "nonpayable",
-	},
-	{
-		type: "function",
-		inputs: [],
-		name: "verifier",
-		outputs: [
-			{ name: "", internalType: "contract IVerifier", type: "address" },
-		],
-		stateMutability: "view",
 	},
 	{
 		type: "function",
@@ -959,6 +1029,25 @@ export const zkFairAbi = [
 			},
 		],
 		name: "BatchCommitted",
+	},
+	{
+		type: "event",
+		anonymous: false,
+		inputs: [
+			{
+				name: "oldVerifier",
+				internalType: "address",
+				type: "address",
+				indexed: true,
+			},
+			{
+				name: "newVerifier",
+				internalType: "address",
+				type: "address",
+				indexed: true,
+			},
+		],
+		name: "FairnessVerifierUpdated",
 	},
 	{
 		type: "event",
@@ -1103,19 +1192,6 @@ export const zkFairAbi = [
 		anonymous: false,
 		inputs: [
 			{
-				name: "account",
-				internalType: "address",
-				type: "address",
-				indexed: false,
-			},
-		],
-		name: "Unpaused",
-	},
-	{
-		type: "event",
-		anonymous: false,
-		inputs: [
-			{
 				name: "oldVerifier",
 				internalType: "address",
 				type: "address",
@@ -1128,7 +1204,20 @@ export const zkFairAbi = [
 				indexed: true,
 			},
 		],
-		name: "VerifierUpdated",
+		name: "TrainingVerifierUpdated",
+	},
+	{
+		type: "event",
+		anonymous: false,
+		inputs: [
+			{
+				name: "account",
+				internalType: "address",
+				type: "address",
+				indexed: false,
+			},
+		],
+		name: "Unpaused",
 	},
 	{ type: "error", inputs: [], name: "ActiveAuditExists" },
 	{ type: "error", inputs: [], name: "AlreadyAudited" },

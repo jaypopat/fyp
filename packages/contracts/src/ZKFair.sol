@@ -3,7 +3,8 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-import {IVerifier} from "./Verifier.sol";
+import {ITrainingVerifier} from "./TrainingVerifier.sol";
+import {IFairnessVerifier} from "./FairnessVerifier.sol";
 
 /// @title ZKFair - Zero-Knowledge Fairness Auditing for ML Models
 /// @notice Implements OATH protocol: Certification, Query Batching, Continuous Auditing
@@ -13,7 +14,8 @@ contract ZKFair is Ownable, Pausable {
     // STATE VARIABLES
     // ============================================
     
-    IVerifier public verifier;
+    ITrainingVerifier public trainingVerifier;
+    IFairnessVerifier public fairnessVerifier;
     
     uint256 private modelCounter;
     uint256 private batchCounter;
@@ -102,7 +104,8 @@ contract ZKFair is Ownable, Pausable {
     event AuditExpired(uint256 indexed auditId, uint256 indexed batchId, address indexed slasher);
     event ProviderSlashed(uint256 indexed modelId, address indexed provider, uint256 amount, string reason);
     event StakeWithdrawn(uint256 indexed modelId, address indexed provider, uint256 amount);
-    event VerifierUpdated(address indexed oldVerifier, address indexed newVerifier);
+    event TrainingVerifierUpdated(address indexed oldVerifier, address indexed newVerifier);
+    event FairnessVerifierUpdated(address indexed oldVerifier, address indexed newVerifier);
     
     // ============================================
     // ERRORS
@@ -130,9 +133,10 @@ contract ZKFair is Ownable, Pausable {
     // CONSTRUCTOR
     // ============================================
     
-    constructor(address _verifier) Ownable(msg.sender) {
-        if (_verifier == address(0)) revert InvalidInput();
-        verifier = IVerifier(_verifier);
+    constructor(address _trainingVerifier, address _fairnessVerifier) Ownable(msg.sender) {
+        if (_trainingVerifier == address(0) || _fairnessVerifier == address(0)) revert InvalidInput();
+        trainingVerifier = ITrainingVerifier(_trainingVerifier);
+        fairnessVerifier = IFairnessVerifier(_fairnessVerifier);
     }
     
     // ============================================
@@ -218,7 +222,7 @@ contract ZKFair is Ownable, Pausable {
         
         if (model.status != ModelStatus.REGISTERED) revert InvalidModelStatus();
         
-        bool valid = verifier.verify(proof, publicInputs);
+        bool valid = trainingVerifier.verify(proof, publicInputs);
         if (!valid) revert InvalidProof();
         
         model.status = ModelStatus.CERTIFIED;
@@ -356,7 +360,7 @@ contract ZKFair is Ownable, Pausable {
         if (audit.responded) revert AlreadyResponded();
         if (block.timestamp > audit.deadline) revert DeadlinePassed();
         
-        bool valid = verifier.verify(proof, publicInputs);
+        bool valid = fairnessVerifier.verify(proof, publicInputs);
         
         audit.responded = true;
         audit.proofHash = keccak256(proof);
@@ -514,11 +518,18 @@ contract ZKFair is Ownable, Pausable {
     // ADMIN FUNCTIONS
     // ============================================
     
-    function setVerifier(address newVerifier) external onlyOwner {
+    function setTrainingVerifier(address newVerifier) external onlyOwner {
         if (newVerifier == address(0)) revert InvalidInput();
-        address oldVerifier = address(verifier);
-        verifier = IVerifier(newVerifier);
-        emit VerifierUpdated(oldVerifier, newVerifier);
+        address oldVerifier = address(trainingVerifier);
+        trainingVerifier = ITrainingVerifier(newVerifier);
+        emit TrainingVerifierUpdated(oldVerifier, newVerifier);
+    }
+    
+    function setFairnessVerifier(address newVerifier) external onlyOwner {
+        if (newVerifier == address(0)) revert InvalidInput();
+        address oldVerifier = address(fairnessVerifier);
+        fairnessVerifier = IFairnessVerifier(newVerifier);
+        emit FairnessVerifierUpdated(oldVerifier, newVerifier);
     }
     
     function pause() external onlyOwner {
