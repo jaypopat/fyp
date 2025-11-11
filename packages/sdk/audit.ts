@@ -1,12 +1,7 @@
-import { encode } from "@msgpack/msgpack";
 import type { Hash, Hex } from "viem";
 import type { ContractClient } from "./contract";
 import { createMerkleProof, merkleRoot } from "./merkle";
-import type { hashAlgos } from "./types";
 import { hashBytes, hexToBytes } from "./utils";
-
-const LEAF_SCHEMA = "MSGPACK" as const;
-const DEFAULT_HASH_ALGO: hashAlgos = "SHA-256";
 
 /**
  * Canonical query record for audit trail
@@ -29,8 +24,6 @@ export type AuditBatch = {
 	endIndex: number; // inclusive
 	count: number; // should equal (endIndex - startIndex + 1)
 	root: Hex;
-	leafAlgo: hashAlgos;
-	leafSchema: typeof LEAF_SCHEMA;
 	createdAt: number; // ms timestamp
 };
 
@@ -52,6 +45,7 @@ function f32(n: number): number {
 /**
  * Encode a query record as a canonical leaf for Merkle tree
  * Domain-separated with version prefix
+ * Uses JSON encoding for standardization
  */
 function encodeRecordLeaf(r: AuditRecord): Uint8Array {
 	const tuple: unknown[] = [
@@ -62,23 +56,23 @@ function encodeRecordLeaf(r: AuditRecord): Uint8Array {
 		f32(r.prediction),
 		r.timestamp,
 	];
-	return encode(tuple);
+	return new TextEncoder().encode(JSON.stringify(tuple));
 }
 
 /**
  * Convert audit records to Merkle tree leaves
  * Returns leaves as plain 64-hex strings (no 0x prefix) and index mapping
+ * Uses Poseidon hash for ZK-friendliness
  */
 export async function recordsToLeaves(
 	records: AuditRecord[],
-	hashAlgo: hashAlgos = DEFAULT_HASH_ALGO,
 ): Promise<{ leaves: string[]; indexById: Map<string, number> }> {
 	const leaves: string[] = [];
 	const indexById = new Map<string, number>();
 
 	for (const [i, rec] of records.entries()) {
 		const encoded = encodeRecordLeaf(rec);
-		const leaf = await hashBytes(encoded, hashAlgo);
+		const leaf = await hashBytes(encoded);
 		leaves.push(leaf.toLowerCase());
 		indexById.set(rec.queryId, i);
 	}
@@ -89,23 +83,19 @@ export async function recordsToLeaves(
 /**
  * Compute Merkle root and metadata for a batch of query records
  * This is storage-agnostic - you provide the records
+ * Uses Poseidon hash and JSON encoding (standardized)
  */
-export async function computeAuditBatch(
-	records: AuditRecord[],
-	hashAlgo: hashAlgos = DEFAULT_HASH_ALGO,
-): Promise<{
+export async function computeAuditBatch(records: AuditRecord[]): Promise<{
 	root: Hex;
 	count: number;
-	leafAlgo: hashAlgos;
-	leafSchema: typeof LEAF_SCHEMA;
 	indices: { queryId: string; index: number }[];
 }> {
-	if (records.length === 0) {
-		throw new Error("No records provided for batch");
+	if (!records.length) {
+		throw new Error("Cannot build batch from empty records");
 	}
 
-	const { leaves, indexById } = await recordsToLeaves(records, hashAlgo);
-	const root = await merkleRoot(leaves, hashAlgo);
+	const { leaves, indexById } = await recordsToLeaves(records);
+	const root = await merkleRoot(leaves);
 
 	const indices = records.map((r, i) => ({
 		queryId: r.queryId,
@@ -114,9 +104,7 @@ export async function computeAuditBatch(
 
 	return {
 		root,
-		count: leaves.length,
-		leafAlgo: hashAlgo,
-		leafSchema: LEAF_SCHEMA,
+		count: records.length,
 		indices,
 	};
 }
@@ -124,38 +112,38 @@ export async function computeAuditBatch(
 /**
  * Create a Merkle membership proof for a specific query in a batch
  * Returns the root and proof path
+ * Uses Poseidon hash (standardized)
  */
 export async function createAuditProof(
 	records: AuditRecord[],
 	queryId: string,
-	hashAlgo: hashAlgos = DEFAULT_HASH_ALGO,
 ): Promise<AuditProof> {
 	if (records.length === 0) {
 		throw new Error("No records provided");
 	}
 
-	const { leaves, indexById } = await recordsToLeaves(records, hashAlgo);
+	const { leaves, indexById } = await recordsToLeaves(records);
 	const index = indexById.get(queryId);
 
 	if (index === undefined) {
 		throw new Error(`Query ID "${queryId}" not found in records`);
 	}
 
-	const { root, proof } = await createMerkleProof(leaves, index, hashAlgo);
+	const { root, proof } = await createMerkleProof(leaves, index);
 
 	return { root, index, proof };
 }
 
 /**
  * Verify an audit proof for a query record
+ * Uses Poseidon hash (standardized)
  */
 export async function verifyAuditProof(
 	record: AuditRecord,
 	proof: AuditProof,
-	hashAlgo: hashAlgos = DEFAULT_HASH_ALGO,
 ): Promise<boolean> {
 	const encoded = encodeRecordLeaf(record);
-	let current = await hashBytes(encoded, hashAlgo);
+	let current = await hashBytes(encoded);
 
 	for (const { sibling, position } of proof.proof) {
 		const left = position === "left" ? sibling : current;
@@ -169,7 +157,7 @@ export async function verifyAuditProof(
 		combined.set(leftBytes, 1);
 		combined.set(rightBytes, 1 + leftBytes.length);
 
-		current = await hashBytes(combined, hashAlgo);
+		current = await hashBytes(combined);
 	}
 
 	const computedRoot = `0x${current}` as Hex;
@@ -179,24 +167,21 @@ export async function verifyAuditProof(
 /**
  * AuditAPI - High-level audit operations with contract integration
  * Provides both local computation and on-chain submission capabilities
+ * Uses standardized Poseidon hash and JSON encoding
  */
 export class AuditAPI {
-	constructor(
-		private contracts: ContractClient,
-		private hashAlgo: hashAlgos = DEFAULT_HASH_ALGO,
-	) {}
+	constructor(private contracts: ContractClient) {}
 
 	/**
 	 * Build a batch from records
+	 * Uses standardized Poseidon hash and JSON encoding
 	 */
 	async buildBatch(records: AuditRecord[]): Promise<{
 		root: Hex;
 		count: number;
-		leafAlgo: hashAlgos;
-		leafSchema: typeof LEAF_SCHEMA;
 		indices: { queryId: string; index: number }[];
 	}> {
-		return computeAuditBatch(records, this.hashAlgo);
+		return computeAuditBatch(records);
 	}
 
 	/**
@@ -206,14 +191,14 @@ export class AuditAPI {
 		records: AuditRecord[],
 		queryId: string,
 	): Promise<AuditProof> {
-		return createAuditProof(records, queryId, this.hashAlgo);
+		return createAuditProof(records, queryId);
 	}
 
 	/**
 	 * Verify a proof
 	 */
 	async verifyProof(record: AuditRecord, proof: AuditProof): Promise<boolean> {
-		return verifyAuditProof(record, proof, this.hashAlgo);
+		return verifyAuditProof(record, proof);
 	}
 
 	// ============================================

@@ -1,36 +1,8 @@
 {
 	"noir_version": "1.0.0-beta.12+b03533ed1d10a8bdb5eabef451b995a014f15f09",
-	"hash": "7132170586425530913",
-	"abi": {
-		"parameters": [
-			{
-				"name": "model_commit",
-				"type": { "kind": "field" },
-				"visibility": "public"
-			},
-			{
-				"name": "data_commit",
-				"type": { "kind": "field" },
-				"visibility": "public"
-			},
-			{ "name": "tau_a", "type": { "kind": "field" }, "visibility": "public" },
-			{ "name": "tau_b", "type": { "kind": "field" }, "visibility": "public" },
-			{ "name": "eps", "type": { "kind": "field" }, "visibility": "public" },
-			{
-				"name": "data_salt",
-				"type": { "kind": "field" },
-				"visibility": "private"
-			},
-			{
-				"name": "model_salt",
-				"type": { "kind": "field" },
-				"visibility": "private"
-			}
-		],
-		"return_type": null,
-		"error_types": {}
-	},
-	"bytecode": "H4sIAAAAAAAA/22KAQoAUARD+R/3PzKyInm1ttpjKowajgj2QyscXV7+f/gXDse3HZBkAAAA",
+	"hash": "789214748103284038",
+	"abi": { "parameters": [], "return_type": null, "error_types": {} },
+	"bytecode": "H4sIAAAAAAAA/5XDsQkAAADCMAv+f7PuTgaCFm19Arunwj5IAAAA",
 	"debug_symbols": "XY5BCsQwCEXv4rqLWfcqw1BsaosgJtikMITefWyYQOlK/3/6tcJCc9km1jXuML4rzMYivE0SA2aO6m49B+hyykbkFty4byU00gyjFpEBDpTShvaE2mpGc/oagHTx6oErC13d+XGBge158UBjnIX+ci0abjR/Uyf942Qx0FKMrqTGPPsH",
 	"file_map": {},
 	"names": ["main"],

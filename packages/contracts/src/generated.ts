@@ -1157,7 +1157,6 @@ export const zkFairAbi = [
 		inputs: [{ name: "account", internalType: "address", type: "address" }],
 		name: "OwnableUnauthorizedAccount",
 	},
-	{ type: "error", inputs: [], name: "ReentrancyGuardReentrantCall" },
 	{ type: "error", inputs: [], name: "TransferFailed" },
 	{ type: "error", inputs: [], name: "UnauthorizedAccess" },
 ] as const;

@@ -22,17 +22,6 @@ const datasetAndHashOptions = {
 	fairnessThreshold: string("fairness-threshold")
 		.alias("f")
 		.desc("Path to fairness threshold JSON file"),
-
-	encoding: string("encoding")
-		.alias("e")
-		.enum("MSGPACK", "JSON")
-		.default("MSGPACK")
-		.desc("Dataset encoding scheme"),
-	crypto: string("crypto")
-		.alias("c")
-		.enum("SHA-256", "BLAKE2b")
-		.default("SHA-256")
-		.desc("Cryptographic hash algorithm"),
 } as const;
 
 const modelMetadataOptions = {

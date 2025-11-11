@@ -1,9 +1,3 @@
-/**
- * Query Repository - Clean CRUD operations for query logs
- *
- * Type-safe database operations using Drizzle ORM
- */
-
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "./client";
 import { type QueryLog, queryLogs } from "./schema";

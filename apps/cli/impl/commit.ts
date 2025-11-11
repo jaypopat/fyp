@@ -17,10 +17,6 @@ async function registerModel(params: {
 	weightsPath: string;
 	datasetPath: string;
 	fairnessThresholdPath: string;
-	schema: {
-		hashAlgo: "SHA-256" | "BLAKE2b";
-		encodingAlgo: "JSON" | "MSGPACK";
-	};
 	modelMetadata: {
 		name: string;
 		description: string;
@@ -61,10 +57,6 @@ async function registerModel(params: {
 								description: params.modelMetadata.description ?? "",
 								creator: params.modelMetadata.creator ?? "",
 							},
-							schema: {
-								cryptoAlgo: params.schema.hashAlgo,
-								encodingSchema: params.schema.encodingAlgo,
-							},
 						},
 					),
 				"Commitment transaction submitted",
@@ -100,8 +92,8 @@ export async function commit(opts: CommitOpts) {
 	console.log(
 		`   Creator: ${modelFiles.modelMetadata.creator || "Not specified"}`,
 	);
-	console.log(`\n   Encoding: ${opts.encoding}`);
-	console.log(`   Hash Algorithm: ${opts.crypto}`);
+	console.log("\n   Encoding: JSON (standard)");
+	console.log("   Hash Algorithm: Poseidon (ZK-friendly)");
 
 	// Confirmation prompt for blockchain transaction
 	const confirmed = await confirm({
@@ -119,10 +111,6 @@ export async function commit(opts: CommitOpts) {
 		weightsPath: modelFiles.weightsPath,
 		fairnessThresholdPath: modelFiles.fairnessThresholdPath,
 		datasetPath: modelFiles.datasetPath,
-		schema: {
-			encodingAlgo: opts.encoding,
-			hashAlgo: opts.crypto,
-		},
 		modelMetadata: modelFiles.modelMetadata,
 	});
 
@@ -150,10 +138,6 @@ export async function proveModelBias(opts: ProveModelBiasOpts) {
 		weightsPath: modelFiles.weightsPath,
 		datasetPath: modelFiles.datasetPath,
 		fairnessThresholdPath: modelFiles.fairnessThresholdPath,
-		schema: {
-			encodingAlgo: opts.encoding,
-			hashAlgo: opts.crypto,
-		},
 		modelMetadata: modelFiles.modelMetadata,
 	});
 

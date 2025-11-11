@@ -1,10 +1,9 @@
 import { mkdir } from "node:fs/promises";
-import { encode } from "@msgpack/msgpack";
 import type { Hash } from "viem";
 import type { FairnessFile } from "./artifacts";
 import type { ContractClient } from "./contract";
 import { merkleRoot } from "./merkle";
-import type { CommitOptions, encodingSchemas, hashAlgos } from "./types";
+import type { CommitOptions } from "./types";
 import { getArtifactDir, hashBytes, parseCSV } from "./utils";
 
 export class CommitAPI {
@@ -34,10 +33,6 @@ export class CommitAPI {
 				datasetRows,
 				new Uint8Array(weights),
 				masterSalt,
-				{
-					encoding: options.schema.encodingSchema,
-					hashAlgo: options.schema.cryptoAlgo,
-				},
 			);
 
 		// Attempt to register the model - if it already exists, provide a clear error
@@ -70,7 +65,6 @@ export class CommitAPI {
 				fairnessThreshold: fairnessThresholdPath,
 			},
 			options.model,
-			options.schema,
 			masterSalt,
 			saltsMap,
 			dataSetMerkleRoot,
@@ -93,17 +87,11 @@ export class CommitAPI {
 	): Promise<string> {
 		// Hash the weights file
 		const weightsBuffer = await Bun.file(weightsPath).arrayBuffer();
-		const weightsHash = await hashBytes(
-			new Uint8Array(weightsBuffer),
-			"SHA-256",
-		);
+		const weightsHash = await hashBytes(new Uint8Array(weightsBuffer));
 
 		// Hash the dataset file
 		const datasetBuffer = await Bun.file(datasetPath).arrayBuffer();
-		const datasetHash = await hashBytes(
-			new Uint8Array(datasetBuffer),
-			"SHA-256",
-		);
+		const datasetHash = await hashBytes(new Uint8Array(datasetBuffer));
 
 		// Hash the metadata (for determinism based on model identity)
 		const metadataString = JSON.stringify({
@@ -113,15 +101,11 @@ export class CommitAPI {
 		});
 		const metadataHash = await hashBytes(
 			new TextEncoder().encode(metadataString),
-			"SHA-256",
 		);
 
 		// Combine all hashes to create master salt
 		const combined = `${weightsHash}:${datasetHash}:${metadataHash}`;
-		const masterSalt = await hashBytes(
-			new TextEncoder().encode(combined),
-			"SHA-256",
-		);
+		const masterSalt = await hashBytes(new TextEncoder().encode(combined));
 
 		return masterSalt;
 	}
@@ -130,33 +114,28 @@ export class CommitAPI {
 		datasetRows: string[][],
 		weights: Uint8Array,
 		masterSalt: string,
-		options: {
-			encoding: encodingSchemas;
-			hashAlgo: hashAlgos;
-		},
 	): Promise<{
 		saltsMap: Record<number, string>;
 		dataSetMerkleRoot: Hash;
 		weightsHash: Hash;
 	}> {
-		const weightsHash = await this.hashWeights(weights, options.hashAlgo);
+		const weightsHash = await this.hashWeights(weights);
 
 		// Derive per-row salts from master salt
 		const saltsMap = await this.deriveSalts(
 			masterSalt,
 			datasetRows.length,
 			weightsHash,
-			options.hashAlgo,
 		);
 
 		const rowHashes: string[] = [];
 		for (let i = 0; i < datasetRows.length; i++) {
 			const row = datasetRows[i];
 			if (!row) throw new Error(`Row index ${i} missing while hashing dataset`);
-			const encodedRow = await this.encodeRow(row, options.encoding);
+			const encodedRow = this.encodeRow(row);
 			const salt = saltsMap[i];
 			if (!salt) throw new Error(`Salt missing for row ${i}`);
-			const hashedRow = await this.hashRow(encodedRow, salt, options.hashAlgo);
+			const hashedRow = await this.hashRow(encodedRow, salt);
 			if (hashedRow.length !== 64) {
 				throw new Error(
 					`Row hash length invalid (expected 64 hex chars, got ${hashedRow.length}) at index ${i}`,
@@ -165,7 +144,7 @@ export class CommitAPI {
 			rowHashes.push(hashedRow);
 		}
 
-		const dataSetMerkleRoot = await merkleRoot(rowHashes, options.hashAlgo);
+		const dataSetMerkleRoot = await merkleRoot(rowHashes);
 
 		if (
 			!(dataSetMerkleRoot.startsWith("0x") && dataSetMerkleRoot.length === 66)
@@ -188,13 +167,12 @@ export class CommitAPI {
 		masterSalt: string,
 		rowCount: number,
 		weightsHash: Hash,
-		hashAlgo: hashAlgos,
 	): Promise<Record<number, string>> {
 		const salts: Record<number, string> = {};
 		for (let i = 0; i < rowCount; i++) {
 			const input = `${masterSalt}:${i}:${weightsHash}`;
 			const inputBytes = new TextEncoder().encode(input);
-			salts[i] = await hashBytes(inputBytes, hashAlgo);
+			salts[i] = await hashBytes(inputBytes);
 		}
 		return salts;
 	}
@@ -202,7 +180,6 @@ export class CommitAPI {
 	private async generateConfigDirectory(
 		filePaths: { dataset: string; weights: string; fairnessThreshold: string },
 		metadata: CommitOptions["model"],
-		schema: CommitOptions["schema"],
 		masterSalt: string,
 		salts: Record<number, string>,
 		dataSetMerkleRoot: Hash,
@@ -223,7 +200,6 @@ export class CommitAPI {
 					2,
 				),
 			),
-			Bun.write(`${dir}/schema.json`, JSON.stringify(schema, null, 2)),
 			Bun.write(
 				`${dir}/paths.json`,
 				JSON.stringify(
@@ -240,38 +216,24 @@ export class CommitAPI {
 		console.log(`✅ Artifacts saved to ${dir}`);
 	}
 
-	private async hashWeights(
-		weightsBuffer: Uint8Array,
-		algo: hashAlgos,
-	): Promise<Hash> {
-		const plain = await hashBytes(weightsBuffer, algo);
+	private async hashWeights(weightsBuffer: Uint8Array): Promise<Hash> {
+		const plain = await hashBytes(weightsBuffer);
 		if (plain.length !== 64) throw new Error("weights hash length invalid");
 		return `0x${plain}` as Hash;
 	}
 
-	private async encodeRow(
-		row: string[],
-		encoding: encodingSchemas,
-	): Promise<Uint8Array> {
-		switch (encoding) {
-			case "MSGPACK":
-				return encode(row);
-			case "JSON":
-				return new TextEncoder().encode(JSON.stringify(row));
-		}
+	private encodeRow(row: string[]): Uint8Array {
+		// Always use JSON encoding for standardization
+		return new TextEncoder().encode(JSON.stringify(row));
 	}
 
-	private async hashRow(
-		row: Uint8Array,
-		salt: string,
-		hashAlgo: hashAlgos,
-	): Promise<string> {
+	private async hashRow(row: Uint8Array, salt: string): Promise<string> {
 		// plain hex leaf hash (row || salt)
 		const saltBytes = new TextEncoder().encode(salt);
 		const combined = new Uint8Array(row.length + saltBytes.length);
 		combined.set(row, 0);
 		combined.set(saltBytes, row.length);
-		const plain = await hashBytes(combined, hashAlgo); // already plain 64
+		const plain = await hashBytes(combined); // already plain 64
 		if (plain.length !== 64)
 			throw new Error("row hash length invalid post hashing");
 		return plain;

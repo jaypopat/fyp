@@ -2,11 +2,18 @@ import { describe, expect, it } from "bun:test";
 import { hashBytes } from "../utils";
 
 describe("hashBytes", () => {
-	it("hashes with SHA-256 and BLAKE2b producing different outputs", async () => {
+	it("hashes with Poseidon (ZK-friendly)", async () => {
 		const data = new TextEncoder().encode("hello-world");
-		const sha = await hashBytes(data, "SHA-256");
-		const blake = await hashBytes(data, "BLAKE2b");
-		expect(sha).not.toBe(blake);
-		expect(sha.length).toBe(blake.length);
+		const hash = await hashBytes(data);
+		// Poseidon hash produces 64-character hex string (32 bytes)
+		expect(hash.length).toBe(64);
+		expect(/^[0-9a-f]{64}$/i.test(hash)).toBe(true);
+	});
+
+	it("produces consistent hashes for same input", async () => {
+		const data = new TextEncoder().encode("test-data");
+		const hash1 = await hashBytes(data);
+		const hash2 = await hashBytes(data);
+		expect(hash1).toBe(hash2);
 	});
 });

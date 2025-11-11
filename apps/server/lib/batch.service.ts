@@ -1,4 +1,4 @@
-import type { AuditRecord } from "@zkfair/sdk/types";
+import type { AuditRecord } from "@zkfair/sdk";
 import {
 	assignQueriesToBatch,
 	type Batch,
@@ -63,11 +63,9 @@ export async function createBatchIfNeeded(): Promise<Batch | undefined> {
 
 	const batchId = `${startSeq}-${endSeq}`;
 
-	// Build Merkle tree
 	const auditRecords = queries.map(toAuditRecord);
 	const { root } = await sdk.audit.buildBatch(auditRecords);
 
-	// Get time range and model ID
 	const startTime = Math.min(...queries.map((q) => q.timestamp));
 	const endTime = Math.max(...queries.map((q) => q.timestamp));
 	const firstQuery = queries[0];
@@ -76,9 +74,8 @@ export async function createBatchIfNeeded(): Promise<Batch | undefined> {
 	}
 	const modelId = firstQuery.modelId;
 
-	console.log(`📝 Creating batch ${batchId}...`);
+	console.log(`Creating batch ${batchId}...`);
 
-	// Create batch and assign queries atomically
 	const batch = await withTransaction(async () => {
 		const newBatch = await createBatch({
 			id: batchId,
@@ -86,8 +83,6 @@ export async function createBatchIfNeeded(): Promise<Batch | undefined> {
 			endSeq,
 			merkleRoot: root,
 			recordCount: queries.length,
-			leafAlgo: "SHA-256",
-			leafSchema: "MSGPACK",
 			txHash: null,
 			createdAt: Date.now(),
 			committedAt: null,
@@ -97,24 +92,28 @@ export async function createBatchIfNeeded(): Promise<Batch | undefined> {
 		return newBatch;
 	});
 
-	console.log(`✅ Batch ${batchId} created with root ${root.slice(0, 10)}...`);
+	console.log(`Batch ${batchId} created with root ${root}`);
 
-	// Commit to blockchain asynchronously
-	sdk.audit
-		.commitBatch(
+	console.log(
+		`Committing batch ${batchId} to blockchain for model ${modelId}...`,
+	);
+	try {
+		const txHash = await sdk.audit.commitBatch(
 			BigInt(modelId),
 			root,
 			BigInt(queries.length),
 			BigInt(startTime),
 			BigInt(endTime),
-		)
-		.then((txHash) => {
-			updateBatchTxHash(batchId, txHash);
-			console.log(`✅ Batch ${batchId} committed: ${txHash}`);
-		})
-		.catch((error) => {
-			console.error(`❌ Blockchain commit failed for ${batchId}:`, error);
-		});
+		);
+		await updateBatchTxHash(batchId, txHash);
+		console.log(`Batch ${batchId} committed with tx: ${txHash}`);
+	} catch (error) {
+		console.error(
+			`Blockchain commit failed for batch ${batchId}:`,
+			error instanceof Error ? error.message : error,
+		);
+		console.error("Full error:", error);
+	}
 
 	return batch;
 }

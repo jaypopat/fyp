@@ -60,10 +60,6 @@ export const batches = sqliteTable("batches", {
 	merkleRoot: text("merkle_root").notNull(),
 	recordCount: integer("record_count").notNull(),
 
-	// Metadata
-	leafAlgo: text("leaf_algo").notNull().default("SHA-256"),
-	leafSchema: text("leaf_schema").notNull().default("MSGPACK"),
-
 	// Blockchain tracking
 	txHash: text("tx_hash"),
 

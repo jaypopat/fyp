@@ -38,15 +38,21 @@ export class VerifyAPI {
 			return isValid;
 		}
 
-		console.log("Onchain verification of proof:");
-		const isValid = await this.contracts.verifyModel(
+		console.log("Onchain certification:");
+		// Look up model ID by weights hash
+		const modelId = await this.contracts.getModelIdByHash(
 			commitments.weightsHash,
+		);
+
+		// Submit certification proof to verify and certify the model
+		const txHash = await this.contracts.submitCertificationProof(
+			modelId as bigint,
 			proofFile.proof,
 			proofFile.publicInputs,
 		);
 		console.log(
-			`✅ On-chain verification result: ${isValid ? "VALID" : "INVALID"}`,
+			`✅ Certification proof submitted successfully. Tx hash: ${txHash}`,
 		);
-		return isValid;
+		return true;
 	}
 }

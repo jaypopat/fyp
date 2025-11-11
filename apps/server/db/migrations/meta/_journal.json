@@ -15,6 +15,20 @@
 			"when": 1762379123885,
 			"tag": "0001_nosy_jack_flag",
 			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "6",
+			"when": 1762812088318,
+			"tag": "0002_boring_kinsey_walden",
+			"breakpoints": true
+		},
+		{
+			"idx": 3,
+			"version": "6",
+			"when": 1762834043617,
+			"tag": "0003_acoustic_quasimodo",
+			"breakpoints": true
 		}
 	]
 }

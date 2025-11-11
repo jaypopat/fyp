@@ -1,4 +1,3 @@
-import { encode } from "@msgpack/msgpack";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
@@ -11,19 +10,15 @@ import type { Hex } from "./lib/types";
 
 const app = new Hono();
 
-// Middleware
 app.use("*", cors());
 app.use("*", logger());
 
-// Load all models on startup
 const models = await loadAllModels();
 
-// Initialize database
 initDatabase();
 
-// Start listening for audit requests from contract
 sdk.events.watchAuditRequested(async (event) => {
-	console.log("🔍 Audit requested:", event);
+	console.log("Audit requested:", event);
 	try {
 		const batchId = Number(event.batchId);
 		const batchSize = Number(process.env.BATCH_SIZE || 100);
@@ -53,10 +48,9 @@ sdk.events.watchAuditRequested(async (event) => {
 		const dummyProof = `0x${"00".repeat(256)}`;
 		const publicInputs: string[] = [];
 
-		console.log("✓ Generated fairness ZK proof (TODO: implement circuit)");
+		console.log("Generated fairness ZK proof (TODO: implement circuit)");
 
-		// 5. Submit proof on-chain
-		console.log("🔗 Submitting proof to contract...");
+		console.log("Submitting proof to contract...");
 		const _txHash = await sdk.audit.submitAuditProof(
 			event.auditId,
 			dummyProof as `0x${string}`,
@@ -66,6 +60,7 @@ sdk.events.watchAuditRequested(async (event) => {
 		console.error("Audit response failed:", error);
 	}
 });
+
 // ============================================
 // ENDPOINTS
 // ============================================
@@ -121,26 +116,24 @@ app.post("/predict", async (c) => {
 			[1, (input as number[]).length],
 		);
 
-		// Run inference
 		const results = await session.run({
-			float_input: inputTensor, // Input name from your ONNX model
+			float_input: inputTensor,
 		});
 
-		// Extract prediction (adjust based on your model's output)
 		const outputTensor = results.label || results.output0;
 		const prediction = outputTensor?.data[0] as number;
 
 		const now = Date.now();
-		// Canonical input hash: encode float32 array via msgpack
 		const asF32 = Array.from(new Float32Array(input as number[]));
-		const inputHashBytes = Bun.sha(encode(asF32)) as Uint8Array;
+		const inputHashBytes = Bun.sha(
+			new TextEncoder().encode(JSON.stringify(asF32)),
+		) as Uint8Array;
 		const inputHash =
 			`0x${[...inputHashBytes].map((b) => b.toString(16).padStart(2, "0")).join("")}` as Hex;
 		const qid = queryId ?? globalThis.crypto?.randomUUID?.() ?? `${now}`;
 
-		console.log(`🧠 Inference for model ${modelId}: ${prediction}`);
+		console.log(`Inference for model ${modelId}: ${prediction}`);
 
-		// Store query in database
 		const seqNum = await insertQuery({
 			queryId: qid,
 			modelId: modelId,
@@ -148,7 +141,7 @@ app.post("/predict", async (c) => {
 			prediction: Number(prediction),
 			timestamp: now,
 		});
-		console.log(`📝 Stored query ${qid} as sequence #${seqNum}`);
+		console.log(`Stored query ${qid} as sequence #${seqNum}`);
 
 		await createBatchIfNeeded();
 
@@ -171,17 +164,13 @@ app.post("/predict", async (c) => {
 	}
 });
 
-// ============================================
-// SERVER STARTUP
-// ============================================
-
 const port = Number(process.env.PORT) || 5000;
 
-console.log("🚀 Starting ZKFair inference server...");
+console.log("Starting ZKFair inference server...");
 
 export default {
 	port,
 	fetch: app.fetch,
 };
 
-console.log(`✅ Server running on http://localhost:${port}`);
+console.log(`Server running on http://localhost:${port}`);

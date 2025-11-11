@@ -1,5 +1,4 @@
 import type { Hex } from "viem";
-import type { hashAlgos } from "./types";
 import { hashBytes, hexToBytes } from "./utils";
 
 // Internal node domain separation prefix (leaves are treated as already-digested values)
@@ -17,16 +16,13 @@ function ensure0x(h: string): Hex {
 }
 
 // Returns plain 64-hex (no 0x) for internal nodes
-async function hashNode(left: string, right: string, algo: hashAlgos) {
+async function hashNode(left: string, right: string) {
 	const l = hexToBytes(ensure0x(left));
 	const r = hexToBytes(ensure0x(right));
-	return await hashBytes(concat(NODE_PREFIX, concat(l, r)), algo);
+	return await hashBytes(concat(NODE_PREFIX, concat(l, r)));
 }
 
-export async function merkleRoot(
-	leaves: string[],
-	algo: hashAlgos,
-): Promise<Hex> {
+export async function merkleRoot(leaves: string[]): Promise<Hex> {
 	if (leaves.length === 0) throw new Error("No leaves provided");
 	for (let i = 0; i < leaves.length; i++) {
 		const leaf = leaves[i];
@@ -48,7 +44,7 @@ export async function merkleRoot(
 			if (!left) throw new Error("Unexpected undefined left node");
 			const candidateRight = currentLevel[i + 1];
 			const right = candidateRight ?? left; // duplicate last if odd
-			next.push(await hashNode(left, right, algo));
+			next.push(await hashNode(left, right));
 		}
 		currentLevel = next;
 	}
@@ -61,14 +57,13 @@ export async function verifyMerkleProof(
 	leaf: string,
 	root: Hex,
 	proof: { sibling: string; position: "left" | "right" }[],
-	algo: hashAlgos,
 ): Promise<boolean> {
 	let current = leaf;
 	for (const { sibling, position } of proof) {
 		if (position === "left") {
-			current = await hashNode(sibling, current, algo);
+			current = await hashNode(sibling, current);
 		} else {
-			current = await hashNode(current, sibling, algo);
+			current = await hashNode(current, sibling);
 		}
 	}
 	return ensure0x(current) === root;
@@ -77,7 +72,6 @@ export async function verifyMerkleProof(
 export async function createMerkleProof(
 	leaves: string[],
 	index: number,
-	algo: hashAlgos,
 ): Promise<{
 	root: Hex;
 	proof: { sibling: string; position: "left" | "right" }[];
@@ -112,7 +106,7 @@ export async function createMerkleProof(
 			const left = level[i];
 			if (!left) throw new Error("Internal: left undefined");
 			const right = level[i + 1] ?? left; // duplicate last if odd
-			const parent = await hashNode(left, right, algo); // parent plain 64-hex
+			const parent = await hashNode(left, right); // parent plain 64-hex
 			next.push(parent);
 		}
 		level = next;

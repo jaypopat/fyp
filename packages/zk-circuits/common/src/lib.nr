@@ -1,11 +1,5 @@
-fn not_equal(x: Field, y: Field) -> bool {
-    x != y
-}
+// merkle logic
 
-#[test]
-fn test_not_equal() {
-    assert(not_equal(1, 2));
+// fairness metric calculation
 
-    // Uncomment to make test fail
-    // assert(not_equal(1, 1));
-}
+// data selection from csv dataset

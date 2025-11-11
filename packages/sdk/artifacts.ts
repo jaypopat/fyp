@@ -1,5 +1,4 @@
 import type { Hash } from "viem";
-import type { encodingSchemas, hashAlgos } from "./types";
 
 function assert(condition: unknown, msg: string): asserts condition {
 	if (!condition) throw new Error(msg);
@@ -27,10 +26,7 @@ export interface FairnessThresholdFile {
 	targetDisparity: number;
 	protectedAttribute: string;
 }
-export interface SchemaFile {
-	cryptoAlgo: hashAlgos;
-	encodingSchema: encodingSchemas;
-}
+
 export interface CommitmentsFile {
 	datasetMerkleRoot: Hash;
 	weightsHash: Hash;
@@ -103,21 +99,5 @@ export function parseProofFile(data: unknown): ProofFile {
 		generatedAt: d.generatedAt as number,
 		proof: d.proof as Hash,
 		publicInputs,
-	};
-}
-export function parseSchemaFile(data: unknown): SchemaFile {
-	assert(data && typeof data === "object", "schema.json malformed");
-	const d = data as Record<string, unknown>;
-	assert(
-		d.cryptoAlgo === "SHA-256" || d.cryptoAlgo === "BLAKE2b",
-		"schema.cryptoAlgo invalid",
-	);
-	assert(
-		d.encodingSchema === "JSON" || d.encodingSchema === "MSGPACK",
-		"schema.encodingSchema invalid",
-	);
-	return {
-		cryptoAlgo: d.cryptoAlgo as "SHA-256" | "BLAKE2b",
-		encodingSchema: d.encodingSchema as "JSON" | "MSGPACK",
 	};
 }

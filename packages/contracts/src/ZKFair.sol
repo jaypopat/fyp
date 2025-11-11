@@ -175,7 +175,7 @@ contract ZKFair is Ownable, Pausable {
         bytes32 weightsHash,
         bytes32 datasetMerkleRoot,
         uint256 fairnessThreshold
-    ) external payable whenNotPaused nonReentrant returns (uint256 modelId) {
+    ) external payable whenNotPaused returns (uint256 modelId) {
         if (bytes(name).length == 0 || weightsHash == bytes32(0) || datasetMerkleRoot == bytes32(0)) {
             revert InvalidInput();
         }

@@ -30,3 +30,15 @@ export class SDK {
 		this.audit = new AuditAPI(this.contracts);
 	}
 }
+export type { AuditBatch, AuditProof, AuditRecord } from "./audit";
+// exporting types for consumers
+export type {
+	AuditExpiredEvent,
+	AuditProofSubmittedEvent,
+	AuditRequestedEvent,
+	BatchCommittedEvent,
+	ModelCertifiedEvent,
+	ModelRegisteredEvent,
+	ProviderSlashedEvent,
+	StakeWithdrawnEvent,
+} from "./events";

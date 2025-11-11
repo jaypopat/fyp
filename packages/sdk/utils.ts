@@ -1,8 +1,20 @@
 import os from "node:os";
 import path from "node:path";
+import { buildPoseidon } from "circomlibjs";
 import Papa from "papaparse";
 import type { Hash } from "viem";
-import type { hashAlgos } from "./types";
+
+let poseidonInstance: Awaited<ReturnType<typeof buildPoseidon>> | null = null;
+
+/**
+ * Get or initialize Poseidon hash function
+ */
+async function getPoseidon() {
+	if (!poseidonInstance) {
+		poseidonInstance = await buildPoseidon();
+	}
+	return poseidonInstance;
+}
 
 export async function parseCSV(filePath: string): Promise<string[][]> {
 	const csvText = await Bun.file(filePath).text();
@@ -38,21 +50,40 @@ export function hexToBytes(hex: Hash | string): Uint8Array {
 	return out;
 }
 
-export async function hashBytes(
-	data: Uint8Array,
-	algo: hashAlgos,
-): Promise<string> {
-	// plain hex
-	const out =
-		algo === "SHA-256"
-			? (Bun.sha(data) as Uint8Array)
-			: new Uint8Array(
-					new Bun.CryptoHasher("blake2b256").update(data).digest(),
-				);
+/**
+ * Hash bytes using Poseidon (ZK-friendly hash)
+ * Converts bytes to field elements and hashes them
+ */
+export async function hashBytes(data: Uint8Array): Promise<string> {
+	const poseidon = await getPoseidon();
 
-	const hex = bytesToPlainHash(out).toLowerCase();
-	if (hex.length !== 64)
-		throw new Error(`hashBytes produced invalid length ${hex.length}`);
+	// Split data into chunks that fit in a field element (< 254 bits)
+	// We use 31 bytes per chunk to be safe
+	const CHUNK_SIZE = 31;
+	const chunks: bigint[] = [];
+
+	for (let i = 0; i < data.length; i += CHUNK_SIZE) {
+		const chunk = data.slice(i, i + CHUNK_SIZE);
+		// Convert chunk to bigint
+		let value = 0n;
+		for (let j = 0; j < chunk.length; j++) {
+			value = (value << 8n) | BigInt(chunk[j] || 0);
+		}
+		chunks.push(value);
+	}
+
+	// Hash all chunks together
+	const hash = poseidon(chunks);
+
+	// Convert to 32-byte hex string (64 chars)
+	const hashBigInt = poseidon.F.toObject(hash);
+	const hex = hashBigInt.toString(16).padStart(64, "0");
+
+	if (hex.length > 64) {
+		// If somehow we get more than 64 chars, take last 64
+		return hex.slice(-64);
+	}
+
 	return hex;
 }
 

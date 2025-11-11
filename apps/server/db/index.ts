@@ -1,8 +1,3 @@
-/**
- * Database Module - Clean exports
- */
-
-// Batch operations
 export {
 	createBatch,
 	getAllBatches,
@@ -11,10 +6,8 @@ export {
 	getBatchCount,
 	updateBatchTxHash,
 } from "./batch.repository";
-// Client
 export { db } from "./client";
 
-// Query operations
 export {
 	assignQueriesToBatch,
 	getQueries,
@@ -25,8 +18,7 @@ export {
 	getUnbatchedQueries,
 	insertQuery,
 } from "./queries";
-// Schema types
+
 export type { Batch, NewBatch, NewQueryLog, QueryLog } from "./schema";
 
-// Utilities
 export { initDatabase, withTransaction } from "./utils";
