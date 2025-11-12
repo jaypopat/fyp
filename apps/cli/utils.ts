@@ -1,8 +1,9 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
+import path from "node:path";
 import ora from "ora";
-import path from "path";
 import type { Hash } from "viem";
 
+// TODO - change to poseidon hash
 export async function computeFileHash(filePath: string): Promise<Hash> {
 	return await withSpinner(
 		`Computing SHA256 hash for file: ${filePath}`,

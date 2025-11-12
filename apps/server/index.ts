@@ -125,6 +125,8 @@ app.post("/predict", async (c) => {
 
 		const now = Date.now();
 		const asF32 = Array.from(new Float32Array(input as number[]));
+
+		// TODO - change to poseidon hash
 		const inputHashBytes = Bun.sha(
 			new TextEncoder().encode(JSON.stringify(asF32)),
 		) as Uint8Array;

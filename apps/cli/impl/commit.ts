@@ -1,6 +1,6 @@
+import path from "node:path";
 import type { TypeOf } from "@drizzle-team/brocli";
 import { confirm } from "@inquirer/prompts";
-import path from "path";
 import type { Hash } from "viem";
 import type { commitOptions, proveModelBiasOptions } from "../cli-args";
 import { discoverModelFiles, withSpinner } from "../utils";

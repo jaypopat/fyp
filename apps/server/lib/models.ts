@@ -1,5 +1,5 @@
+import { join } from "node:path";
 import * as ort from "onnxruntime-node";
-import { join } from "path";
 import registryData from "../registry.json";
 
 // model id is the contract identifier for the registered model
