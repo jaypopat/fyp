@@ -22,13 +22,33 @@ categorical_cols = ['workclass', 'education', 'marital.status', 'occupation',
 X = data.drop('income', axis=1)
 y = (data['income'] == '>50K').astype(int)
 
+label_encoders = {}
 for col in categorical_cols:
     if col in X.columns:
-        X[col] = LabelEncoder().fit_transform(X[col].astype(str))
+        le = LabelEncoder()
+        X[col] = le.fit_transform(X[col].astype(str))
+        # Save encoder mapping for reproducibility
+        label_encoders[col] = {str(cls): int(idx) for idx, cls in enumerate(le.classes_)}
 
-# Train/test split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
-X_test = pd.DataFrame(X_test, columns=X.columns)
+# Save the encoder mappings for SDK/circuit use
+with open('label_encoders.json', 'w') as f:
+    json.dump(label_encoders, f, indent=2)
+
+# Add income label (0 or 1) to complete dataset
+X['income'] = y
+
+# Ensure all columns are integers (Adult Income dataset has no decimals)
+# Categorical columns are already encoded as integers, numeric columns are also integers in this dataset
+for col in X.columns:
+	X[col] = X[col].astype(int)
+
+# Save the fully encoded dataset (all features as integers, ready for hashing)
+X.to_csv('dataset_encoded.csv', index=False)
+print("Saved: dataset_encoded.csv (all features as integers)\n")
+
+# Train/test split (using already-encoded X)
+X_train, X_test, y_train, y_test = train_test_split(X.drop('income', axis=1), X['income'], test_size=0.3, random_state=42)
+X_test = pd.DataFrame(X_test, columns=X.drop('income', axis=1).columns)
 y_test = pd.Series(y_test)
 
 # Train model
@@ -162,20 +182,23 @@ model_metadata = {
 with open('model.json', 'w') as f:
     json.dump(model_metadata, f, indent=2)
 
-# Save test dataset (calibration dataset for OATH)
-X_test['income'] = y_test
-X_test.to_csv('calibration_dataset.csv', index=False)
+# Save test dataset as calibration dataset (already encoded, all numeric)
+X_test_with_income = X_test.copy()
+X_test_with_income['income'] = y_test
+X_test_with_income.to_csv('calibration_dataset.csv', index=False)
 
 # Print results
 print("\n Generated files:")
 print("   - weights.bin (model parameters)")
 print("   - model.onnx (ONNX format)")
+print("   - dataset_encoded.csv (all features numeric, for ZK commitment)")
+print("   - label_encoders.json (categorical mappings for reproducibility)")
 print("   - fairness_threshold.json (with per-group thresholds)")
 print("   - model.json (metadata)")
-print("   - calibration_dataset.csv (D_val for OATH)\n")
+print("   - calibration_dataset.csv (D_val for OATH, all numeric)\n")
 
 print(" Model Performance:")
-print(f"   Test accuracy: {model.score(X_test.drop('income', axis=1), y_test):.4f}")
+print(f"   Test accuracy: {model.score(X_test, y_test):.4f}")
 print(f"   Number of features: {n_features}\n")
 
 print("  Fairness Metrics:")

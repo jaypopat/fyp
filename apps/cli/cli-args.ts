@@ -13,12 +13,12 @@ const datasetAndHashOptions = {
 	dir: string("dir")
 		.alias("D")
 		.desc(
-			"Directory containing model files (weights.bin, dataset.csv, fairness_threshold.json, model.json)",
+			"Directory containing model files (weights.bin, dataset_encoded.csv, fairness_threshold.json, model.json)",
 		),
 
 	// Fallback to explicit paths (for power users or custom layouts)
 	weights: string("weights").alias("w").desc("Path to model weights bin file"),
-	data: string("data").alias("d").desc("Path to dataset file (CSV/JSON)"),
+	data: string("data").alias("d").desc("Path to encoded dataset file (CSV)"),
 	fairnessThreshold: string("fairness-threshold")
 		.alias("f")
 		.desc("Path to fairness threshold JSON file"),

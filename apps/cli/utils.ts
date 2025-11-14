@@ -46,7 +46,7 @@ interface ModelFiles {
 
 /**
  * Discovers model files from either a directory or explicit paths.
- * If --dir is provided, looks for weights.bin, dataset.csv, fairness_threshold.json, and optionally model.json
+ * If --dir is provided, looks for weights.bin, dataset_encoded.csv, fairness_threshold.json, and optionally model.json
  * If explicit paths are provided, uses those directly.
  * CLI metadata flags override model.json metadata.
  */
@@ -70,7 +70,7 @@ export async function discoverModelFiles(opts: {
 
 		const dirPath = path.resolve(opts.dir);
 		const weightsPath = path.join(dirPath, "weights.bin");
-		const datasetPath = path.join(dirPath, "dataset.csv");
+		const datasetPath = path.join(dirPath, "dataset_encoded.csv");
 		const fairnessThresholdPath = path.join(dirPath, "fairness_threshold.json");
 		const modelJsonPath = path.join(dirPath, "model.json");
 
@@ -79,7 +79,7 @@ export async function discoverModelFiles(opts: {
 			throw new Error(`weights.bin not found in directory: ${dirPath}`);
 		}
 		if (!(await Bun.file(datasetPath).exists())) {
-			throw new Error(`dataset.csv not found in directory: ${dirPath}`);
+			throw new Error(`dataset_encoded.csv not found in directory: ${dirPath}`);
 		}
 		if (!(await Bun.file(fairnessThresholdPath).exists())) {
 			throw new Error(

@@ -141,43 +141,25 @@ export function hashBytes(data: Uint8Array): string {
 export function hashPoseidonFields(
 	values: Array<number | string | bigint>,
 ): string {
-	// Fixed-point scaling for float conversion (6 decimals)
-	const SCALE = 1_000_000;
-
 	// BN254 field modulus
 	const BN254_FIELD_MODULUS =
 		21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
-	// Convert all values to bigints
+	// Convert all values to bigints (data is already pre-scaled from CSV)
 	const fields = values.map((v) => {
 		if (typeof v === "bigint") {
 			// Ensure bigint fits in field
 			return v % BN254_FIELD_MODULUS;
 		}
 		if (typeof v === "string") {
-			// Try to parse as number first
-			const parsed = Number(v);
-			if (!Number.isNaN(parsed) && Number.isFinite(parsed)) {
-				// Numeric string - use fixed-point scaling
-				return BigInt(Math.round(parsed * SCALE));
-			}
-			// Non-numeric string: use a simple hash
-			// Convert to bytes and take first 31 bytes (248 bits) to fit in field
-			const bytes = new TextEncoder().encode(v);
-			let bigIntValue = 0n;
-			// Only use first 31 bytes to stay within field size
-			const maxBytes = Math.min(bytes.length, 31);
-			for (let i = 0; i < maxBytes; i++) {
-				bigIntValue = (bigIntValue << 8n) | BigInt(bytes[i] || 0);
-			}
-			return bigIntValue;
+			// Parse string as integer (no scaling - data already scaled in preprocessing)
+			const parsed = BigInt(v);
+			return parsed % BN254_FIELD_MODULUS;
 		}
 		if (typeof v === "number") {
-			// Handle floats with fixed-point arithmetic
-			if (!Number.isFinite(v)) {
-				throw new Error(`Invalid number value: ${v}`);
-			}
-			return BigInt(Math.round(v * SCALE));
+			// Convert number to bigint (should not happen in normal flow with pre-scaled CSV)
+			const bigintValue = BigInt(Math.round(v));
+			return bigintValue % BN254_FIELD_MODULUS;
 		}
 		throw new Error(`Unsupported value type: ${typeof v}`);
 	});

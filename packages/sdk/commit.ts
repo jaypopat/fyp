@@ -332,7 +332,7 @@ export class CommitAPI {
 
 		// Hash with Poseidon for ZK-verifiable commitment
 		const { hashPoseidonFields } = await import("./utils");
-		const weightsHash = await hashPoseidonFields(weightsFields);
+		const weightsHash = hashPoseidonFields(weightsFields);
 
 		return `0x${weightsHash}` as Hash;
 	}
