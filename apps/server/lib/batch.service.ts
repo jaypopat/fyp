@@ -22,6 +22,8 @@ export function toAuditRecord(query: QueryLog): AuditRecord {
 		queryId: query.queryId,
 		modelId: query.modelId,
 		inputHash: query.inputHash as `0x${string}`,
+		features: query.features,
+		sensitiveAttr: query.sensitiveAttr,
 		prediction: query.prediction,
 		timestamp: query.timestamp,
 	};

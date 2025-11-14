@@ -21,6 +21,8 @@ export const queryLogs = sqliteTable(
 
 		// Model and inference data
 		modelId: integer("model_id").notNull(),
+		features: text("features", { mode: "json" }).notNull().$type<number[]>(),
+		sensitiveAttr: integer("sensitive_attr").notNull(),
 		inputHash: text("input_hash").notNull(),
 		prediction: real("prediction").notNull(),
 

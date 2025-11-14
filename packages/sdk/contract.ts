@@ -93,13 +93,13 @@ export class ContractClient {
 
 	/**
 	 * Submit certification proof for a registered model
-	 * @param modelId Model ID
+	 * @param weightsHash: Weights Hash (model id)
 	 * @param proof ZK proof bytes
 	 * @param publicInputs Public inputs for verification
 	 * @returns Transaction hash
 	 */
 	async submitCertificationProof(
-		modelId: bigint,
+		weightsHash: Hash,
 		proof: Hash,
 		publicInputs: Hash[],
 	) {
@@ -111,7 +111,7 @@ export class ContractClient {
 			abi: zkFairAbi,
 			functionName: "submitCertificationProof",
 			account: this.walletClient.account,
-			args: [modelId, proof, publicInputs],
+			args: [weightsHash, proof, publicInputs],
 		});
 	}
 

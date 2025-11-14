@@ -36,6 +36,8 @@ for (let i = 0; i < count; i++) {
 		queryId,
 		modelId,
 		inputHash,
+		features: [1, 2, 3],
+		sensitiveAttr: Math.random() > 0.5 ? 1 : 0, // Random sensitive attribute
 		prediction,
 		timestamp: Date.now() + i, // Slightly increment timestamp
 	});

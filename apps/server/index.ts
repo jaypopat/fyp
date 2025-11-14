@@ -2,8 +2,9 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import * as ort from "onnxruntime-node";
-import { getQueries, initDatabase, insertQuery } from "./db";
-import { createBatchIfNeeded, toAuditRecord } from "./lib/batch.service";
+import { initDatabase, insertQuery } from "./db";
+import { handleAuditRequest } from "./lib/audit";
+import { createBatchIfNeeded } from "./lib/batch.service";
 import { loadAllModels } from "./lib/models";
 import { sdk } from "./lib/sdk";
 import type { Hex } from "./lib/types";
@@ -17,49 +18,7 @@ const models = await loadAllModels();
 
 initDatabase();
 
-sdk.events.watchAuditRequested(async (event) => {
-	console.log("Audit requested:", event);
-	try {
-		const batchId = Number(event.batchId);
-		const batchSize = Number(process.env.BATCH_SIZE || 100);
-
-		const batchStartIndex = batchId * batchSize;
-
-		const records = await getQueries({
-			offset: batchStartIndex,
-			limit: batchSize,
-		});
-
-		if (records.length === 0) {
-			throw new Error(
-				`No records found for batch at offset ${batchStartIndex}`,
-			);
-		}
-
-		console.log(`Loaded ${records.length} records from database`);
-
-		// 2. Convert to AuditRecord format for SDK
-		const auditRecords = records.map(toAuditRecord);
-
-		// 3. Build Merkle tree for the batch
-		const { root } = await sdk.audit.buildBatch(auditRecords);
-		console.log(`Built Merkle tree with root ${root}`);
-
-		const dummyProof = `0x${"00".repeat(256)}`;
-		const publicInputs: string[] = [];
-
-		console.log("Generated fairness ZK proof (TODO: implement circuit)");
-
-		console.log("Submitting proof to contract...");
-		const _txHash = await sdk.audit.submitAuditProof(
-			event.auditId,
-			dummyProof as `0x${string}`,
-			publicInputs as `0x${string}`[],
-		);
-	} catch (error) {
-		console.error("Audit response failed:", error);
-	}
-});
+sdk.events.watchAuditRequested(handleAuditRequest);
 
 // ============================================
 // ENDPOINTS
@@ -140,6 +99,8 @@ app.post("/predict", async (c) => {
 			queryId: qid,
 			modelId: modelId,
 			inputHash,
+			features: asF32,
+			sensitiveAttr: Number(input[9] || 0), // sex attribute
 			prediction: Number(prediction),
 			timestamp: now,
 		});

@@ -1,3 +1,9 @@
+import { UltraHonkBackend } from "@aztec/bb.js";
+import { type CompiledCircuit, Noir } from "@noir-lang/noir_js";
+import {
+	fairness_audit_circuit,
+	type fairness_auditInputType,
+} from "@zkfair/zk-circuits/codegen";
 import type { Hash, Hex } from "viem";
 import type { ContractClient } from "./contract";
 import { createMerkleProof, merkleRoot } from "./merkle";
@@ -10,6 +16,8 @@ import { hashBytes, hexToBytes } from "./utils";
 export type AuditRecord = {
 	queryId: string;
 	modelId: number;
+	features: number[];
+	sensitiveAttr: number;
 	inputHash: Hex;
 	prediction: number;
 	timestamp: number;
@@ -44,124 +52,21 @@ function f32(n: number): number {
 
 /**
  * Encode a query record as a canonical leaf for Merkle tree
- * Domain-separated with version prefix
- * Uses JSON encoding for standardization
+ * Domain-separated with version prefix, includes all mutable fields:
+ * queryId, modelId, features, sensitiveAttr, inputHash, prediction, timestamp
  */
 function encodeRecordLeaf(r: AuditRecord): Uint8Array {
 	const tuple: unknown[] = [
 		"ZKFAIR:RECORD:V1",
 		r.queryId,
 		r.modelId,
+		r.features,
+		r.sensitiveAttr,
 		hexToBytes(r.inputHash),
 		f32(r.prediction),
 		r.timestamp,
 	];
 	return new TextEncoder().encode(JSON.stringify(tuple));
-}
-
-/**
- * Convert audit records to Merkle tree leaves
- * Returns leaves as plain 64-hex strings (no 0x prefix) and index mapping
- * Uses Poseidon hash for ZK-friendliness
- */
-export async function recordsToLeaves(
-	records: AuditRecord[],
-): Promise<{ leaves: string[]; indexById: Map<string, number> }> {
-	const leaves: string[] = [];
-	const indexById = new Map<string, number>();
-
-	for (const [i, rec] of records.entries()) {
-		const encoded = encodeRecordLeaf(rec);
-		const leaf = await hashBytes(encoded);
-		leaves.push(leaf.toLowerCase());
-		indexById.set(rec.queryId, i);
-	}
-
-	return { leaves, indexById };
-}
-
-/**
- * Compute Merkle root and metadata for a batch of query records
- * This is storage-agnostic - you provide the records
- * Uses Poseidon hash and JSON encoding (standardized)
- */
-export async function computeAuditBatch(records: AuditRecord[]): Promise<{
-	root: Hex;
-	count: number;
-	indices: { queryId: string; index: number }[];
-}> {
-	if (!records.length) {
-		throw new Error("Cannot build batch from empty records");
-	}
-
-	const { leaves, indexById } = await recordsToLeaves(records);
-	const root = await merkleRoot(leaves);
-
-	const indices = records.map((r, i) => ({
-		queryId: r.queryId,
-		index: indexById.get(r.queryId) ?? i,
-	}));
-
-	return {
-		root,
-		count: records.length,
-		indices,
-	};
-}
-
-/**
- * Create a Merkle membership proof for a specific query in a batch
- * Returns the root and proof path
- * Uses Poseidon hash (standardized)
- */
-export async function createAuditProof(
-	records: AuditRecord[],
-	queryId: string,
-): Promise<AuditProof> {
-	if (records.length === 0) {
-		throw new Error("No records provided");
-	}
-
-	const { leaves, indexById } = await recordsToLeaves(records);
-	const index = indexById.get(queryId);
-
-	if (index === undefined) {
-		throw new Error(`Query ID "${queryId}" not found in records`);
-	}
-
-	const { root, proof } = await createMerkleProof(leaves, index);
-
-	return { root, index, proof };
-}
-
-/**
- * Verify an audit proof for a query record
- * Uses Poseidon hash (standardized)
- */
-export async function verifyAuditProof(
-	record: AuditRecord,
-	proof: AuditProof,
-): Promise<boolean> {
-	const encoded = encodeRecordLeaf(record);
-	let current = await hashBytes(encoded);
-
-	for (const { sibling, position } of proof.proof) {
-		const left = position === "left" ? sibling : current;
-		const right = position === "left" ? current : sibling;
-
-		const leftBytes = hexToBytes(`0x${left}` as Hex);
-		const rightBytes = hexToBytes(`0x${right}` as Hex);
-		const NODE_PREFIX = new Uint8Array([0x01]);
-		const combined = new Uint8Array(1 + leftBytes.length + rightBytes.length);
-		combined.set(NODE_PREFIX, 0);
-		combined.set(leftBytes, 1);
-		combined.set(rightBytes, 1 + leftBytes.length);
-
-		current = await hashBytes(combined);
-	}
-
-	const computedRoot = `0x${current}` as Hex;
-	return computedRoot.toLowerCase() === proof.root.toLowerCase();
 }
 
 /**
@@ -181,7 +86,60 @@ export class AuditAPI {
 		count: number;
 		indices: { queryId: string; index: number }[];
 	}> {
-		return computeAuditBatch(records);
+		if (!records.length) {
+			throw new Error("Cannot build batch from empty records");
+		}
+
+		const leaves: string[] = [];
+		const indexById = new Map<string, number>();
+
+		for (const [i, rec] of records.entries()) {
+			const encoded = encodeRecordLeaf(rec);
+			const leaf = hashBytes(encoded);
+			leaves.push(leaf.toLowerCase());
+			indexById.set(rec.queryId, i);
+		}
+
+		const root = await merkleRoot(leaves);
+
+		const indices = records.map((r, i) => ({
+			queryId: r.queryId,
+			index: indexById.get(r.queryId) ?? i,
+		}));
+
+		return {
+			root,
+			count: records.length,
+			indices,
+		};
+	}
+	async generateFairnessZKProof(
+		root: Hex,
+		sampleIndices: number[],
+		records: AuditRecord[],
+		merkleProofs: AuditProof[],
+	): Promise<{
+		zkProof: Hex;
+		publicInputs: Hex[];
+	}> {
+		// process merkleProofs auditProof type to fit circuit input
+		// & read thresholds off of .zkfair dir and model features data
+		const input: fairness_auditInputType = {} as any;
+
+		const noir = new Noir(fairness_audit_circuit as CompiledCircuit);
+		const { witness } = await noir.execute(input);
+
+		const backend = new UltraHonkBackend(fairness_audit_circuit.bytecode);
+		const proofData = await backend.generateProof(witness);
+
+		const proofHash = `0x${Array.from(proofData.proof)
+			.map((b) => b.toString(16).padStart(2, "0"))
+			.join("")}` as Hash;
+
+		return {
+			zkProof: proofHash,
+			publicInputs: proofData.publicInputs as Hex[],
+		};
 	}
 
 	/**
@@ -191,14 +149,55 @@ export class AuditAPI {
 		records: AuditRecord[],
 		queryId: string,
 	): Promise<AuditProof> {
-		return createAuditProof(records, queryId);
+		if (records.length === 0) {
+			throw new Error("No records provided");
+		}
+
+		const leaves: string[] = [];
+		const indexById = new Map<string, number>();
+
+		for (const [i, rec] of records.entries()) {
+			const encoded = encodeRecordLeaf(rec);
+			const leaf = hashBytes(encoded);
+			leaves.push(leaf.toLowerCase());
+			indexById.set(rec.queryId, i);
+		}
+
+		const index = indexById.get(queryId);
+
+		if (index === undefined) {
+			throw new Error(`Query ID "${queryId}" not found in records`);
+		}
+
+		const { root, proof } = await createMerkleProof(leaves, index);
+
+		return { root, index, proof };
 	}
 
 	/**
 	 * Verify a proof
 	 */
 	async verifyProof(record: AuditRecord, proof: AuditProof): Promise<boolean> {
-		return verifyAuditProof(record, proof);
+		const encoded = encodeRecordLeaf(record);
+		let current = hashBytes(encoded);
+
+		for (const { sibling, position } of proof.proof) {
+			const left = position === "left" ? sibling : current;
+			const right = position === "left" ? current : sibling;
+
+			const leftBytes = hexToBytes(`0x${left}` as Hex);
+			const rightBytes = hexToBytes(`0x${right}` as Hex);
+			const NODE_PREFIX = new Uint8Array([0x01]);
+			const combined = new Uint8Array(1 + leftBytes.length + rightBytes.length);
+			combined.set(NODE_PREFIX, 0);
+			combined.set(leftBytes, 1);
+			combined.set(rightBytes, 1 + leftBytes.length);
+
+			current = hashBytes(combined);
+		}
+
+		const computedRoot = `0x${current}` as Hex;
+		return computedRoot.toLowerCase() === proof.root.toLowerCase();
 	}
 
 	// ============================================

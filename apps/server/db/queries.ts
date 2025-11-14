@@ -12,6 +12,8 @@ export async function insertQuery(data: {
 	queryId: string;
 	modelId: number;
 	inputHash: string;
+	features: number[];
+	sensitiveAttr: number;
 	prediction: number;
 	timestamp: number;
 }): Promise<number> {

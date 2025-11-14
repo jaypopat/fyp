@@ -210,16 +210,20 @@ contract ZKFair is Ownable, Pausable {
     }
     
     /// @notice Submit ZK proof that model satisfies fairness on calibration dataset D_val
-    /// @param modelId ID of the registered model
+    /// @param weightsHash Hash of model weights (canonical identifier)
     /// @param proof Noir ZK proof bytes
     /// @param publicInputs Public inputs: [weightsHash, datasetMerkleRoot, fairnessThreshold]
     function submitCertificationProof(
-        uint256 modelId,
+        bytes32 weightsHash,
         bytes calldata proof,
         bytes32[] calldata publicInputs
-    ) external onlyProvider(modelId) validModel(modelId) whenNotPaused {
+    ) external whenNotPaused {
+        uint256 modelId = modelByWeightsHash[weightsHash];
+        if (modelId == 0) revert ModelNotFound();
+        
         Model storage model = models[modelId];
         
+        if (model.provider != msg.sender) revert UnauthorizedAccess();
         if (model.status != ModelStatus.REGISTERED) revert InvalidModelStatus();
         
         bool valid = trainingVerifier.verify(proof, publicInputs);

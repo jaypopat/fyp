@@ -15,4 +15,3 @@ export const proof = command({
 });
 
 export { commit } from "./commit";
-export { verify } from "./verify";

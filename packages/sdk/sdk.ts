@@ -6,7 +6,6 @@ import { EventsAPI } from "./events";
 import { ModelAPI } from "./model";
 import { ProofAPI } from "./proof";
 import type { ZkFairOptions } from "./types";
-import { VerifyAPI } from "./verify";
 
 export class SDK {
 	// internal
@@ -16,7 +15,6 @@ export class SDK {
 	public batch: BatchAPI;
 	public proof: ProofAPI;
 	public commit: CommitAPI;
-	public verify: VerifyAPI;
 	public events: EventsAPI;
 	public audit: AuditAPI;
 
@@ -27,7 +25,6 @@ export class SDK {
 		this.batch = new BatchAPI(this.contracts);
 		this.proof = new ProofAPI(this.contracts);
 		this.commit = new CommitAPI(this.contracts);
-		this.verify = new VerifyAPI(this.contracts);
 		this.events = new EventsAPI(this.contracts);
 		this.audit = new AuditAPI(this.contracts);
 	}
