@@ -1,14 +1,14 @@
 import json
+
 import numpy as np
+import onnxruntime as ort
 import pandas as pd
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import roc_curve
 from skl2onnx import to_onnx
 from skl2onnx.common.data_types import FloatTensorType
-import onnxruntime as ort
-
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_curve
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
 
 # Load data with quotechar to handle quotes properly
 data = pd.read_csv("./dataset.csv", sep=',', quotechar='"')
@@ -45,6 +45,11 @@ for col in X.columns:
 # Save the fully encoded dataset (all features as integers, ready for hashing)
 X.to_csv('dataset_encoded.csv', index=False)
 print("Saved: dataset_encoded.csv (all features as integers)\n")
+
+# Create a small subset for testing (10 rows)
+X_small = X.head(10)
+X_small.to_csv('dataset_encoded_small.csv', index=False)
+print("Saved: dataset_encoded_small.csv (10 rows for circuit testing)\n")
 
 # Train/test split (using already-encoded X)
 X_train, X_test, y_train, y_test = train_test_split(X.drop('income', axis=1), X['income'], test_size=0.3, random_state=42)
@@ -154,19 +159,26 @@ protected_attribute_name = "sex"
 protected_attribute_index = features_list.index(protected_attribute_name)
 print(f"    Protected attribute '{protected_attribute_name}' is at column index: {protected_attribute_index}")
 
-# Save fairness config with per-group thresholds
+# Convert thresholds to fixed-point integers for ZK circuit (scale by 10000 for 4 decimal places)
+# Use absolute values since Field is unsigned in Noir
+THRESHOLD_SCALE = 10000
+threshold_group_a_scaled = int(round(abs(threshold_group_a) * THRESHOLD_SCALE))
+threshold_group_b_scaled = int(round(abs(threshold_group_b) * THRESHOLD_SCALE))
+print(f"    Scaled thresholds (SCALE={THRESHOLD_SCALE}, absolute values): group_a={threshold_group_a_scaled}, group_b={threshold_group_b_scaled}")
+
+# Save fairness config with per-group thresholds (as scaled positive integers)
 fairness_config = {
     "metric": "demographic_parity",
     "targetDisparity": round(float(target_disparity), 4),
     "protectedAttribute": "sex",
     "protectedAttributeIndex": protected_attribute_index,
-    
-    # Per-group thresholds from Algorithm 1 (REQUIRED for OATH)
+
+    # Per-group thresholds from Algorithm 1 (scaled to positive integers for ZK circuit)
     "thresholds": {
-        "group_a": round(threshold_group_a, 4),
-        "group_b": round(threshold_group_b, 4)
+        "group_a": threshold_group_a_scaled,
+        "group_b": threshold_group_b_scaled
     },
-    
+
     "calculatedMetrics": {
         "demographicParity": round(float(demographic_parity), 4),
         "equalizedOdds": round(float(equalized_odds), 4),
@@ -200,6 +212,7 @@ print("\n Generated files:")
 print("   - weights.bin (model parameters)")
 print("   - model.onnx (ONNX format)")
 print("   - dataset_encoded.csv (all features numeric, for ZK commitment)")
+print("   - dataset_encoded_small.csv (10 rows for circuit testing)")
 print("   - label_encoders.json (categorical mappings for reproducibility)")
 print("   - fairness_threshold.json (with per-group thresholds)")
 print("   - model.json (metadata)")

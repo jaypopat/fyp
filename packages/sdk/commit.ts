@@ -2,9 +2,12 @@ import { mkdir } from "node:fs/promises";
 import type { Hash } from "viem";
 import type { FairnessFile, PathsFile } from "./artifacts";
 import type { ContractClient } from "./contract";
-import { merkleRoot } from "./merkle";
+import { generateAllMerkleProofs, merkleRoot } from "./merkle";
 import type { CommitOptions } from "./types";
-import { getArtifactDir, parseCSV } from "./utils";
+import { getArtifactDir, parseCSV, weightsToFields } from "./utils";
+
+const FIELD_MODULUS =
+	21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
 export class CommitAPI {
 	constructor(private contracts: ContractClient) {}
@@ -35,12 +38,16 @@ export class CommitAPI {
 		let masterSalt: string;
 		let saltsMap: Record<number, string>;
 		let dataSetMerkleRoot: Hash;
+		let merklePaths: string[][];
+		let isEvenFlags: boolean[][];
 
 		if (cachedData) {
 			console.log(" Using cached commitments (files unchanged)");
 			masterSalt = cachedData.masterSalt;
 			saltsMap = cachedData.salts;
 			dataSetMerkleRoot = cachedData.datasetMerkleRoot;
+			merklePaths = cachedData.merklePaths;
+			isEvenFlags = cachedData.isEvenFlags;
 		} else {
 			console.log("Computing fresh commitments...");
 
@@ -60,6 +67,8 @@ export class CommitAPI {
 
 			saltsMap = commitments.saltsMap;
 			dataSetMerkleRoot = commitments.dataSetMerkleRoot;
+			merklePaths = commitments.merklePaths;
+			isEvenFlags = commitments.isEvenFlags;
 		}
 
 		// Attempt to register the model - if it already exists, provide a clear error
@@ -100,6 +109,8 @@ export class CommitAPI {
 			saltsMap,
 			dataSetMerkleRoot,
 			weightsHash,
+			merklePaths,
+			isEvenFlags,
 		);
 
 		return hash;
@@ -108,6 +119,7 @@ export class CommitAPI {
 	/**
 	 * Generate deterministic master salt from model files.
 	 * Uses SHA-256 only (circuit receives pre-computed salts from salts.json).
+	 * Outputs integer representation (first 31 bytes as Field element)
 	 * master_salt = SHA-256(weights_hash || dataset_hash || metadata_hash)
 	 */
 	private async generateMasterSalt(
@@ -141,7 +153,10 @@ export class CommitAPI {
 			"SHA-256",
 			new TextEncoder().encode(combined),
 		);
-		const masterSalt = Buffer.from(masterSaltBuf).toString("hex");
+		const masterSaltHex = Buffer.from(masterSaltBuf).toString("hex");
+		const masterSaltBigInt = BigInt(`0x${masterSaltHex}`);
+
+		const masterSalt = (masterSaltBigInt % FIELD_MODULUS).toString();
 
 		return masterSalt;
 	}
@@ -159,6 +174,8 @@ export class CommitAPI {
 		masterSalt: string;
 		salts: Record<number, string>;
 		datasetMerkleRoot: Hash;
+		merklePaths: string[][];
+		isEvenFlags: boolean[][];
 	} | null> {
 		try {
 			const dir = getArtifactDir(weightsHash);
@@ -187,11 +204,15 @@ export class CommitAPI {
 			}
 
 			// Load all cached artifacts
-			const [masterSalt, salts, commitments] = await Promise.all([
+			const [masterSalt, salts, commitments, merkleProofs] = await Promise.all([
 				Bun.file(`${dir}/master_salt.txt`).text(),
 				Bun.file(`${dir}/salts.json`).json() as Promise<Record<number, string>>,
 				Bun.file(`${dir}/commitments.json`).json() as Promise<{
 					datasetMerkleRoot: Hash;
+				}>,
+				Bun.file(`${dir}/merkle_proofs.json`).json() as Promise<{
+					merklePaths: string[][];
+					isEvenFlags: boolean[][];
 				}>,
 			]);
 
@@ -199,6 +220,8 @@ export class CommitAPI {
 				masterSalt: masterSalt.trim(),
 				salts,
 				datasetMerkleRoot: commitments.datasetMerkleRoot,
+				merklePaths: merkleProofs.merklePaths,
+				isEvenFlags: merkleProofs.isEvenFlags,
 			};
 		} catch {
 			// Cache doesn't exist or is corrupted
@@ -215,6 +238,8 @@ export class CommitAPI {
 		saltsMap: Record<number, string>;
 		dataSetMerkleRoot: Hash;
 		weightsHash: Hash;
+		merklePaths: string[][];
+		isEvenFlags: boolean[][];
 	}> {
 		// Use provided weightsHash (used for cache lookup in fs)
 		const finalWeightsHash = weightsHash || (await this.hashWeights(weights));
@@ -251,17 +276,28 @@ export class CommitAPI {
 			throw new Error(`Merkle root malformed: ${dataSetMerkleRoot}`);
 		}
 
+		// Generate Merkle proofs for all leaves
+		console.log(` Generating Merkle proofs for ${rowHashes.length} leaves...`);
+		const MAX_TREE_HEIGHT = 15; // Same as circuit constant
+		const { merkle_paths, is_even_flags } = await generateAllMerkleProofs(
+			rowHashes,
+			MAX_TREE_HEIGHT,
+		);
+
 		return {
 			saltsMap,
 			dataSetMerkleRoot,
 			weightsHash: finalWeightsHash,
+			merklePaths: merkle_paths,
+			isEvenFlags: is_even_flags,
 		};
 	}
 
 	/**
 	 * Derive per-row salts using SHA-256 (fast, deterministic).
+	 * Outputs integer representation (first 31 bytes as Field element)
 	 * Salts are private inputs to circuit, no need for ZK-friendly derivation.
-	 * row_salt[i] = SHA-256(master_salt || row_index || weightsHash)
+	 * row_salt[i] = SHA-256(master_salt || row_index || weightsHash) → converted to integer
 	 */
 	private async deriveSalts(
 		masterSalt: string,
@@ -273,13 +309,17 @@ export class CommitAPI {
 		console.log(` Deriving ${rowCount} row salts with SHA-256...`);
 		for (let i = 0; i < rowCount; i++) {
 			// Combine master_salt + index + weightsHash
+			// Note: masterSalt is now an integer string, so reconstruct the hash
 			const input = `${masterSalt}${i}${weightsHash}`;
 			const saltBuf = await crypto.subtle.digest(
 				"SHA-256",
 				new TextEncoder().encode(input),
 			);
-			const salt = Buffer.from(saltBuf).toString("hex");
-			salts[i] = salt;
+			const saltHex = Buffer.from(saltBuf).toString("hex");
+			const saltBigInt = BigInt(`0x${saltHex}`);
+
+			const saltField = saltBigInt % FIELD_MODULUS;
+			salts[i] = saltField.toString();
 		}
 		return salts;
 	}
@@ -291,6 +331,8 @@ export class CommitAPI {
 		salts: Record<number, string>,
 		dataSetMerkleRoot: Hash,
 		weightsHash: Hash,
+		merklePaths: string[][],
+		isEvenFlags: boolean[][],
 	) {
 		const dir = getArtifactDir(weightsHash);
 		await mkdir(dir, { recursive: true });
@@ -319,6 +361,10 @@ export class CommitAPI {
 					2,
 				),
 			),
+			Bun.write(
+				`${dir}/merkle_proofs.json`,
+				JSON.stringify({ merklePaths, isEvenFlags }, null, 2),
+			),
 		]);
 		console.log(` Artifacts saved to ${dir}`);
 	}
@@ -328,7 +374,7 @@ export class CommitAPI {
 		const weightsFloat32 = new Float32Array(weightsBuffer.buffer);
 
 		// Convert to Field array
-		const weightsFields = await this.weightsToFields(weightsFloat32);
+		const weightsFields = await weightsToFields(weightsFloat32);
 
 		// Hash with Poseidon for ZK-verifiable commitment
 		const { hashPoseidonFields } = await import("./utils");
@@ -337,39 +383,13 @@ export class CommitAPI {
 		return `0x${weightsHash}` as Hash;
 	}
 
-	/**
-	 * Convert Float32 weights to Field elements using fixed-point scaling.
-	 * Uses SCALE = 1_000_000 (6 decimal places of precision).
-	 * Exported for use in circuit scripts.
-	 */
-	private async weightsToFields(
-		weightsFloat32: Float32Array | number[],
-	): Promise<bigint[]> {
-		const SCALE = 1_000_000n;
-		const MAX_FIELD = (1n << 253n) - 1n; // BN254 field size
-
-		const fieldsArray: bigint[] = [];
-		for (const weight of weightsFloat32) {
-			// Scale to fixed-point integer
-			const scaled = BigInt(Math.round(weight * Number(SCALE)));
-			// Ensure it fits in field
-			const field =
-				scaled >= 0n
-					? scaled % MAX_FIELD
-					: (MAX_FIELD + (scaled % MAX_FIELD)) % MAX_FIELD;
-			fieldsArray.push(field);
-		}
-
-		return fieldsArray;
-	}
-
 	private async hashRow(
 		row: Array<number | string>,
 		salt: string,
 	): Promise<string> {
 		// Hash: Poseidon([...row_values, salt_bigint])
 		const { hashPoseidonFields } = await import("./utils");
-		const saltBigInt = BigInt(`0x${salt}`);
+		const saltBigInt = BigInt(salt);
 		const rowWithSalt = [...row, saltBigInt];
 		const hash = await hashPoseidonFields(rowWithSalt);
 		if (hash.length !== 64)

@@ -12,7 +12,7 @@ import {
 	parsePathsFile,
 } from "./artifacts";
 import type { ContractClient } from "./contract";
-import { getArtifactDir, parseCSV } from "./utils";
+import { getArtifactDir, parseCSV, weightsToFields } from "./utils";
 
 export class ProofAPI {
 	constructor(private contracts: ContractClient) {}
@@ -28,36 +28,60 @@ export class ProofAPI {
 
 		// Load dataset & weights
 		const weights_data = await Bun.file(paths.weights).arrayBuffer();
+		const weightsFields = await weightsToFields(new Float32Array(weights_data));
 		const dataset = await parseCSV(paths.dataset);
 
 		const salts = (await Bun.file(`${dir}/salts.json`).json()) as Record<
 			number,
 			string
 		>;
+
 		const thresholds = parseFairnessThresholdFile(
-			await Bun.file(paths.threshold).json(),
+			await Bun.file(paths.fairnessThreshold).json(),
 		);
 		const commitments = parseCommitmentsFile(
 			await Bun.file(`${dir}/commitments.json`).json(),
 		);
 
+		// Load Merkle proofs
+		const merkleProofs = (await Bun.file(
+			`${dir}/merkle_proofs.json`,
+		).json()) as {
+			merklePaths: string[][];
+			isEvenFlags: boolean[][];
+		};
+
+		// Convert hex merkle paths to decimal strings for the circuit
+		const merklePathsDecimal = merkleProofs.merklePaths.map((path) =>
+			path.map((hex) => {
+				const clean = hex.startsWith("0x") ? hex.slice(2) : hex;
+				return BigInt(`0x${clean}`).toString();
+			}),
+		);
+
 		const input: trainingInputType = {
 			// private inputs
-			_model_weights: Array.from(new Uint8Array(weights_data)).map(String),
+			_model_weights: weightsFields.map(String),
 			_dataset_size: String(dataset.length),
-			_dataset_features: dataset.flatMap((row) => row.map(String)),
+			_dataset_features: dataset.flatMap(
+				(row) => row.slice(0, -1).map(String), // Everything except last column
+			),
 			_dataset_labels: dataset.map((row) => String(row[row.length - 1] ?? "0")),
 			_dataset_sensitive_attrs: dataset.map((row) =>
 				String(row[thresholds.protectedAttributeIndex] ?? "0"),
 			),
 			_threshold_group_a: String(thresholds.thresholds.group_a),
 			_threshold_group_b: String(thresholds.thresholds.group_b),
-			_dataset_salts: dataset.map((_, i) => String(salts[i] ?? "0")),
+			_dataset_salts: Object.values(salts),
+			_merkle_paths: merklePathsDecimal,
+			_is_even_flags: merkleProofs.isEvenFlags,
 
 			// public inputs
 			_weights_hash: weightsHash,
 			_dataset_merkle_root: commitments.datasetMerkleRoot,
-			_fairness_threshold_epsilon: thresholds.targetDisparity.toString(),
+			_fairness_threshold_epsilon: Math.ceil(
+				thresholds.targetDisparity * 100,
+			).toString(),
 		};
 
 		const noir = new Noir(training_circuit as CompiledCircuit);

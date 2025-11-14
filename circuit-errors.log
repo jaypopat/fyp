@@ -1,0 +1,39 @@
+[2025-11-14T18:30:28.584Z]
+Error: Cannot satisfy constraint
+    at <anonymous> (/home/jay/Dev/fyp/node_modules/.bun/@noir-lang+acvm_js@1.0.0-beta.15/node_modules/@noir-lang/acvm_js/nodejs/acvm_js.js:557:21)
+    at unknown
+    at unknown
+    at unknown
+    at unknown
+    at unknown
+    at unknown
+    at unknown
+    at unknown
+    at __wbg_adapter_30 (/home/jay/Dev/fyp/node_modules/.bun/@noir-lang+acvm_js@1.0.0-beta.15/node_modules/@noir-lang/acvm_js/nodejs/acvm_js.js:530:10)
+
+[2025-11-14T18:35:11.823Z]
+Error: Cannot satisfy constraint
+    at <anonymous> (/home/jay/Dev/fyp/node_modules/.bun/@noir-lang+acvm_js@1.0.0-beta.15/node_modules/@noir-lang/acvm_js/nodejs/acvm_js.js:557:21)
+    at unknown
+    at unknown
+    at unknown
+    at unknown
+    at unknown
+    at unknown
+    at unknown
+    at unknown
+    at __wbg_adapter_30 (/home/jay/Dev/fyp/node_modules/.bun/@noir-lang+acvm_js@1.0.0-beta.15/node_modules/@noir-lang/acvm_js/nodejs/acvm_js.js:530:10)
+
+[2025-11-14T18:35:34.889Z]
+Error: Cannot satisfy constraint
+    at <anonymous> (/home/jay/Dev/fyp/node_modules/.bun/@noir-lang+acvm_js@1.0.0-beta.15/node_modules/@noir-lang/acvm_js/nodejs/acvm_js.js:557:21)
+    at unknown
+    at unknown
+    at unknown
+    at unknown
+    at unknown
+    at unknown
+    at unknown
+    at unknown
+    at __wbg_adapter_30 (/home/jay/Dev/fyp/node_modules/.bun/@noir-lang+acvm_js@1.0.0-beta.15/node_modules/@noir-lang/acvm_js/nodejs/acvm_js.js:530:10)
+

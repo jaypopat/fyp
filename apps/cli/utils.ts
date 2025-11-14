@@ -70,7 +70,7 @@ export async function discoverModelFiles(opts: {
 
 		const dirPath = path.resolve(opts.dir);
 		const weightsPath = path.join(dirPath, "weights.bin");
-		const datasetPath = path.join(dirPath, "dataset_encoded.csv");
+		const datasetPath = path.join(dirPath, "dataset_encoded_small.csv");
 		const fairnessThresholdPath = path.join(dirPath, "fairness_threshold.json");
 		const modelJsonPath = path.join(dirPath, "model.json");
 

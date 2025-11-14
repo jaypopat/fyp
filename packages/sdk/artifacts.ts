@@ -19,7 +19,7 @@ export function assertHash(
 export interface PathsFile {
 	dataset: string;
 	weights: string;
-	threshold: string;
+	fairnessThreshold: string;
 }
 export interface Thresholds {
 	group_a: number;
@@ -109,12 +109,12 @@ export function parsePathsFile(data: unknown): PathsFile {
 	const d = data as Record<string, unknown>;
 	assert(typeof d.dataset === "string", "paths.dataset missing");
 	assert(typeof d.weights === "string", "paths.weights missing");
-	assert(typeof d.threshold === "string", "paths.threshold missing");
+	assert(typeof d.fairnessThreshold === "string", "paths.threshold missing");
 
 	return {
 		dataset: d.dataset as string,
 		weights: d.weights as string,
-		threshold: d.threshold as string,
+		fairnessThreshold: d.fairnessThreshold as string,
 	};
 }
 export function parseCommitmentsFile(data: unknown): CommitmentsFile {

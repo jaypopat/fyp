@@ -130,6 +130,31 @@ export function hashBytes(data: Uint8Array): string {
 
 	return hex;
 }
+/**
+ * Convert Float32 weights to Field elements using fixed-point scaling.
+ * Uses SCALE = 1_000_000 (6 decimal places of precision).
+ * Exported for use in circuit scripts.
+ */
+export async function weightsToFields(
+	weightsFloat32: Float32Array | number[],
+): Promise<bigint[]> {
+	const SCALE = 1_000_000n;
+	const MAX_FIELD = (1n << 253n) - 1n; // BN254 field size
+
+	const fieldsArray: bigint[] = [];
+	for (const weight of weightsFloat32) {
+		// Scale to fixed-point integer
+		const scaled = BigInt(Math.round(weight * Number(SCALE)));
+		// Ensure it fits in field
+		const field =
+			scaled >= 0n
+				? scaled % MAX_FIELD
+				: (MAX_FIELD + (scaled % MAX_FIELD)) % MAX_FIELD;
+		fieldsArray.push(field);
+	}
+
+	return fieldsArray;
+}
 
 /**
  * Hash field elements directly using Poseidon (ZK-friendly)

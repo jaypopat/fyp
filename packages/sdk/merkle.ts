@@ -108,3 +108,39 @@ export async function createMerkleProof(
 	const root = ensure0x(rootPlain);
 	return { root, proof };
 }
+
+/**
+ * Generate all Merkle proofs for every leaf in the tree.
+ * Returns arrays suitable for circuit input (merkle_paths and is_even_flags).
+ */
+export async function generateAllMerkleProofs(
+	leaves: string[],
+	maxTreeHeight: number,
+): Promise<{
+	merkle_paths: string[][];
+	is_even_flags: boolean[][];
+}> {
+	const merkle_paths: string[][] = [];
+	const is_even_flags: boolean[][] = [];
+
+	for (let i = 0; i < leaves.length; i++) {
+		const { proof } = await createMerkleProof(leaves, i);
+
+		// Convert proof to circuit format
+		const path: string[] = new Array(maxTreeHeight).fill("0");
+		const flags: boolean[] = new Array(maxTreeHeight).fill(false);
+
+		for (let j = 0; j < proof.length && j < maxTreeHeight; j++) {
+			const step = proof[j];
+			if (!step) continue;
+			path[j] = ensure0x(step.sibling);
+			// is_even means "current node is left child" (even index)
+			flags[j] = step.position === "right"; // if sibling is right, current is left (even)
+		}
+
+		merkle_paths.push(path);
+		is_even_flags.push(flags);
+	}
+
+	return { merkle_paths, is_even_flags };
+}
