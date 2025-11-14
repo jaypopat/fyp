@@ -7,7 +7,10 @@ const NUM_WEIGHTS = 14;
 
 const __dirname = new URL(".", import.meta.url).pathname;
 const TRAINING_PROVER_TOML_PATH = join(__dirname, "../training/Prover.toml");
-const FAIRNESS_AUDIT_PROVER_TOML_PATH = join(__dirname, "../fairness_audit/Prover.toml");
+const FAIRNESS_AUDIT_PROVER_TOML_PATH = join(
+	__dirname,
+	"../fairness_audit/Prover.toml",
+);
 
 const CALIBRATION_CSV_PATH = join(
 	__dirname,
@@ -22,7 +25,5 @@ const WEIGHTS_BIN_PATH = join(
 	"../../../examples/adult-income/weights.bin",
 );
 
-function main(){
-	
-}
+function main() {}
 main();

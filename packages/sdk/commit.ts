@@ -7,7 +7,7 @@ import type { CommitOptions } from "./types";
 import { getArtifactDir, parseCSV } from "./utils";
 
 export class CommitAPI {
-	constructor(private contracts: ContractClient) { }
+	constructor(private contracts: ContractClient) {}
 
 	async makeCommitment(
 		dataSetPath: string,
@@ -175,10 +175,13 @@ export class CommitAPI {
 				return null;
 			}
 
-			const cachedPaths = await pathsFile.json() as PathsFile;
+			const cachedPaths = (await pathsFile.json()) as PathsFile;
 
 			// Verify paths match (ie cache aint invalid)
-			if (cachedPaths.dataset !== datasetPath || cachedPaths.weights !== weightsPath) {
+			if (
+				cachedPaths.dataset !== datasetPath ||
+				cachedPaths.weights !== weightsPath
+			) {
 				console.log(" Cache invalid: file paths changed");
 				return null;
 			}
@@ -187,7 +190,9 @@ export class CommitAPI {
 			const [masterSalt, salts, commitments] = await Promise.all([
 				Bun.file(`${dir}/master_salt.txt`).text(),
 				Bun.file(`${dir}/salts.json`).json() as Promise<Record<number, string>>,
-				Bun.file(`${dir}/commitments.json`).json() as Promise<{ datasetMerkleRoot: Hash }>,
+				Bun.file(`${dir}/commitments.json`).json() as Promise<{
+					datasetMerkleRoot: Hash;
+				}>,
 			]);
 
 			return {
@@ -212,7 +217,7 @@ export class CommitAPI {
 		weightsHash: Hash;
 	}> {
 		// Use provided weightsHash (used for cache lookup in fs)
-		const finalWeightsHash = weightsHash || await this.hashWeights(weights);
+		const finalWeightsHash = weightsHash || (await this.hashWeights(weights));
 
 		// Derive per-row salts from master salt
 		const saltsMap = await this.deriveSalts(
@@ -337,7 +342,9 @@ export class CommitAPI {
 	 * Uses SCALE = 1_000_000 (6 decimal places of precision).
 	 * Exported for use in circuit scripts.
 	 */
-	private async weightsToFields(weightsFloat32: Float32Array | number[]): Promise<bigint[]> {
+	private async weightsToFields(
+		weightsFloat32: Float32Array | number[],
+	): Promise<bigint[]> {
 		const SCALE = 1_000_000n;
 		const MAX_FIELD = (1n << 253n) - 1n; // BN254 field size
 
@@ -346,14 +353,20 @@ export class CommitAPI {
 			// Scale to fixed-point integer
 			const scaled = BigInt(Math.round(weight * Number(SCALE)));
 			// Ensure it fits in field
-			const field = scaled >= 0n ? scaled % MAX_FIELD : (MAX_FIELD + (scaled % MAX_FIELD)) % MAX_FIELD;
+			const field =
+				scaled >= 0n
+					? scaled % MAX_FIELD
+					: (MAX_FIELD + (scaled % MAX_FIELD)) % MAX_FIELD;
 			fieldsArray.push(field);
 		}
 
 		return fieldsArray;
 	}
 
-	private async hashRow(row: Array<number | string>, salt: string): Promise<string> {
+	private async hashRow(
+		row: Array<number | string>,
+		salt: string,
+	): Promise<string> {
 		// Hash: Poseidon([...row_values, salt_bigint])
 		const { hashPoseidonFields } = await import("./utils");
 		const saltBigInt = BigInt(`0x${salt}`);

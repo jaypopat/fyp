@@ -2,11 +2,7 @@ import type { TypeOf } from "@drizzle-team/brocli";
 import { select } from "@inquirer/prompts";
 import type { Hash } from "viem";
 import type { getModelOptions } from "../cli-args";
-import {
-	modelStatusToString,
-	validateHash,
-	withSpinner,
-} from "../utils";
+import { modelStatusToString, validateHash, withSpinner } from "../utils";
 import { zkFairSDK } from "./sdk";
 
 export type GetModelOpts = TypeOf<typeof getModelOptions>;
@@ -107,7 +103,7 @@ export async function getModel(options: GetModelOpts) {
 	if (
 		model.certificationProofHash &&
 		model.certificationProofHash !==
-		"0x0000000000000000000000000000000000000000000000000000000000000000"
+			"0x0000000000000000000000000000000000000000000000000000000000000000"
 	) {
 		console.log(`Proof Hash: ${model.certificationProofHash}`);
 	}

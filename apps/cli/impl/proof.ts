@@ -2,11 +2,7 @@ import type { TypeOf } from "@drizzle-team/brocli";
 import { input as promptInput, select } from "@inquirer/prompts";
 import type { Hash } from "viem";
 import type { getProofStatusOptions, verifyProofOptions } from "../cli-args";
-import {
-	modelStatusToString,
-	validateHash,
-	withSpinner,
-} from "../utils";
+import { modelStatusToString, validateHash, withSpinner } from "../utils";
 import { zkFairSDK } from "./sdk";
 
 export type GetProofStatusOpts = TypeOf<typeof getProofStatusOptions>;
@@ -84,7 +80,7 @@ export async function verifyProof(options: VerifyProofOpts) {
 			(m) =>
 				m.certificationProofHash &&
 				m.certificationProofHash !==
-				"0x0000000000000000000000000000000000000000000000000000000000000000",
+					"0x0000000000000000000000000000000000000000000000000000000000000000",
 		);
 
 		if (modelsWithProofs.length === 0) {
