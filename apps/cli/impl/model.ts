@@ -3,7 +3,6 @@ import { select } from "@inquirer/prompts";
 import type { Hash } from "viem";
 import type { getModelOptions } from "../cli-args";
 import {
-	computeFileHash,
 	modelStatusToString,
 	validateHash,
 	withSpinner,
@@ -49,16 +48,9 @@ export async function listModels() {
 export async function getModel(options: GetModelOpts) {
 	let hashToUse: Hash;
 
-	if (options.modelHash && options.weightsFile) {
-		throw new Error("Provide either model hash or weights file, not both");
-	}
-
 	if (options.modelHash) {
 		hashToUse = validateHash(options.modelHash);
 		console.log(` Using provided model hash: ${hashToUse}`);
-	} else if (options.weightsFile) {
-		hashToUse = await computeFileHash(options.weightsFile);
-		console.log(` Computed hash from weights file: ${hashToUse}`);
 	} else {
 		// Interactive: Select from available models
 		const models = await withSpinner(
@@ -115,7 +107,7 @@ export async function getModel(options: GetModelOpts) {
 	if (
 		model.certificationProofHash &&
 		model.certificationProofHash !==
-			"0x0000000000000000000000000000000000000000000000000000000000000000"
+		"0x0000000000000000000000000000000000000000000000000000000000000000"
 	) {
 		console.log(`Proof Hash: ${model.certificationProofHash}`);
 	}

@@ -3,7 +3,6 @@ import { input as promptInput, select } from "@inquirer/prompts";
 import type { Hash } from "viem";
 import type { getProofStatusOptions, verifyProofOptions } from "../cli-args";
 import {
-	computeFileHash,
 	modelStatusToString,
 	validateHash,
 	withSpinner,
@@ -18,8 +17,6 @@ export async function getProofStatus(options: GetProofStatusOpts) {
 
 	if (options.proofHash) {
 		weightsHash = validateHash(options.proofHash);
-	} else if (options.weights) {
-		weightsHash = await computeFileHash(options.weights);
 	} else {
 		// Interactive: Select from available models
 		const models = await withSpinner(
@@ -68,9 +65,6 @@ export async function verifyProof(options: VerifyProofOpts) {
 	if (options.proofHash) {
 		hashToVerify = validateHash(options.proofHash);
 		console.log(`Using provided proof hash: ${hashToVerify}`);
-	} else if (options.weights) {
-		hashToVerify = await computeFileHash(options.weights);
-		console.log(`Computed weights hash from weights file: ${hashToVerify}`);
 	} else {
 		// Interactive: Select from available models
 		const models = await withSpinner(
@@ -90,7 +84,7 @@ export async function verifyProof(options: VerifyProofOpts) {
 			(m) =>
 				m.certificationProofHash &&
 				m.certificationProofHash !==
-					"0x0000000000000000000000000000000000000000000000000000000000000000",
+				"0x0000000000000000000000000000000000000000000000000000000000000000",
 		);
 
 		if (modelsWithProofs.length === 0) {
