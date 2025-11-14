@@ -7,7 +7,6 @@ import { handleAuditRequest } from "./lib/audit";
 import { createBatchIfNeeded } from "./lib/batch.service";
 import { loadAllModels } from "./lib/models";
 import { sdk } from "./lib/sdk";
-import type { Hex } from "./lib/types";
 
 const app = new Hono();
 
@@ -85,12 +84,6 @@ app.post("/predict", async (c) => {
 		const now = Date.now();
 		const asF32 = Array.from(new Float32Array(input as number[]));
 
-		// TODO - change to poseidon hash
-		const inputHashBytes = Bun.sha(
-			new TextEncoder().encode(JSON.stringify(asF32)),
-		) as Uint8Array;
-		const inputHash =
-			`0x${[...inputHashBytes].map((b) => b.toString(16).padStart(2, "0")).join("")}` as Hex;
 		const qid = queryId ?? globalThis.crypto?.randomUUID?.() ?? `${now}`;
 
 		console.log(`Inference for model ${modelId}: ${prediction}`);
@@ -98,7 +91,6 @@ app.post("/predict", async (c) => {
 		const seqNum = await insertQuery({
 			queryId: qid,
 			modelId: modelId,
-			inputHash,
 			features: asF32,
 			sensitiveAttr: Number(input[9] || 0), // sex attribute
 			prediction: Number(prediction),
@@ -113,7 +105,6 @@ app.post("/predict", async (c) => {
 			prediction: Number(prediction),
 			timestamp: now,
 			seqNum,
-			inputHash,
 			queryId: qid,
 		});
 	} catch (error) {

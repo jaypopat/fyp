@@ -18,7 +18,6 @@ export type AuditRecord = {
 	modelId: number;
 	features: number[];
 	sensitiveAttr: number;
-	inputHash: Hex;
 	prediction: number;
 	timestamp: number;
 };
@@ -62,7 +61,6 @@ function encodeRecordLeaf(r: AuditRecord): Uint8Array {
 		r.modelId,
 		r.features,
 		r.sensitiveAttr,
-		hexToBytes(r.inputHash),
 		f32(r.prediction),
 		r.timestamp,
 	];

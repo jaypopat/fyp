@@ -147,11 +147,19 @@ threshold_group_b = float(np.interp(target_fpr, fpr_1, thresholds_1))
 print(f"    Group 0 (a) threshold: {threshold_group_a:.4f}")
 print(f"    Group 1 (b) threshold: {threshold_group_b:.4f}")
 
+# Find the index of the protected attribute (sex) in the feature array
+# This is needed for the ZK circuit to identify which feature is the sensitive attribute
+features_list = X.drop('income', axis=1).columns.tolist()
+protected_attribute_name = "sex"
+protected_attribute_index = features_list.index(protected_attribute_name)
+print(f"    Protected attribute '{protected_attribute_name}' is at column index: {protected_attribute_index}")
+
 # Save fairness config with per-group thresholds
 fairness_config = {
     "metric": "demographic_parity",
     "targetDisparity": round(float(target_disparity), 4),
     "protectedAttribute": "sex",
+    "protectedAttributeIndex": protected_attribute_index,
     
     # Per-group thresholds from Algorithm 1 (REQUIRED for OATH)
     "thresholds": {
@@ -210,3 +218,4 @@ print(f"   Group 1 positive rate: {group_1_pos_rate:.4f}\n")
 print(" Post-Processing Thresholds (for ZK commitment):")
 print(f"   Group A threshold (t_a): {threshold_group_a:.4f}")
 print(f"   Group B threshold (t_b): {threshold_group_b:.4f}")
+print(f"   Protected attribute index: {protected_attribute_index}")

@@ -11,7 +11,6 @@ import { type QueryLog, queryLogs } from "./schema";
 export async function insertQuery(data: {
 	queryId: string;
 	modelId: number;
-	inputHash: string;
 	features: number[];
 	sensitiveAttr: number;
 	prediction: number;

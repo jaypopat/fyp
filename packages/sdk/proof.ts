@@ -6,6 +6,11 @@ import {
 } from "@zkfair/zk-circuits/codegen";
 
 import type { Hash } from "viem";
+import {
+	parseCommitmentsFile,
+	parseFairnessThresholdFile,
+	parsePathsFile,
+} from "./artifacts";
 import type { ContractClient } from "./contract";
 import { getArtifactDir, parseCSV } from "./utils";
 
@@ -29,19 +34,30 @@ export class ProofAPI {
 			number,
 			string
 		>;
+		const thresholds = parseFairnessThresholdFile(
+			await Bun.file(paths.threshold).json(),
+		);
+		const commitments = parseCommitmentsFile(
+			await Bun.file(`${dir}/commitments.json`).json(),
+		);
 
 		const input: trainingInputType = {
+			// private inputs
 			_model_weights: Array.from(new Uint8Array(weights_data)).map(String),
 			_dataset_size: String(dataset.length),
 			_dataset_features: dataset.flatMap((row) => row.map(String)),
-			_dataset_labels: dataset.map((row) => row[14] || "0"), // Assuming label is last column
-			_dataset_sensitive_attrs: dataset.map((row) => row[9] || "0"), // Assuming sensitive attr
-			_threshold_group_a: "0", // Provide actual values
-			_threshold_group_b: "0",
-			_dataset_salts: Object.values(salts),
+			_dataset_labels: dataset.map((row) => String(row[row.length - 1] ?? "0")),
+			_dataset_sensitive_attrs: dataset.map((row) =>
+				String(row[thresholds.protectedAttributeIndex] ?? "0"),
+			),
+			_threshold_group_a: String(thresholds.thresholds.group_a),
+			_threshold_group_b: String(thresholds.thresholds.group_b),
+			_dataset_salts: dataset.map((_, i) => String(salts[i] ?? "0")),
+
+			// public inputs
 			_weights_hash: weightsHash,
-			_dataset_merkle_root: "0", // Provide actual merkle root
-			_fairness_threshold_epsilon: "0", // Provide actual epsilon
+			_dataset_merkle_root: commitments.datasetMerkleRoot,
+			_fairness_threshold_epsilon: thresholds.targetDisparity.toString(),
 		};
 
 		const noir = new Noir(training_circuit as CompiledCircuit);

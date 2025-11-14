@@ -37,13 +37,6 @@ const _config: Config = {
 	isDevelopment: process.env.NODE_ENV !== "production",
 };
 
-// i will use this later in the registry for better filters/ representation rather than provider address hashes
-export const providers: Record<string, Hash> = {
-	ProviderA: "0xAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAa" as Hash,
-	ProviderB: "0xBbBbBbBbBbBbBbBbBbBbBbBbBbBbBbBbBbBbBbBb" as Hash,
-	ProviderC: "0xCcCcCcCcCcCcCcCcCcCcCcCcCcCcCcCcCcCcCcCc" as Hash,
-};
-
 /**
  * Get the active configuration based on environment
  * Development = local Anvil, Production = Sepolia testnet

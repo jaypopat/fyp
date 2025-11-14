@@ -21,10 +21,61 @@ export interface PathsFile {
 	weights: string;
 	threshold: string;
 }
+export interface Thresholds {
+	group_a: number;
+	group_b: number;
+}
+
 export interface FairnessThresholdFile {
 	metric: "demographic_parity" | "equalized_odds";
 	targetDisparity: number;
 	protectedAttribute: string;
+	protectedAttributeIndex: number; // Column index of sensitive attribute in dataset
+	thresholds: Thresholds;
+	calculatedMetrics?: Record<string, number>;
+}
+
+export function parseFairnessThresholdFile(
+	data: unknown,
+): FairnessThresholdFile {
+	assert(data && typeof data === "object", "threshold file malformed");
+	const d = data as Record<string, unknown>;
+	assert(typeof d.metric === "string", "threshold.metric missing");
+	assert(
+		typeof d.targetDisparity === "number",
+		"threshold.targetDisparity missing",
+	);
+	assert(
+		typeof d.protectedAttribute === "string",
+		"threshold.protectedAttribute missing",
+	);
+	assert(
+		typeof d.protectedAttributeIndex === "number",
+		"threshold.protectedAttributeIndex missing",
+	);
+	assert(
+		d.thresholds && typeof d.thresholds === "object",
+		"thresholds missing",
+	);
+	const t = d.thresholds as Record<string, unknown>;
+	assert(typeof t.group_a === "number", "thresholds.group_a missing");
+	assert(typeof t.group_b === "number", "thresholds.group_b missing");
+
+	const calc = d.calculatedMetrics as Record<string, unknown> | undefined;
+	const calculatedMetrics = calc
+		? (Object.fromEntries(
+				Object.entries(calc).filter(([_, v]) => typeof v === "number"),
+			) as Record<string, number>)
+		: undefined;
+
+	return {
+		metric: d.metric as "demographic_parity" | "equalized_odds",
+		targetDisparity: d.targetDisparity as number,
+		protectedAttribute: d.protectedAttribute as string,
+		protectedAttributeIndex: d.protectedAttributeIndex as number,
+		thresholds: { group_a: t.group_a as number, group_b: t.group_b as number },
+		calculatedMetrics,
+	};
 }
 
 export interface CommitmentsFile {
