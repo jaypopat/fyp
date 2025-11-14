@@ -1,25 +1,16 @@
 import type { Hex } from "viem";
-import { hashBytes, hexToBytes } from "./utils";
-
-// Internal node domain separation prefix (leaves are treated as already-digested values)
-const NODE_PREFIX = new Uint8Array([0x01]);
-
-function concat(a: Uint8Array, b: Uint8Array): Uint8Array {
-	const out = new Uint8Array(a.length + b.length);
-	out.set(a, 0);
-	out.set(b, a.length);
-	return out;
-}
+import { hashPoseidonFields } from "./utils";
 
 function ensure0x(h: string): Hex {
 	return (h.startsWith("0x") ? h : `0x${h}`) as Hex;
 }
 
-// Returns plain 64-hex (no 0x) for internal nodes
+// Returns plain 64-hex (no 0x) for internal nodes using Poseidon
 async function hashNode(left: string, right: string) {
-	const l = hexToBytes(ensure0x(left));
-	const r = hexToBytes(ensure0x(right));
-	return await hashBytes(concat(NODE_PREFIX, concat(l, r)));
+	// Convert hex strings to bigints and hash with Poseidon
+	const leftBigInt = BigInt(ensure0x(left));
+	const rightBigInt = BigInt(ensure0x(right));
+	return hashPoseidonFields([leftBigInt, rightBigInt]);
 }
 
 export async function merkleRoot(leaves: string[]): Promise<Hex> {

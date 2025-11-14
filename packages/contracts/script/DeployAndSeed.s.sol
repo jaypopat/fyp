@@ -22,14 +22,16 @@ contract DeployAndSeed is Script {
         uint256 stake = zkfair.PROVIDER_STAKE();
         console.log("Required stake per model:", stake);
 
-        zkfair.registerModel{value: stake}(
-            "Adult Income Prediction Model",
-            "Logistic regression model predicting income >50K from census data",
-            0x1f75fb2aff513736500541e7504a3a6e651badbd0238c25babf0df981f799c9c,
-            0xe6c2624756b634074c90eacb7950f6950fb7b4f41db5898b24ccd35e8b698a73,
-            10
-        );
-        console.log("Model 1 registered");
+        // zkfair.registerModel{value: stake}(
+        //     "Adult Income Prediction Model",
+        //     "Logistic regression model predicting income >50K from census data",
+        //     0x1f75fb2aff513736500541e7504a3a6e651badbd0238c25babf0df981f799c9c,
+        //     0xe6c2624756b634074c90eacb7950f6950fb7b4f41db5898b24ccd35e8b698a73,
+        //     10
+        // 0xe6c2624756b634074c90eacb7950f6950fb7b4f41db5898b24ccd35e8b698a73
+        // 0x1f75fb2aff513736500541e7504a3a6e651badbd0238c25babf0df981f799c9c
+        // );
+        // console.log("Model 1 registered");
 
         console.log("Seeded sample models successfully");
 

@@ -13,13 +13,13 @@ const CALIBRATION_CSV_PATH = join(
 	__dirname,
 	"../../../examples/adult-income/calibration_dataset.csv",
 );
-const MODEL_JSON_PATH = join(
-	__dirname,
-	"../../../examples/adult-income/model.json",
-);
 const FAIRNESS_THRESHOLD_PATH = join(
 	__dirname,
 	"../../../examples/adult-income/fairness_threshold.json",
+);
+const WEIGHTS_BIN_PATH = join(
+	__dirname,
+	"../../../examples/adult-income/weights.bin",
 );
 
 /**
@@ -36,20 +36,16 @@ function parseCSV(csvContent: string): {
 }
 
 /**
- * Load model weights from model.json
+ * Load model weights from weights.bin (binary float32 array)
  */
 async function loadModelWeights(): Promise<number[]> {
 	try {
-		const file = Bun.file(MODEL_JSON_PATH);
-		const modelJson = await file.json();
-		const weights = modelJson.coefficients || modelJson.weights;
+		const weightsBuffer = await Bun.file(WEIGHTS_BIN_PATH).arrayBuffer();
+		const weightsFloat32 = new Float32Array(weightsBuffer);
+		const weightsArray = Array.from(weightsFloat32);
 
-		if (!Array.isArray(weights)) {
-			throw new Error("Weights not found in model.json");
-		}
-
-		console.log(` Loaded ${weights.length} model weights`);
-		return weights;
+		console.log(` Loaded ${weightsArray.length} model weights from binary file`);
+		return weightsArray;
 	} catch (error) {
 		console.warn(
 			" Could not load model weights, using placeholder values:",
@@ -87,21 +83,64 @@ async function loadFairnessThresholds(): Promise<{
 }
 
 /**
- * Generate random salt for each data point
+ * Compute hash of weights (for public input and cache lookup).
+ * Uses Poseidon hash over Field array (same as SDK commitment).
  */
-function generateSalt(): string {
-	return `0x${Math.random().toString(16).slice(2).padStart(64, "0")}`;
+async function computeWeightsHash(weights: number[]): Promise<string> {
+	const SCALE = 1_000_000n;
+	const MAX_FIELD = (1n << 253n) - 1n; // BN254 field size
+
+	// Convert Float32 weights to Field elements (matching SDK logic)
+	const weightsFields: bigint[] = [];
+	for (const weight of weights) {
+		const scaled = BigInt(Math.round(weight * Number(SCALE)));
+		const field = scaled >= 0n ? scaled % MAX_FIELD : (MAX_FIELD + (scaled % MAX_FIELD)) % MAX_FIELD;
+		weightsFields.push(field);
+	}
+
+	// Import SDK's hash function
+	const { hashPoseidonFields } = await import("../../sdk/utils");
+
+	// Hash with Poseidon (matching SDK)
+	const hash = await hashPoseidonFields(weightsFields);
+
+	return hash; // Returns hex string without 0x prefix
 }
 
 /**
- * Compute hash of weights (for public input)
+ * Load salts from cached commitment artifacts.
+ * Ensures circuit uses exact same salts as the commitment.
  */
-function computeWeightsHash(weights: number[]): string {
-	const hash = createHash("sha256");
-	for (const w of weights) {
-		hash.update(w.toString());
+async function loadSaltsFromCache(weightsHash: string): Promise<string[]> {
+	try {
+		const home = Bun.env.HOME || require("node:os").homedir();
+		const cacheDir = join(home, ".zkfair", weightsHash.slice(2));
+		const saltsFile = Bun.file(join(cacheDir, "salts.json"));
+
+		if (!(await saltsFile.exists())) {
+			throw new Error(
+				`Salts cache not found at ${cacheDir}. Run 'zkfair commit' first to generate commitments.`,
+			);
+		}
+
+		const saltsMap = (await saltsFile.json()) as Record<number, string>;
+		const saltsArray: string[] = [];
+
+		// Convert salts map to array
+		for (let i = 0; i < Object.keys(saltsMap).length; i++) {
+			const salt = saltsMap[i];
+			if (!salt) {
+				throw new Error(`Missing salt for row ${i}`);
+			}
+			saltsArray.push(`0x${salt}`);
+		}
+
+		console.log(` Loaded ${saltsArray.length} salts from cache`);
+		return saltsArray;
+	} catch (error) {
+		console.error("Failed to load salts from cache:", error);
+		throw error;
 	}
-	return `0x${hash.digest("hex")}`;
 }
 
 /**
@@ -187,22 +226,25 @@ async function main() {
 		sensitiveAttrs.push(0);
 	}
 
-	// 5. Generate salts for each data point
-	console.log(" Generating salts for data points...");
-	const salts = limitedRows.map(() => generateSalt());
-	while (salts.length < MAX_DATASET_SIZE) {
-		salts.push("");
-	}
-	console.log(` Generated ${limitedRows.length} salts\n`);
-
-	// 6. Load model weights
+	// 5. Load model weights (needed for cache lookup)
 	console.log(" Loading model weights...");
 	const weights = await loadModelWeights();
-	const weightsHash = computeWeightsHash(weights);
-	console.log(` Weights hash: ${weightsHash}\n`);
+	const weightsHash = await computeWeightsHash(weights);
+	console.log(` Weights hash: 0x${weightsHash}\n`);
+
+	// 6. Load salts from commitment cache
+	console.log(" Loading salts from commitment cache...");
+	const cachedSalts = await loadSaltsFromCache(`0x${weightsHash}`);
+
+	// Pad salts to MAX_DATASET_SIZE
+	const salts = [...cachedSalts];
+	while (salts.length < MAX_DATASET_SIZE) {
+		salts.push("0x" + "0".repeat(64));
+	}
+	console.log(` Using ${cachedSalts.length} salts from cache (padded to ${MAX_DATASET_SIZE})\n`);
 
 	// 7. Load fairness thresholds
-	console.log("  Loading fairness thresholds...");
+	console.log(" Loading fairness thresholds...");
 	const { epsilon, thresholdA, thresholdB } = await loadFairnessThresholds();
 	console.log(` Epsilon: ${epsilon}`);
 	console.log(` Threshold Group A: ${thresholdA}`);
