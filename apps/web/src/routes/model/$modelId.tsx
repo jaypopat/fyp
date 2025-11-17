@@ -248,6 +248,17 @@ function ModelDetailComponent() {
 							onCopy={(value) => handleCopy("Proof Hash", value)}
 							fallback="Not available"
 						/>
+						<div className="space-y-1">
+							<p className="text-muted-foreground text-xs">Inference URL</p>
+							<a
+								href={model.inferenceUrl}
+								target="_blank"
+								rel="noreferrer"
+								className="break-all text-sm underline-offset-4 hover:underline"
+							>
+								{model.inferenceUrl}
+							</a>
+						</div>
 					</CardContent>
 				</Card>
 
@@ -309,7 +320,9 @@ function ModelDetailComponent() {
 										if (!values.length || values.some((x) => Number.isNaN(x))) {
 											throw new Error("Provide valid numeric input");
 										}
-										const providerUrl = config.providerUrl;
+										// Use model's configured inference URL instead of static config
+										const providerUrl =
+											model?.inferenceUrl || config.providerUrl;
 										const resultData = await predict({
 											providerUrl,
 											modelId,

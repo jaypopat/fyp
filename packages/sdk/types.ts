@@ -16,6 +16,7 @@ export type CommitOptions = {
 		name: string;
 		description: string;
 		creator: string;
+		inferenceUrl: string;
 	};
 };
 

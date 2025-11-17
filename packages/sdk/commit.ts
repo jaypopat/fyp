@@ -87,6 +87,7 @@ export class CommitAPI {
 			hash = await this.contracts.registerModel(
 				options.model.name,
 				options.model.description,
+				options.model.inferenceUrl,
 				weightsHash,
 				dataSetMerkleRoot,
 				fairnessThresholdPercent,

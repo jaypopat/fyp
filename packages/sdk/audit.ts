@@ -122,7 +122,9 @@ export class AuditAPI {
 	}> {
 		// process merkleProofs auditProof type to fit circuit input
 		// & read thresholds off of .zkfair dir and model features data
-		const input: fairness_auditInputType = {} as any;
+		const input: fairness_auditInputType = {
+			_features: records.map((r) => r.features),
+		};
 
 		const noir = new Noir(fairness_audit_circuit as CompiledCircuit);
 		const { witness } = await noir.execute(input);

@@ -10,31 +10,21 @@ export const baseFairnessVerifierAbi = [
 			{ name: "publicInputs", internalType: "bytes32[]", type: "bytes32[]" },
 		],
 		name: "verify",
-		outputs: [{ name: "", internalType: "bool", type: "bool" }],
+		outputs: [{ name: "verified", internalType: "bool", type: "bool" }],
 		stateMutability: "view",
 	},
+	{ type: "error", inputs: [], name: "ConsistencyCheckFailed" },
+	{ type: "error", inputs: [], name: "GeminiChallengeInSubgroup" },
 	{ type: "error", inputs: [], name: "ProofLengthWrong" },
-	{ type: "error", inputs: [], name: "PublicInputsLengthWrong" },
-	{ type: "error", inputs: [], name: "ShpleminiFailed" },
-	{ type: "error", inputs: [], name: "SumcheckFailed" },
-] as const;
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// BaseHonkVerifier
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const baseHonkVerifierAbi = [
 	{
-		type: "function",
+		type: "error",
 		inputs: [
-			{ name: "proof", internalType: "bytes", type: "bytes" },
-			{ name: "publicInputs", internalType: "bytes32[]", type: "bytes32[]" },
+			{ name: "logN", internalType: "uint256", type: "uint256" },
+			{ name: "actualLength", internalType: "uint256", type: "uint256" },
+			{ name: "expectedLength", internalType: "uint256", type: "uint256" },
 		],
-		name: "verify",
-		outputs: [{ name: "", internalType: "bool", type: "bool" }],
-		stateMutability: "view",
+		name: "ProofLengthWrongWithLogN",
 	},
-	{ type: "error", inputs: [], name: "ProofLengthWrong" },
 	{ type: "error", inputs: [], name: "PublicInputsLengthWrong" },
 	{ type: "error", inputs: [], name: "ShpleminiFailed" },
 	{ type: "error", inputs: [], name: "SumcheckFailed" },
@@ -52,13 +42,233 @@ export const baseTrainingVerifierAbi = [
 			{ name: "publicInputs", internalType: "bytes32[]", type: "bytes32[]" },
 		],
 		name: "verify",
-		outputs: [{ name: "", internalType: "bool", type: "bool" }],
+		outputs: [{ name: "verified", internalType: "bool", type: "bool" }],
 		stateMutability: "view",
 	},
+	{ type: "error", inputs: [], name: "ConsistencyCheckFailed" },
+	{ type: "error", inputs: [], name: "GeminiChallengeInSubgroup" },
 	{ type: "error", inputs: [], name: "ProofLengthWrong" },
+	{
+		type: "error",
+		inputs: [
+			{ name: "logN", internalType: "uint256", type: "uint256" },
+			{ name: "actualLength", internalType: "uint256", type: "uint256" },
+			{ name: "expectedLength", internalType: "uint256", type: "uint256" },
+		],
+		name: "ProofLengthWrongWithLogN",
+	},
 	{ type: "error", inputs: [], name: "PublicInputsLengthWrong" },
 	{ type: "error", inputs: [], name: "ShpleminiFailed" },
 	{ type: "error", inputs: [], name: "SumcheckFailed" },
+] as const;
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// FairnessTranscriptLib
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const fairnessTranscriptLibAbi = [
+	{
+		type: "function",
+		inputs: [
+			{
+				name: "proof",
+				internalType: "struct FairnessHonk.ZKProof",
+				type: "tuple",
+				components: [
+					{
+						name: "pairingPointObject",
+						internalType: "Fr[16]",
+						type: "uint256[16]",
+					},
+					{
+						name: "w1",
+						internalType: "struct FairnessHonk.G1Point",
+						type: "tuple",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{
+						name: "w2",
+						internalType: "struct FairnessHonk.G1Point",
+						type: "tuple",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{
+						name: "w3",
+						internalType: "struct FairnessHonk.G1Point",
+						type: "tuple",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{
+						name: "w4",
+						internalType: "struct FairnessHonk.G1Point",
+						type: "tuple",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{
+						name: "lookupReadCounts",
+						internalType: "struct FairnessHonk.G1Point",
+						type: "tuple",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{
+						name: "lookupReadTags",
+						internalType: "struct FairnessHonk.G1Point",
+						type: "tuple",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{
+						name: "lookupInverses",
+						internalType: "struct FairnessHonk.G1Point",
+						type: "tuple",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{
+						name: "zPerm",
+						internalType: "struct FairnessHonk.G1Point",
+						type: "tuple",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{
+						name: "libraCommitments",
+						internalType: "struct FairnessHonk.G1Point[3]",
+						type: "tuple[3]",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{ name: "libraSum", internalType: "Fr", type: "uint256" },
+					{
+						name: "sumcheckUnivariates",
+						internalType: "Fr[9][28]",
+						type: "uint256[9][28]",
+					},
+					{
+						name: "sumcheckEvaluations",
+						internalType: "Fr[41]",
+						type: "uint256[41]",
+					},
+					{ name: "libraEvaluation", internalType: "Fr", type: "uint256" },
+					{
+						name: "geminiMaskingPoly",
+						internalType: "struct FairnessHonk.G1Point",
+						type: "tuple",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{ name: "geminiMaskingEval", internalType: "Fr", type: "uint256" },
+					{
+						name: "geminiFoldComms",
+						internalType: "struct FairnessHonk.G1Point[27]",
+						type: "tuple[27]",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{
+						name: "geminiAEvaluations",
+						internalType: "Fr[28]",
+						type: "uint256[28]",
+					},
+					{ name: "libraPolyEvals", internalType: "Fr[4]", type: "uint256[4]" },
+					{
+						name: "shplonkQ",
+						internalType: "struct FairnessHonk.G1Point",
+						type: "tuple",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{
+						name: "kzgQuotient",
+						internalType: "struct FairnessHonk.G1Point",
+						type: "tuple",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+				],
+			},
+			{ name: "publicInputs", internalType: "bytes32[]", type: "bytes32[]" },
+			{ name: "vkHash", internalType: "uint256", type: "uint256" },
+			{ name: "publicInputsSize", internalType: "uint256", type: "uint256" },
+			{ name: "logN", internalType: "uint256", type: "uint256" },
+		],
+		name: "generateTranscript",
+		outputs: [
+			{
+				name: "t",
+				internalType: "struct ZKTranscript",
+				type: "tuple",
+				components: [
+					{
+						name: "relationParameters",
+						internalType: "struct FairnessHonk.RelationParameters",
+						type: "tuple",
+						components: [
+							{ name: "eta", internalType: "Fr", type: "uint256" },
+							{ name: "etaTwo", internalType: "Fr", type: "uint256" },
+							{ name: "etaThree", internalType: "Fr", type: "uint256" },
+							{ name: "beta", internalType: "Fr", type: "uint256" },
+							{ name: "gamma", internalType: "Fr", type: "uint256" },
+							{
+								name: "publicInputsDelta",
+								internalType: "Fr",
+								type: "uint256",
+							},
+						],
+					},
+					{ name: "alphas", internalType: "Fr[27]", type: "uint256[27]" },
+					{
+						name: "gateChallenges",
+						internalType: "Fr[28]",
+						type: "uint256[28]",
+					},
+					{ name: "libraChallenge", internalType: "Fr", type: "uint256" },
+					{
+						name: "sumCheckUChallenges",
+						internalType: "Fr[28]",
+						type: "uint256[28]",
+					},
+					{ name: "rho", internalType: "Fr", type: "uint256" },
+					{ name: "geminiR", internalType: "Fr", type: "uint256" },
+					{ name: "shplonkNu", internalType: "Fr", type: "uint256" },
+					{ name: "shplonkZ", internalType: "Fr", type: "uint256" },
+					{ name: "publicInputsDelta", internalType: "Fr", type: "uint256" },
+				],
+			},
+		],
+		stateMutability: "pure",
+	},
 ] as const;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -73,31 +283,21 @@ export const fairnessVerifierAbi = [
 			{ name: "publicInputs", internalType: "bytes32[]", type: "bytes32[]" },
 		],
 		name: "verify",
-		outputs: [{ name: "", internalType: "bool", type: "bool" }],
+		outputs: [{ name: "verified", internalType: "bool", type: "bool" }],
 		stateMutability: "view",
 	},
+	{ type: "error", inputs: [], name: "ConsistencyCheckFailed" },
+	{ type: "error", inputs: [], name: "GeminiChallengeInSubgroup" },
 	{ type: "error", inputs: [], name: "ProofLengthWrong" },
-	{ type: "error", inputs: [], name: "PublicInputsLengthWrong" },
-	{ type: "error", inputs: [], name: "ShpleminiFailed" },
-	{ type: "error", inputs: [], name: "SumcheckFailed" },
-] as const;
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// HonkVerifier
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const honkVerifierAbi = [
 	{
-		type: "function",
+		type: "error",
 		inputs: [
-			{ name: "proof", internalType: "bytes", type: "bytes" },
-			{ name: "publicInputs", internalType: "bytes32[]", type: "bytes32[]" },
+			{ name: "logN", internalType: "uint256", type: "uint256" },
+			{ name: "actualLength", internalType: "uint256", type: "uint256" },
+			{ name: "expectedLength", internalType: "uint256", type: "uint256" },
 		],
-		name: "verify",
-		outputs: [{ name: "", internalType: "bool", type: "bool" }],
-		stateMutability: "view",
+		name: "ProofLengthWrongWithLogN",
 	},
-	{ type: "error", inputs: [], name: "ProofLengthWrong" },
 	{ type: "error", inputs: [], name: "PublicInputsLengthWrong" },
 	{ type: "error", inputs: [], name: "ShpleminiFailed" },
 	{ type: "error", inputs: [], name: "SumcheckFailed" },
@@ -116,7 +316,7 @@ export const iFairnessVerifierAbi = [
 		],
 		name: "verify",
 		outputs: [{ name: "", internalType: "bool", type: "bool" }],
-		stateMutability: "view",
+		stateMutability: "nonpayable",
 	},
 ] as const;
 
@@ -376,24 +576,7 @@ export const iTrainingVerifierAbi = [
 		],
 		name: "verify",
 		outputs: [{ name: "", internalType: "bool", type: "bool" }],
-		stateMutability: "view",
-	},
-] as const;
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// IVerifier
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-export const iVerifierAbi = [
-	{
-		type: "function",
-		inputs: [
-			{ name: "_proof", internalType: "bytes", type: "bytes" },
-			{ name: "_publicInputs", internalType: "bytes32[]", type: "bytes32[]" },
-		],
-		name: "verify",
-		outputs: [{ name: "", internalType: "bool", type: "bool" }],
-		stateMutability: "view",
+		stateMutability: "nonpayable",
 	},
 ] as const;
 
@@ -497,6 +680,215 @@ export const pausableAbi = [
 ] as const;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// TrainingTranscriptLib
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const trainingTranscriptLibAbi = [
+	{
+		type: "function",
+		inputs: [
+			{
+				name: "proof",
+				internalType: "struct TrainingHonk.ZKProof",
+				type: "tuple",
+				components: [
+					{
+						name: "pairingPointObject",
+						internalType: "Fr[16]",
+						type: "uint256[16]",
+					},
+					{
+						name: "w1",
+						internalType: "struct TrainingHonk.G1Point",
+						type: "tuple",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{
+						name: "w2",
+						internalType: "struct TrainingHonk.G1Point",
+						type: "tuple",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{
+						name: "w3",
+						internalType: "struct TrainingHonk.G1Point",
+						type: "tuple",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{
+						name: "w4",
+						internalType: "struct TrainingHonk.G1Point",
+						type: "tuple",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{
+						name: "lookupReadCounts",
+						internalType: "struct TrainingHonk.G1Point",
+						type: "tuple",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{
+						name: "lookupReadTags",
+						internalType: "struct TrainingHonk.G1Point",
+						type: "tuple",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{
+						name: "lookupInverses",
+						internalType: "struct TrainingHonk.G1Point",
+						type: "tuple",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{
+						name: "zPerm",
+						internalType: "struct TrainingHonk.G1Point",
+						type: "tuple",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{
+						name: "libraCommitments",
+						internalType: "struct TrainingHonk.G1Point[3]",
+						type: "tuple[3]",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{ name: "libraSum", internalType: "Fr", type: "uint256" },
+					{
+						name: "sumcheckUnivariates",
+						internalType: "Fr[9][28]",
+						type: "uint256[9][28]",
+					},
+					{
+						name: "sumcheckEvaluations",
+						internalType: "Fr[41]",
+						type: "uint256[41]",
+					},
+					{ name: "libraEvaluation", internalType: "Fr", type: "uint256" },
+					{
+						name: "geminiMaskingPoly",
+						internalType: "struct TrainingHonk.G1Point",
+						type: "tuple",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{ name: "geminiMaskingEval", internalType: "Fr", type: "uint256" },
+					{
+						name: "geminiFoldComms",
+						internalType: "struct TrainingHonk.G1Point[27]",
+						type: "tuple[27]",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{
+						name: "geminiAEvaluations",
+						internalType: "Fr[28]",
+						type: "uint256[28]",
+					},
+					{ name: "libraPolyEvals", internalType: "Fr[4]", type: "uint256[4]" },
+					{
+						name: "shplonkQ",
+						internalType: "struct TrainingHonk.G1Point",
+						type: "tuple",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+					{
+						name: "kzgQuotient",
+						internalType: "struct TrainingHonk.G1Point",
+						type: "tuple",
+						components: [
+							{ name: "x", internalType: "uint256", type: "uint256" },
+							{ name: "y", internalType: "uint256", type: "uint256" },
+						],
+					},
+				],
+			},
+			{ name: "publicInputs", internalType: "bytes32[]", type: "bytes32[]" },
+			{ name: "vkHash", internalType: "uint256", type: "uint256" },
+			{ name: "publicInputsSize", internalType: "uint256", type: "uint256" },
+			{ name: "logN", internalType: "uint256", type: "uint256" },
+		],
+		name: "generateTranscript",
+		outputs: [
+			{
+				name: "t",
+				internalType: "struct ZKTranscript",
+				type: "tuple",
+				components: [
+					{
+						name: "relationParameters",
+						internalType: "struct TrainingHonk.RelationParameters",
+						type: "tuple",
+						components: [
+							{ name: "eta", internalType: "Fr", type: "uint256" },
+							{ name: "etaTwo", internalType: "Fr", type: "uint256" },
+							{ name: "etaThree", internalType: "Fr", type: "uint256" },
+							{ name: "beta", internalType: "Fr", type: "uint256" },
+							{ name: "gamma", internalType: "Fr", type: "uint256" },
+							{
+								name: "publicInputsDelta",
+								internalType: "Fr",
+								type: "uint256",
+							},
+						],
+					},
+					{ name: "alphas", internalType: "Fr[27]", type: "uint256[27]" },
+					{
+						name: "gateChallenges",
+						internalType: "Fr[28]",
+						type: "uint256[28]",
+					},
+					{ name: "libraChallenge", internalType: "Fr", type: "uint256" },
+					{
+						name: "sumCheckUChallenges",
+						internalType: "Fr[28]",
+						type: "uint256[28]",
+					},
+					{ name: "rho", internalType: "Fr", type: "uint256" },
+					{ name: "geminiR", internalType: "Fr", type: "uint256" },
+					{ name: "shplonkNu", internalType: "Fr", type: "uint256" },
+					{ name: "shplonkZ", internalType: "Fr", type: "uint256" },
+					{ name: "publicInputsDelta", internalType: "Fr", type: "uint256" },
+				],
+			},
+		],
+		stateMutability: "pure",
+	},
+] as const;
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // TrainingVerifier
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -508,10 +900,21 @@ export const trainingVerifierAbi = [
 			{ name: "publicInputs", internalType: "bytes32[]", type: "bytes32[]" },
 		],
 		name: "verify",
-		outputs: [{ name: "", internalType: "bool", type: "bool" }],
+		outputs: [{ name: "verified", internalType: "bool", type: "bool" }],
 		stateMutability: "view",
 	},
+	{ type: "error", inputs: [], name: "ConsistencyCheckFailed" },
+	{ type: "error", inputs: [], name: "GeminiChallengeInSubgroup" },
 	{ type: "error", inputs: [], name: "ProofLengthWrong" },
+	{
+		type: "error",
+		inputs: [
+			{ name: "logN", internalType: "uint256", type: "uint256" },
+			{ name: "actualLength", internalType: "uint256", type: "uint256" },
+			{ name: "expectedLength", internalType: "uint256", type: "uint256" },
+		],
+		name: "ProofLengthWrongWithLogN",
+	},
 	{ type: "error", inputs: [], name: "PublicInputsLengthWrong" },
 	{ type: "error", inputs: [], name: "ShpleminiFailed" },
 	{ type: "error", inputs: [], name: "SumcheckFailed" },
@@ -626,6 +1029,7 @@ export const zkFairAbi = [
 					{ name: "name", internalType: "string", type: "string" },
 					{ name: "provider", internalType: "address", type: "address" },
 					{ name: "description", internalType: "string", type: "string" },
+					{ name: "inferenceUrl", internalType: "string", type: "string" },
 					{ name: "weightsHash", internalType: "bytes32", type: "bytes32" },
 					{
 						name: "datasetMerkleRoot",
@@ -734,6 +1138,7 @@ export const zkFairAbi = [
 					{ name: "name", internalType: "string", type: "string" },
 					{ name: "provider", internalType: "address", type: "address" },
 					{ name: "description", internalType: "string", type: "string" },
+					{ name: "inferenceUrl", internalType: "string", type: "string" },
 					{ name: "weightsHash", internalType: "bytes32", type: "bytes32" },
 					{
 						name: "datasetMerkleRoot",
@@ -776,6 +1181,7 @@ export const zkFairAbi = [
 					{ name: "name", internalType: "string", type: "string" },
 					{ name: "provider", internalType: "address", type: "address" },
 					{ name: "description", internalType: "string", type: "string" },
+					{ name: "inferenceUrl", internalType: "string", type: "string" },
 					{ name: "weightsHash", internalType: "bytes32", type: "bytes32" },
 					{
 						name: "datasetMerkleRoot",
@@ -848,6 +1254,7 @@ export const zkFairAbi = [
 			{ name: "name", internalType: "string", type: "string" },
 			{ name: "provider", internalType: "address", type: "address" },
 			{ name: "description", internalType: "string", type: "string" },
+			{ name: "inferenceUrl", internalType: "string", type: "string" },
 			{ name: "weightsHash", internalType: "bytes32", type: "bytes32" },
 			{ name: "datasetMerkleRoot", internalType: "bytes32", type: "bytes32" },
 			{ name: "fairnessThreshold", internalType: "uint256", type: "uint256" },
@@ -893,6 +1300,7 @@ export const zkFairAbi = [
 		inputs: [
 			{ name: "name", internalType: "string", type: "string" },
 			{ name: "description", internalType: "string", type: "string" },
+			{ name: "inferenceUrl", internalType: "string", type: "string" },
 			{ name: "weightsHash", internalType: "bytes32", type: "bytes32" },
 			{ name: "datasetMerkleRoot", internalType: "bytes32", type: "bytes32" },
 			{ name: "fairnessThreshold", internalType: "uint256", type: "uint256" },
@@ -978,6 +1386,16 @@ export const zkFairAbi = [
 		type: "function",
 		inputs: [],
 		name: "unpause",
+		outputs: [],
+		stateMutability: "nonpayable",
+	},
+	{
+		type: "function",
+		inputs: [
+			{ name: "modelId", internalType: "uint256", type: "uint256" },
+			{ name: "newInferenceUrl", internalType: "string", type: "string" },
+		],
+		name: "updateInferenceUrl",
 		outputs: [],
 		stateMutability: "nonpayable",
 	},
@@ -1107,6 +1525,25 @@ export const zkFairAbi = [
 			},
 		],
 		name: "FairnessVerifierUpdated",
+	},
+	{
+		type: "event",
+		anonymous: false,
+		inputs: [
+			{
+				name: "modelId",
+				internalType: "uint256",
+				type: "uint256",
+				indexed: true,
+			},
+			{
+				name: "newUrl",
+				internalType: "string",
+				type: "string",
+				indexed: false,
+			},
+		],
+		name: "InferenceUrlUpdated",
 	},
 	{
 		type: "event",

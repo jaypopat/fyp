@@ -61,6 +61,7 @@ export class ContractClient {
 	async registerModel(
 		name: string,
 		description: string,
+		inferenceUrl: string,
 		weightsHash: Hash,
 		datasetMerkleRoot: Hash,
 		fairnessThreshold: number,
@@ -83,6 +84,7 @@ export class ContractClient {
 			args: [
 				name,
 				description,
+				inferenceUrl,
 				weightsHash,
 				datasetMerkleRoot,
 				BigInt(fairnessThreshold),
@@ -112,6 +114,25 @@ export class ContractClient {
 			functionName: "submitCertificationProof",
 			account: this.walletClient.account,
 			args: [weightsHash, proof, publicInputs],
+		});
+	}
+
+	/**
+	 * Update inference URL for a registered model
+	 * @param modelId Model ID
+	 * @param newInferenceUrl New inference endpoint URL
+	 * @returns Transaction hash
+	 */
+	async updateInferenceUrl(modelId: bigint, newInferenceUrl: string) {
+		if (!this.walletClient)
+			throw new Error("Wallet client required for write operations");
+
+		return await this.walletClient.writeContract({
+			address: this.contractAddress,
+			abi: zkFairAbi,
+			functionName: "updateInferenceUrl",
+			account: this.walletClient.account,
+			args: [modelId, newInferenceUrl],
 		});
 	}
 

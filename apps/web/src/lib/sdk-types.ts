@@ -3,6 +3,7 @@ import type { Hash } from "viem";
 export type SDKModelRaw = {
 	name: string;
 	description: string;
+	inferenceUrl: string;
 	provider: Hash;
 	weightsHash: Hash;
 	datasetMerkleRoot: Hash;
@@ -19,6 +20,7 @@ export type SDKModel = {
 	name: string;
 	author: Hash;
 	description: string;
+	inferenceUrl: string;
 	datasetMerkleRoot: Hash;
 	fairnessThreshold: string;
 	weightsHash: Hash;
@@ -39,6 +41,7 @@ export function normalizeModel(model: SDKModelRaw): SDKModel {
 		name: model.name,
 		author: model.provider,
 		description: model.description,
+		inferenceUrl: model.inferenceUrl,
 		datasetMerkleRoot: model.datasetMerkleRoot,
 		fairnessThreshold: model.fairnessThreshold.toString(),
 		weightsHash: model.weightsHash,

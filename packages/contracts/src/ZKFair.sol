@@ -45,6 +45,7 @@ contract ZKFair is Ownable, Pausable {
         string name;
         address provider;
         string description;
+        string inferenceUrl;            // Provider's inference endpoint
         bytes32 weightsHash;
         bytes32 datasetMerkleRoot;
         uint256 fairnessThreshold;      // Scaled by 100 (e.g., 10 = 0.10 = 10%)
@@ -98,6 +99,7 @@ contract ZKFair is Ownable, Pausable {
     
     event ModelRegistered(uint256 indexed modelId, address indexed provider, bytes32 weightsHash, uint256 fairnessThreshold);
     event ModelCertified(uint256 indexed modelId, bytes32 proofHash);
+    event InferenceUrlUpdated(uint256 indexed modelId, string newUrl);
     event BatchCommitted(uint256 indexed batchId, uint256 indexed modelId, bytes32 merkleRoot, uint256 queryCount);
     event AuditRequested(uint256 indexed auditId, uint256 indexed batchId, uint256[] sampleIndices, uint256 deadline);
     event AuditProofSubmitted(uint256 indexed auditId, bool passed);
@@ -172,10 +174,12 @@ contract ZKFair is Ownable, Pausable {
     /// @param weightsHash Keccak256 hash of model weights
     /// @param datasetMerkleRoot Merkle root of calibration dataset D_val
     /// @param fairnessThreshold Maximum allowed fairness disparity (scaled by 100, e.g., 10 = 10%)
+    /// @param inferenceUrl Provider's inference endpoint URL
     /// @return modelId Unique identifier for the model
     function registerModel(
         string calldata name,
         string calldata description,
+        string calldata inferenceUrl,
         bytes32 weightsHash,
         bytes32 datasetMerkleRoot,
         uint256 fairnessThreshold
@@ -183,6 +187,7 @@ contract ZKFair is Ownable, Pausable {
         if (bytes(name).length == 0 || weightsHash == bytes32(0) || datasetMerkleRoot == bytes32(0)) {
             revert InvalidInput();
         }
+        if (bytes(inferenceUrl).length == 0) revert InvalidInput();
         if (fairnessThreshold == 0 || fairnessThreshold > 100) revert InvalidInput();
         if (msg.value != PROVIDER_STAKE) revert InsufficientStake();
         if (modelByWeightsHash[weightsHash] != 0) revert ModelAlreadyExists();
@@ -192,6 +197,7 @@ contract ZKFair is Ownable, Pausable {
         models[modelId] = Model({
             name: name,
             description: description,
+            inferenceUrl: inferenceUrl,
             provider: msg.sender,
             weightsHash: weightsHash,
             datasetMerkleRoot: datasetMerkleRoot,
@@ -234,6 +240,25 @@ contract ZKFair is Ownable, Pausable {
         model.certificationProofHash = keccak256(proof);
         
         emit ModelCertified(modelId, model.certificationProofHash);
+    }
+    
+    /// @notice Update inference URL for a registered model
+    /// @param modelId ID of the model
+    /// @param newInferenceUrl New inference endpoint URL
+    function updateInferenceUrl(
+        uint256 modelId,
+        string calldata newInferenceUrl
+    ) external whenNotPaused {
+        if (modelId == 0 || modelId > modelCounter) revert ModelNotFound();
+        
+        Model storage model = models[modelId];
+        
+        if (model.provider != msg.sender) revert UnauthorizedAccess();
+        if (bytes(newInferenceUrl).length == 0) revert InvalidInput();
+        
+        model.inferenceUrl = newInferenceUrl;
+        
+        emit InferenceUrlUpdated(modelId, newInferenceUrl);
     }
     
     // ============================================

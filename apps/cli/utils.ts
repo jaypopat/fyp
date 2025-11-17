@@ -41,6 +41,7 @@ interface ModelFiles {
 		name: string;
 		description: string;
 		creator?: string;
+		inferenceUrl: string;
 	};
 }
 
@@ -88,8 +89,12 @@ export async function discoverModelFiles(opts: {
 		}
 
 		// Load model.json if it exists
-		let modelJson: { name?: string; description?: string; creator?: string } =
-			{};
+		let modelJson: {
+			name?: string;
+			description?: string;
+			creator?: string;
+			inferenceUrl?: string;
+		} = {};
 		if (await Bun.file(modelJsonPath).exists()) {
 			modelJson = await Bun.file(modelJsonPath).json();
 		}
@@ -104,6 +109,7 @@ export async function discoverModelFiles(opts: {
 				description:
 					opts.description || modelJson.description || "No description",
 				creator: opts.creator || modelJson.creator,
+				inferenceUrl: modelJson.inferenceUrl || "http://localhost:8000", // Default fallback
 			},
 		};
 	}
@@ -123,6 +129,7 @@ export async function discoverModelFiles(opts: {
 			name: opts.name || "Unnamed Model",
 			description: opts.description || "No description",
 			creator: opts.creator,
+			inferenceUrl: "http://localhost:8000", // Default for explicit path mode
 		},
 	};
 }
