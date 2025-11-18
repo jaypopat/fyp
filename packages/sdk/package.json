@@ -20,7 +20,9 @@
 	},
 	"dependencies": {
 		"@aztec/bb.js": "^2.0.3",
+		"@noir-lang/acvm_js": "^1.0.0-beta.15",
 		"@noir-lang/noir_js": "^1.0.0-beta.11",
+		"@noir-lang/noirc_abi": "^1.0.0-beta.15",
 		"@types/circomlibjs": "^0.1.6",
 		"@zkfair/contracts": "workspace:*",
 		"@zkfair/zk-circuits": "workspace:*",

@@ -62,12 +62,10 @@ async function generateAndSubmitProof(weightsHash: Hash) {
 	);
 
 	const input: trainingInputType = {
-		// private inputs
+		// private inputs...
 		_model_weights: weightsFields.map(String),
 		_dataset_size: String(dataset.length),
-		_dataset_features: dataset.flatMap(
-			(row) => row.slice(0, -1).map(String), // Everything except last column
-		),
+		_dataset_features: dataset.flatMap((row) => row.slice(0, -1).map(String)),
 		_dataset_labels: dataset.map((row) => String(row[row.length - 1] ?? "0")),
 		_dataset_sensitive_attrs: dataset.map((row) =>
 			String(row[thresholds.protectedAttributeIndex] ?? "0"),
@@ -77,8 +75,7 @@ async function generateAndSubmitProof(weightsHash: Hash) {
 		_dataset_salts: Object.values(salts),
 		_merkle_paths: merklePathsDecimal,
 		_is_even_flags: merkleProofs.isEvenFlags,
-
-		// public inputs
+		// public inputs...
 		_weights_hash: weightsHash,
 		_dataset_merkle_root: commitments.datasetMerkleRoot,
 		_fairness_threshold_epsilon: Math.ceil(

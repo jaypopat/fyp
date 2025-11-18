@@ -1,5 +1,7 @@
 import { UltraHonkBackend } from "@aztec/bb.js";
+import initACVM from "@noir-lang/acvm_js";
 import { type CompiledCircuit, Noir } from "@noir-lang/noir_js";
+import initNoirWasm from "@noir-lang/noirc_abi";
 import {
 	fairness_audit_circuit,
 	type fairness_auditInputType,
@@ -8,6 +10,16 @@ import type { Hash, Hex } from "viem";
 import type { ContractClient } from "./contract";
 import { createMerkleProof, merkleRoot } from "./merkle";
 import { hashBytes, hexToBytes } from "./utils";
+
+// Initialize WASM modules once (shared with proof.ts)
+let wasmInitialized = false;
+async function ensureWasmInitialized() {
+	if (!wasmInitialized) {
+		await initNoirWasm();
+		await initACVM();
+		wasmInitialized = true;
+	}
+}
 
 /**
  * Canonical query record for audit trail
@@ -73,7 +85,10 @@ function encodeRecordLeaf(r: AuditRecord): Uint8Array {
  * Uses standardized Poseidon hash and JSON encoding
  */
 export class AuditAPI {
-	constructor(private contracts: ContractClient) {}
+	constructor(
+		private contracts: ContractClient,
+		private attestationServiceUrl = "http://localhost:3000",
+	) {}
 
 	/**
 	 * Build a batch from records
@@ -119,12 +134,18 @@ export class AuditAPI {
 	): Promise<{
 		zkProof: Hex;
 		publicInputs: Hex[];
+		attestationHash: Hash;
+		signature: Hex;
+		passed: boolean;
 	}> {
+		// Initialize WASM modules before using Noir
+		await ensureWasmInitialized();
+
 		// process merkleProofs auditProof type to fit circuit input
 		// & read thresholds off of .zkfair dir and model features data
 		const input: fairness_auditInputType = {
-			_features: records.map((r) => r.features),
-		};
+			// TODO: populate with actual fairness audit inputs from parameters
+		} as fairness_auditInputType;
 
 		const noir = new Noir(fairness_audit_circuit as CompiledCircuit);
 		const { witness } = await noir.execute(input);
@@ -136,9 +157,37 @@ export class AuditAPI {
 			.map((b) => b.toString(16).padStart(2, "0"))
 			.join("")}` as Hash;
 
+		// Request attestation from service
+		const attestationResponse = await fetch(
+			`${this.attestationServiceUrl}/attest/audit`,
+			{
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					proof: proofHash,
+					publicInputs: proofData.publicInputs,
+				}),
+			},
+		);
+
+		if (!attestationResponse.ok) {
+			throw new Error(
+				`Attestation service error: ${attestationResponse.status} ${attestationResponse.statusText}`,
+			);
+		}
+
+		const attestation = (await attestationResponse.json()) as {
+			attestationHash: Hash;
+			signature: Hex;
+			passed: boolean;
+		};
+
 		return {
 			zkProof: proofHash,
 			publicInputs: proofData.publicInputs as Hex[],
+			attestationHash: attestation.attestationHash,
+			signature: attestation.signature,
+			passed: attestation.passed,
 		};
 	}
 
@@ -172,32 +221,6 @@ export class AuditAPI {
 		const { root, proof } = await createMerkleProof(leaves, index);
 
 		return { root, index, proof };
-	}
-
-	/**
-	 * Verify a proof
-	 */
-	async verifyProof(record: AuditRecord, proof: AuditProof): Promise<boolean> {
-		const encoded = encodeRecordLeaf(record);
-		let current = hashBytes(encoded);
-
-		for (const { sibling, position } of proof.proof) {
-			const left = position === "left" ? sibling : current;
-			const right = position === "left" ? current : sibling;
-
-			const leftBytes = hexToBytes(`0x${left}` as Hex);
-			const rightBytes = hexToBytes(`0x${right}` as Hex);
-			const NODE_PREFIX = new Uint8Array([0x01]);
-			const combined = new Uint8Array(1 + leftBytes.length + rightBytes.length);
-			combined.set(NODE_PREFIX, 0);
-			combined.set(leftBytes, 1);
-			combined.set(rightBytes, 1 + leftBytes.length);
-
-			current = hashBytes(combined);
-		}
-
-		const computedRoot = `0x${current}` as Hex;
-		return computedRoot.toLowerCase() === proof.root.toLowerCase();
 	}
 
 	// ============================================
@@ -239,18 +262,25 @@ export class AuditAPI {
 	}
 
 	/**
-	 * Submit audit proof in response to an audit request
+	 * Submit audit proof attestation in response to an audit request
 	 * @param auditId Audit ID
-	 * @param proof ZK proof bytes
-	 * @param publicInputs Public inputs for verification
+	 * @param attestationHash Hash of the attestation
+	 * @param signature Signature from attestation service
+	 * @param passed Whether the audit passed or failed
 	 * @returns Transaction hash
 	 */
 	async submitAuditProof(
 		auditId: bigint,
-		proof: Hash,
-		publicInputs: Hash[],
+		attestationHash: Hash,
+		signature: `0x${string}`,
+		passed: boolean,
 	): Promise<Hash> {
-		return await this.contracts.submitAuditProof(auditId, proof, publicInputs);
+		return await this.contracts.submitAuditProof(
+			auditId,
+			attestationHash,
+			signature,
+			passed,
+		);
 	}
 
 	/**

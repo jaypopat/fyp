@@ -28,7 +28,6 @@
 		},
 		"@zkfair/contracts#build": {
 			"dependsOn": ["@zkfair/zk-circuits#build"],
-			"outputs": ["src/Verifier.sol"],
 			"cache": true
 		},
 		"@zkfair/sdk#build": {

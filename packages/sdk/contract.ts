@@ -94,26 +94,25 @@ export class ContractClient {
 	}
 
 	/**
-	 * Submit certification proof for a registered model
-	 * @param weightsHash: Weights Hash (model id)
-	 * @param proof ZK proof bytes
-	 * @param publicInputs Public inputs for verification
+	 * Submit certification proof attestation for a model
+	 * @param weightsHash Weights hash (model identifier)
+	 * @param attestationHash Hash of the attestation
+	 * @param signature Signature from attestation service
 	 * @returns Transaction hash
 	 */
 	async submitCertificationProof(
 		weightsHash: Hash,
-		proof: Hash,
-		publicInputs: Hash[],
+		attestationHash: Hash,
+		signature: `0x${string}`,
 	) {
 		if (!this.walletClient)
 			throw new Error("Wallet client required for write operations");
-
 		return await this.walletClient.writeContract({
 			address: this.contractAddress,
 			abi: zkFairAbi,
 			functionName: "submitCertificationProof",
 			account: this.walletClient.account,
-			args: [weightsHash, proof, publicInputs],
+			args: [weightsHash, attestationHash, signature],
 		});
 	}
 
@@ -197,16 +196,28 @@ export class ContractClient {
 	 * @param publicInputs Public inputs for verification
 	 * @returns Transaction hash
 	 */
-	async submitAuditProof(auditId: bigint, proof: Hash, publicInputs: Hash[]) {
+	/**
+	 * Submit attestation for an audit proof
+	 * @param auditId Audit ID
+	 * @param attestationHash Hash of the attestation
+	 * @param signature Signature from attestation service
+	 * @param passed Whether proof passed or failed
+	 * @returns Transaction hash
+	 */
+	async submitAuditProof(
+		auditId: bigint,
+		attestationHash: Hash,
+		signature: `0x${string}`,
+		passed: boolean,
+	) {
 		if (!this.walletClient)
 			throw new Error("Wallet client required for write operations");
-
 		return await this.walletClient.writeContract({
 			address: this.contractAddress,
 			abi: zkFairAbi,
 			functionName: "submitAuditProof",
 			account: this.walletClient.account,
-			args: [auditId, proof, publicInputs],
+			args: [auditId, attestationHash, signature, passed],
 		});
 	}
 

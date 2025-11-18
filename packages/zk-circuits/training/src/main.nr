@@ -52,12 +52,12 @@ fn main(
 }
 pub fn compute_merkle_root(
     leaf: Field,
-    merkle_proof: [Field; 15], // MAX_TREE_HEIGHT siblings
-    is_even: [bool; 15], // Position flags for each level
+    merkle_proof: [Field; MAX_TREE_HEIGHT], // MAX_TREE_HEIGHT siblings
+    is_even: [bool; MAX_TREE_HEIGHT], // Position flags for each level
 ) -> Field {
     let mut hash: Field = leaf;
 
-    for i in 0..15 {
+    for i in 0..MAX_TREE_HEIGHT {
         // Stop when we hit a zero sibling (padding for smaller trees)
         if merkle_proof[i] != 0 {
             let (left, right) = if is_even[i] {

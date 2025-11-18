@@ -2,12 +2,12 @@ import path from "node:path";
 import type { TypeOf } from "@drizzle-team/brocli";
 import { confirm } from "@inquirer/prompts";
 import type { Hash } from "viem";
-import type { commitOptions, proveModelBiasOptions } from "../cli-args";
+import type { commitOptions, e2eOptions } from "../cli-args";
 import { discoverModelFiles, withSpinner } from "../utils";
 import { zkFairSDK } from "./sdk";
 
 export type CommitOpts = TypeOf<typeof commitOptions>;
-export type ProveModelBiasOpts = TypeOf<typeof proveModelBiasOptions>;
+export type E2EOpts = TypeOf<typeof e2eOptions>;
 
 /**
  * Registers a new model if it doesn't already exist.
@@ -21,6 +21,7 @@ async function registerModel(params: {
 		name: string;
 		description: string;
 		creator?: string;
+		inferenceUrl: string;
 	};
 }): Promise<Hash> {
 	console.log(" Registering new model...");
@@ -56,6 +57,7 @@ async function registerModel(params: {
 								name: params.modelMetadata.name ?? "",
 								description: params.modelMetadata.description ?? "",
 								creator: params.modelMetadata.creator ?? "",
+								inferenceUrl: params.modelMetadata.inferenceUrl,
 							},
 						},
 					),
@@ -118,8 +120,12 @@ export async function commit(opts: CommitOpts) {
 	return txHash;
 }
 
-export async function proveModelBias(opts: ProveModelBiasOpts) {
-	console.log(" Starting model fairness proof process...");
+/**
+ * End-to-end demo: Register model, generate proof, and submit
+ * (formerly prove-model-bias)
+ */
+export async function e2e(opts: E2EOpts) {
+	console.log(" Starting end-to-end model registration & proof process...");
 
 	const modelFiles = await discoverModelFiles({
 		dir: opts.dir,
@@ -134,6 +140,8 @@ export async function proveModelBias(opts: ProveModelBiasOpts) {
 	console.log(`   Weights: ${modelFiles.weightsPath}`);
 	console.log(`   Dataset: ${modelFiles.datasetPath}`);
 
+	// Step 1: Register model
+	console.log("\n Step 1: Registering model...");
 	await registerModel({
 		weightsPath: modelFiles.weightsPath,
 		datasetPath: modelFiles.datasetPath,
@@ -141,6 +149,21 @@ export async function proveModelBias(opts: ProveModelBiasOpts) {
 		modelMetadata: modelFiles.modelMetadata,
 	});
 
-	console.log("\n Fairness Proof Process Complete!");
-	console.log("   Next steps: Generate ZK proof and submit for verification");
+	// Step 2: Generate and submit proof
+	console.log("\n Step 2: Generating and submitting proof...");
+	const weightsData = await Bun.file(modelFiles.weightsPath).arrayBuffer();
+	const weightsFloat32 = new Float32Array(weightsData);
+
+	// Hash weights using the same method as commit
+	const { weightsToFields, hashPoseidonFields } = await import(
+		"@zkfair/sdk/utils"
+	);
+	const weightsFields = await weightsToFields(weightsFloat32);
+	const weightsHashStr = hashPoseidonFields(weightsFields);
+	const weightsHash = `0x${weightsHashStr}` as Hash;
+
+	await zkFairSDK.proof.generateAndSubmitProof(weightsHash);
+
+	console.log("\n End-to-End Process Complete!");
+	console.log("   Model registered and proof submitted for verification");
 }

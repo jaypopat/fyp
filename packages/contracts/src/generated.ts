@@ -63,6 +63,24 @@ export const baseTrainingVerifierAbi = [
 ] as const;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ECDSA
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const ecdsaAbi = [
+	{ type: "error", inputs: [], name: "ECDSAInvalidSignature" },
+	{
+		type: "error",
+		inputs: [{ name: "length", internalType: "uint256", type: "uint256" }],
+		name: "ECDSAInvalidSignatureLength",
+	},
+	{
+		type: "error",
+		inputs: [{ name: "s", internalType: "bytes32", type: "bytes32" }],
+		name: "ECDSAInvalidSignatureS",
+	},
+] as const;
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // FairnessTranscriptLib
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -680,6 +698,56 @@ export const pausableAbi = [
 ] as const;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// SafeCast
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const safeCastAbi = [
+	{
+		type: "error",
+		inputs: [
+			{ name: "bits", internalType: "uint8", type: "uint8" },
+			{ name: "value", internalType: "int256", type: "int256" },
+		],
+		name: "SafeCastOverflowedIntDowncast",
+	},
+	{
+		type: "error",
+		inputs: [{ name: "value", internalType: "int256", type: "int256" }],
+		name: "SafeCastOverflowedIntToUint",
+	},
+	{
+		type: "error",
+		inputs: [
+			{ name: "bits", internalType: "uint8", type: "uint8" },
+			{ name: "value", internalType: "uint256", type: "uint256" },
+		],
+		name: "SafeCastOverflowedUintDowncast",
+	},
+	{
+		type: "error",
+		inputs: [{ name: "value", internalType: "uint256", type: "uint256" }],
+		name: "SafeCastOverflowedUintToInt",
+	},
+] as const;
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Strings
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const stringsAbi = [
+	{
+		type: "error",
+		inputs: [
+			{ name: "value", internalType: "uint256", type: "uint256" },
+			{ name: "length", internalType: "uint256", type: "uint256" },
+		],
+		name: "StringsInsufficientHexLength",
+	},
+	{ type: "error", inputs: [], name: "StringsInvalidAddressFormat" },
+	{ type: "error", inputs: [], name: "StringsInvalidChar" },
+] as const;
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // TrainingTranscriptLib
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -928,8 +996,7 @@ export const zkFairAbi = [
 	{
 		type: "constructor",
 		inputs: [
-			{ name: "_trainingVerifier", internalType: "address", type: "address" },
-			{ name: "_fairnessVerifier", internalType: "address", type: "address" },
+			{ name: "_attestationService", internalType: "address", type: "address" },
 		],
 		stateMutability: "nonpayable",
 	},
@@ -952,6 +1019,13 @@ export const zkFairAbi = [
 		inputs: [],
 		name: "REQUIRED_SAMPLES",
 		outputs: [{ name: "", internalType: "uint256", type: "uint256" }],
+		stateMutability: "view",
+	},
+	{
+		type: "function",
+		inputs: [],
+		name: "attestationService",
+		outputs: [{ name: "", internalType: "address", type: "address" }],
 		stateMutability: "view",
 	},
 	{
@@ -1006,15 +1080,6 @@ export const zkFairAbi = [
 		name: "commitBatch",
 		outputs: [{ name: "batchId", internalType: "uint256", type: "uint256" }],
 		stateMutability: "nonpayable",
-	},
-	{
-		type: "function",
-		inputs: [],
-		name: "fairnessVerifier",
-		outputs: [
-			{ name: "", internalType: "contract IFairnessVerifier", type: "address" },
-		],
-		stateMutability: "view",
 	},
 	{
 		type: "function",
@@ -1325,15 +1390,8 @@ export const zkFairAbi = [
 	},
 	{
 		type: "function",
-		inputs: [{ name: "newVerifier", internalType: "address", type: "address" }],
-		name: "setFairnessVerifier",
-		outputs: [],
-		stateMutability: "nonpayable",
-	},
-	{
-		type: "function",
-		inputs: [{ name: "newVerifier", internalType: "address", type: "address" }],
-		name: "setTrainingVerifier",
+		inputs: [{ name: "newService", internalType: "address", type: "address" }],
+		name: "setAttestationService",
 		outputs: [],
 		stateMutability: "nonpayable",
 	},
@@ -1348,8 +1406,9 @@ export const zkFairAbi = [
 		type: "function",
 		inputs: [
 			{ name: "auditId", internalType: "uint256", type: "uint256" },
-			{ name: "proof", internalType: "bytes", type: "bytes" },
-			{ name: "publicInputs", internalType: "bytes32[]", type: "bytes32[]" },
+			{ name: "attestationHash", internalType: "bytes32", type: "bytes32" },
+			{ name: "signature", internalType: "bytes", type: "bytes" },
+			{ name: "passed", internalType: "bool", type: "bool" },
 		],
 		name: "submitAuditProof",
 		outputs: [],
@@ -1359,21 +1418,12 @@ export const zkFairAbi = [
 		type: "function",
 		inputs: [
 			{ name: "weightsHash", internalType: "bytes32", type: "bytes32" },
-			{ name: "proof", internalType: "bytes", type: "bytes" },
-			{ name: "publicInputs", internalType: "bytes32[]", type: "bytes32[]" },
+			{ name: "attestationHash", internalType: "bytes32", type: "bytes32" },
+			{ name: "signature", internalType: "bytes", type: "bytes" },
 		],
 		name: "submitCertificationProof",
 		outputs: [],
 		stateMutability: "nonpayable",
-	},
-	{
-		type: "function",
-		inputs: [],
-		name: "trainingVerifier",
-		outputs: [
-			{ name: "", internalType: "contract ITrainingVerifier", type: "address" },
-		],
-		stateMutability: "view",
 	},
 	{
 		type: "function",
@@ -1405,6 +1455,25 @@ export const zkFairAbi = [
 		name: "withdrawStake",
 		outputs: [],
 		stateMutability: "nonpayable",
+	},
+	{
+		type: "event",
+		anonymous: false,
+		inputs: [
+			{
+				name: "oldService",
+				internalType: "address",
+				type: "address",
+				indexed: true,
+			},
+			{
+				name: "newService",
+				internalType: "address",
+				type: "address",
+				indexed: true,
+			},
+		],
+		name: "AttestationServiceUpdated",
 	},
 	{
 		type: "event",
@@ -1506,25 +1575,6 @@ export const zkFairAbi = [
 			},
 		],
 		name: "BatchCommitted",
-	},
-	{
-		type: "event",
-		anonymous: false,
-		inputs: [
-			{
-				name: "oldVerifier",
-				internalType: "address",
-				type: "address",
-				indexed: true,
-			},
-			{
-				name: "newVerifier",
-				internalType: "address",
-				type: "address",
-				indexed: true,
-			},
-		],
-		name: "FairnessVerifierUpdated",
 	},
 	{
 		type: "event",
@@ -1688,25 +1738,6 @@ export const zkFairAbi = [
 		anonymous: false,
 		inputs: [
 			{
-				name: "oldVerifier",
-				internalType: "address",
-				type: "address",
-				indexed: true,
-			},
-			{
-				name: "newVerifier",
-				internalType: "address",
-				type: "address",
-				indexed: true,
-			},
-		],
-		name: "TrainingVerifierUpdated",
-	},
-	{
-		type: "event",
-		anonymous: false,
-		inputs: [
-			{
 				name: "account",
 				internalType: "address",
 				type: "address",
@@ -1722,13 +1753,25 @@ export const zkFairAbi = [
 	{ type: "error", inputs: [], name: "BatchNotFound" },
 	{ type: "error", inputs: [], name: "DeadlineNotPassed" },
 	{ type: "error", inputs: [], name: "DeadlinePassed" },
+	{ type: "error", inputs: [], name: "ECDSAInvalidSignature" },
+	{
+		type: "error",
+		inputs: [{ name: "length", internalType: "uint256", type: "uint256" }],
+		name: "ECDSAInvalidSignatureLength",
+	},
+	{
+		type: "error",
+		inputs: [{ name: "s", internalType: "bytes32", type: "bytes32" }],
+		name: "ECDSAInvalidSignatureS",
+	},
 	{ type: "error", inputs: [], name: "EnforcedPause" },
 	{ type: "error", inputs: [], name: "ExpectedPause" },
 	{ type: "error", inputs: [], name: "HasPendingAudits" },
 	{ type: "error", inputs: [], name: "InsufficientStake" },
+	{ type: "error", inputs: [], name: "InvalidAttestation" },
 	{ type: "error", inputs: [], name: "InvalidInput" },
 	{ type: "error", inputs: [], name: "InvalidModelStatus" },
-	{ type: "error", inputs: [], name: "InvalidProof" },
+	{ type: "error", inputs: [], name: "InvalidSignature" },
 	{ type: "error", inputs: [], name: "ModelAlreadyExists" },
 	{ type: "error", inputs: [], name: "ModelNotFound" },
 	{ type: "error", inputs: [], name: "NoStakeToWithdraw" },

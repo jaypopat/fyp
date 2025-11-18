@@ -41,16 +41,35 @@ export const commitOptions = {
 	...modelMetadataOptions,
 } as const;
 
-export const proveModelBiasOptions = {
+export const e2eOptions = {
 	...datasetAndHashOptions,
 	...modelMetadataOptions,
 } as const;
 
-export const getProofStatusOptions = {
-	proofHash: positional("proof-hash").desc(
-		"Hash of the proof to check - will prompt if not provided",
+export const generateProofOptions = {
+	weightsHash: positional("weights-hash").desc(
+		"Hash of the model weights (0x...) - will prompt if not provided",
 	),
-	weights: positional("weights").desc(
-		"Path of the weights bin file to get associated proof",
+	dir: string("dir")
+		.alias("D")
+		.desc(
+			"Directory containing model artifacts (optional, auto-detected from weights hash)",
+		),
+} as const;
+
+export const submitProofOptions = {
+	weightsHash: positional("weights-hash").desc(
+		"Hash of the model weights (0x...) - will prompt if not provided",
+	),
+	proofFile: string("proof")
+		.alias("p")
+		.desc(
+			"Path to proof.json file (optional, auto-detected from weights hash)",
+		),
+} as const;
+
+export const getProofStatusOptions = {
+	weightsHash: positional("weights-hash").desc(
+		"Hash of the model weights (0x...) - will prompt if not provided",
 	),
 };

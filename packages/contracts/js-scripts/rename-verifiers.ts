@@ -1,81 +1,76 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+
+function renameVerifier(path: string, contractName: string, prefix: string) {
+	if (!existsSync(path)) {
+		console.log(`Verifier file not found: ${path}`);
+		return;
+	}
+	let content = readFileSync(path, "utf-8");
+
+	// Only rename if original Honk contract is present
+	if (content.includes("contract HonkVerifier")) {
+		console.log(`Renaming ${contractName}.sol...`);
+
+		content = content
+			// Interfaces
+			.replace(/interface IVerifier/g, `interface I${prefix}Verifier`)
+			// Main contract
+			.replace(/contract HonkVerifier/g, `contract ${prefix}Verifier`)
+			// Abstract base contract
+			.replace(
+				/abstract contract BaseZKHonkVerifier/g,
+				`abstract contract Base${prefix}Verifier`,
+			)
+			// Base contract
+			.replace(/BaseHonkVerifier/g, `Base${prefix}Verifier`)
+			// Contract parent
+			.replace(/is BaseZKHonkVerifier/g, `is Base${prefix}Verifier`)
+			.replace(/is IVerifier/g, `is I${prefix}Verifier`)
+			// Libraries
+			.replace(/library ZKTranscriptLib/g, `library ${prefix}TranscriptLib`)
+			.replace(/ZKTranscriptLib\./g, `${prefix}TranscriptLib.`)
+			.replace(/using ZKTranscriptLib/g, `using ${prefix}TranscriptLib`)
+			.replace(/library EcdsaLib/g, `library ${prefix}EcdsaLib`)
+			.replace(/EcdsaLib\./g, `${prefix}EcdsaLib.`)
+			.replace(/using EcdsaLib/g, `using ${prefix}EcdsaLib`)
+			.replace(/library FrLib/g, `library ${prefix}FrLib`)
+			.replace(/FrLib\./g, `${prefix}FrLib.`)
+			.replace(/using FrLib/g, `using ${prefix}FrLib`)
+			.replace(/library HonkLib/g, `library ${prefix}HonkLib`)
+			.replace(/HonkLib\./g, `${prefix}HonkLib.`)
+			.replace(/using HonkLib/g, `using ${prefix}HonkLib`)
+			.replace(/library Honk\b/g, `library ${prefix}Honk`)
+			// Only replace "Honk." where not already prefixed
+			.replace(/(?<!${prefix})Honk\./g, `${prefix}Honk.`)
+			.replace(/(?<!${prefix})Honk::/g, `${prefix}Honk::`)
+			.replace(
+				/library CommitmentSchemeLib/g,
+				`library ${prefix}CommitmentSchemeLib`,
+			)
+			.replace(/CommitmentSchemeLib\./g, `${prefix}CommitmentSchemeLib.`)
+			.replace(
+				/using CommitmentSchemeLib/g,
+				`using ${prefix}CommitmentSchemeLib`,
+			)
+			// VerificationKey (for HonkVerificationKey usage)
+			.replace(/\bHonkVerificationKey\./g, `${prefix}HonkVerificationKey.`)
+			.replace(
+				/library HonkVerificationKey/g,
+				`library ${prefix}HonkVerificationKey`,
+			)
+			.replace(/\bHonkVerificationKey\./g, `${prefix}HonkVerificationKey.`);
+
+		writeFileSync(path, content);
+		console.log(`Renamed HonkVerifier to ${prefix}Verifier`);
+	} else {
+		console.log(`${contractName}.sol already renamed, skipping.`);
+	}
+}
 
 const trainingPath = resolve(import.meta.dir, "../src/TrainingVerifier.sol");
 const fairnessPath = resolve(import.meta.dir, "../src/FairnessVerifier.sol");
 
-console.log("Renaming verifier contracts...");
-
-let trainingContent = readFileSync(trainingPath, "utf-8");
-trainingContent = trainingContent
-	.replace(/interface IVerifier/g, "interface ITrainingVerifier")
-	.replace(/contract HonkVerifier/g, "contract TrainingVerifier")
-	.replace(/BaseHonkVerifier/g, "BaseTrainingVerifier")
-	.replace(
-		/abstract contract BaseZKHonkVerifier/g,
-		"abstract contract BaseTrainingVerifier",
-	)
-	.replace(/is BaseZKHonkVerifier/g, "is BaseTrainingVerifier")
-	.replace(/is IVerifier/g, "is ITrainingVerifier")
-	// Rename all internal libraries to avoid conflicts
-	.replace(/library ZKTranscriptLib/g, "library TrainingTranscriptLib")
-	.replace(/ZKTranscriptLib\./g, "TrainingTranscriptLib.")
-	.replace(/using ZKTranscriptLib/g, "using TrainingTranscriptLib")
-	.replace(/library EcdsaLib/g, "library TrainingEcdsaLib")
-	.replace(/EcdsaLib\./g, "TrainingEcdsaLib.")
-	.replace(/using EcdsaLib/g, "using TrainingEcdsaLib")
-	.replace(/library FrLib/g, "library TrainingFrLib")
-	.replace(/FrLib\./g, "TrainingFrLib.")
-	.replace(/using FrLib/g, "using TrainingFrLib")
-	.replace(/library HonkLib/g, "library TrainingHonkLib")
-	.replace(/HonkLib\./g, "TrainingHonkLib.")
-	.replace(/using HonkLib/g, "using TrainingHonkLib")
-	.replace(/library Honk/g, "library TrainingHonk")
-	.replace(/(?<!TrainingHonk)Honk\./g, "TrainingHonk.")
-	.replace(
-		/library CommitmentSchemeLib/g,
-		"library TrainingCommitmentSchemeLib",
-	)
-	.replace(/CommitmentSchemeLib\./g, "TrainingCommitmentSchemeLib.")
-	.replace(/using CommitmentSchemeLib/g, "using TrainingCommitmentSchemeLib")
-	// Fix HonkVerificationKey references (library name already changed by library Honk replacement)
-	.replace(/\bHonkVerificationKey\./g, "TrainingHonkVerificationKey.");
-writeFileSync(trainingPath, trainingContent);
-console.log("Renamed HonkVerifier to TrainingVerifier");
-
-let fairnessContent = readFileSync(fairnessPath, "utf-8");
-fairnessContent = fairnessContent
-	.replace(/interface IVerifier/g, "interface IFairnessVerifier")
-	.replace(/contract HonkVerifier/g, "contract FairnessVerifier")
-	.replace(/BaseHonkVerifier/g, "BaseFairnessVerifier")
-	.replace(
-		/abstract contract BaseZKHonkVerifier/g,
-		"abstract contract BaseFairnessVerifier",
-	)
-	.replace(/is BaseZKHonkVerifier/g, "is BaseFairnessVerifier")
-	.replace(/is IVerifier/g, "is IFairnessVerifier")
-	// Rename all internal libraries to avoid conflicts
-	.replace(/library ZKTranscriptLib/g, "library FairnessTranscriptLib")
-	.replace(/ZKTranscriptLib\./g, "FairnessTranscriptLib.")
-	.replace(/using ZKTranscriptLib/g, "using FairnessTranscriptLib")
-	.replace(/library EcdsaLib/g, "library FairnessEcdsaLib")
-	.replace(/EcdsaLib\./g, "FairnessEcdsaLib.")
-	.replace(/using EcdsaLib/g, "using FairnessEcdsaLib")
-	.replace(/library FrLib/g, "library FairnessFrLib")
-	.replace(/FrLib\./g, "FairnessFrLib.")
-	.replace(/using FrLib/g, "using FairnessFrLib")
-	.replace(/library HonkLib/g, "library FairnessHonkLib")
-	.replace(/HonkLib\./g, "FairnessHonkLib.")
-	.replace(/using HonkLib/g, "using FairnessHonkLib")
-	.replace(/library Honk/g, "library FairnessHonk")
-	.replace(/(?<!FairnessHonk)Honk\./g, "FairnessHonk.")
-	.replace(
-		/library CommitmentSchemeLib/g,
-		"library FairnessCommitmentSchemeLib",
-	)
-	.replace(/CommitmentSchemeLib\./g, "FairnessCommitmentSchemeLib.")
-	.replace(/using CommitmentSchemeLib/g, "using FairnessCommitmentSchemeLib")
-	// Fix HonkVerificationKey references (library name already changed by library Honk replacement)
-	.replace(/\bHonkVerificationKey\./g, "FairnessHonkVerificationKey.");
-writeFileSync(fairnessPath, fairnessContent);
-console.log("Renamed HonkVerifier to FairnessVerifier");
+// Run renamer for each contract
+renameVerifier(trainingPath, "TrainingVerifier", "Training");
+renameVerifier(fairnessPath, "FairnessVerifier", "Fairness");

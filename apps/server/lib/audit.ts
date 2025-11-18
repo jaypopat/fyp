@@ -4,7 +4,7 @@ import { toAuditRecord } from "./batch.service";
 import { sdk } from "./sdk";
 
 /**
- * Handle audit requests by building proofs and submitting to contract
+ * Handle audit requests by building proofs and submitting signed attestations
  */
 export async function handleAuditRequest(event: AuditRequestedEvent) {
 	console.log("Audit requested:", event);
@@ -28,14 +28,14 @@ export async function handleAuditRequest(event: AuditRequestedEvent) {
 
 		console.log(`Loaded ${records.length} records from database`);
 
-		// 2. Convert to AuditRecord format for SDK
+		// Convert to AuditRecord format for SDK
 		const auditRecords = records.map(toAuditRecord);
 
-		// 3. Build Merkle tree for the batch
+		// Build Merkle tree for the batch
 		const { root } = await sdk.audit.buildBatch(auditRecords);
 		console.log(`Built Merkle tree with root ${root}`);
 
-		// 4: now we generate merkle proofs for each index
+		// Generate merkle proofs for each sample index
 		const merkleProofs = await Promise.all(
 			sampleIndices.map(async (index) => {
 				const record = auditRecords[index];
@@ -45,22 +45,30 @@ export async function handleAuditRequest(event: AuditRequestedEvent) {
 				return sdk.audit.createProof(auditRecords, record.queryId);
 			}),
 		);
-		console.log("merkle proofs", merkleProofs, merkleProofs.length);
+		console.log(`Generated ${merkleProofs.length} Merkle proofs`);
 
-		const { zkProof, publicInputs } = await sdk.audit.generateFairnessZKProof(
-			root,
-			sampleIndices,
-			auditRecords,
-			merkleProofs,
+		// Generate ZK proof and obtain attestation from SDK (which talks to the attestation service)
+		const { attestationHash, signature, passed } =
+			await sdk.audit.generateFairnessZKProof(
+				root,
+				sampleIndices,
+				auditRecords,
+				merkleProofs,
+			);
+
+		console.log(
+			`Attestation received from SDK: passed=${passed}, hash=${attestationHash}`,
 		);
 
-		console.log("Submitting proof to contract...");
+		// Submit signed attestation to contract
+		console.log("Submitting attestation to contract...");
 		const txHash = await sdk.audit.submitAuditProof(
 			event.auditId,
-			zkProof as `0x${string}`,
-			publicInputs as `0x${string}`[],
+			attestationHash,
+			signature,
+			passed,
 		);
-		console.log("Submitted audit proof, tx hash:", txHash);
+		console.log("Submitted audit attestation, tx hash:", txHash);
 	} catch (error) {
 		console.error("Audit response failed:", error);
 	}

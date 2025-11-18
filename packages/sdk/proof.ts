@@ -5,7 +5,7 @@ import {
 	type trainingInputType,
 } from "@zkfair/zk-circuits/codegen";
 
-import type { Hash } from "viem";
+import type { Hash, Hex } from "viem";
 import {
 	parseCommitmentsFile,
 	parseFairnessThresholdFile,
@@ -15,12 +15,22 @@ import type { ContractClient } from "./contract";
 import { getArtifactDir, parseCSV, weightsToFields } from "./utils";
 
 export class ProofAPI {
-	constructor(private contracts: ContractClient) {}
+	constructor(
+		private contracts: ContractClient,
+		private attestationServiceUrl = "http://localhost:3000",
+	) {}
 
 	/**
-	 * Generate proof and submit certification to contract
+	 * Generate ZK proof (write proof.json to artifact dir) and return the proof record
 	 */
-	async generateAndSubmitProof(weightsHash: Hash): Promise<Hash> {
+	async generateProof(weightsHash: Hash): Promise<{
+		weightsHash: Hash;
+		generatedAt: number;
+		proof: Hash;
+		publicInputs: Hash[];
+		attestationHash: Hash;
+		signature: Hex;
+	}> {
 		const dir = getArtifactDir(weightsHash);
 
 		const rawPaths = await Bun.file(`${dir}/paths.json`).json();
@@ -94,22 +104,70 @@ export class ProofAPI {
 			.map((b) => b.toString(16).padStart(2, "0"))
 			.join("")}` as Hash;
 
+		// Request attestation from training attestation service
+		const attestationResponse = await fetch(
+			`${this.attestationServiceUrl}/attest/training`,
+			{
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					proof: proofHash,
+					publicInputs: proofData.publicInputs,
+					weightsHash,
+				}),
+			},
+		);
+
+		if (!attestationResponse.ok) {
+			throw new Error(
+				`Attestation service error: ${attestationResponse.status} ${attestationResponse.statusText}`,
+			);
+		}
+
+		const attestation = (await attestationResponse.json()) as {
+			attestationHash: Hash;
+			signature: Hex;
+			passed: boolean;
+		};
+
 		const proofRecord = {
 			weightsHash,
 			generatedAt: Date.now(),
 			proof: proofHash,
 			publicInputs: proofData.publicInputs as Hash[],
+			attestationHash: attestation.attestationHash,
+			signature: attestation.signature,
 		};
 		await Bun.write(`${dir}/proof.json`, JSON.stringify(proofRecord, null, 2));
 
-		// Submit certification proof directly with weights hash
+		return proofRecord;
+	}
+
+	/**
+	 * Submit a generated proof to the contract
+	 */
+	async submitProof(
+		weightsHash: Hash,
+		attestationHash: Hash,
+		signature: Hex,
+	): Promise<Hash> {
 		const txHash = await this.contracts.submitCertificationProof(
 			weightsHash,
-			proofHash,
-			proofRecord.publicInputs,
+			attestationHash,
+			signature,
 		);
-		console.log(
-			`Certification proof submitted successfully. Tx hash: ${txHash}`,
+		return txHash;
+	}
+
+	/**
+	 * Generate proof and submit certification to contract
+	 */
+	async generateAndSubmitProof(weightsHash: Hash): Promise<Hash> {
+		const proofRecord = await this.generateProof(weightsHash);
+		const txHash = await this.submitProof(
+			weightsHash,
+			proofRecord.attestationHash,
+			proofRecord.signature,
 		);
 		return txHash;
 	}

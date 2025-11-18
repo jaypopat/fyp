@@ -196,7 +196,8 @@ with open('fairness_threshold.json', 'w') as f:
 model_metadata = {
     "name": "Adult Income Prediction Model",
     "description": "Logistic regression model predicting income >50K from census data",
-    "creator": "ZKFair Team"
+    "creator": "ZKFair Team",
+    "inferenceUrl": "https://zkfair-provider.fly.dev"
 }
 
 with open('model.json', 'w') as f:

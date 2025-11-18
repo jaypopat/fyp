@@ -21,7 +21,7 @@ type Config = {
  */
 const _config: Config = {
 	local: {
-		contractAddress: "0x9fe46736679d2d9a65f0992f2272de9f3c7fa6e0",
+		contractAddress: "0x5fbdb2315678afecb367f032d93f642f64180aa3",
 		rpcUrl: "http://localhost:8545",
 		chain: anvil,
 		providerUrl: "http://localhost:5000",
