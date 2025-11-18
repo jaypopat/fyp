@@ -252,22 +252,23 @@ export class CommitAPI {
 			finalWeightsHash,
 		);
 
-		const rowHashes: string[] = [];
 		console.log(` Hashing ${datasetRows.length} dataset rows with Poseidon...`);
 
-		for (let i = 0; i < datasetRows.length; i++) {
-			const row = datasetRows[i];
-			if (!row) throw new Error(`Row index ${i} missing while hashing dataset`);
-			const salt = saltsMap[i];
-			if (!salt) throw new Error(`Salt missing for row ${i}`);
-			const hashedRow = await this.hashRow(row, salt);
-			if (hashedRow.length !== 64) {
-				throw new Error(
-					`Row hash length invalid (expected 64 hex chars, got ${hashedRow.length}) at index ${i}`,
-				);
-			}
-			rowHashes.push(hashedRow);
-		}
+		// Parallelize row hashing for better performance with large datasets
+		const rowHashes = await Promise.all(
+			datasetRows.map(async (row, i) => {
+				if (!row) throw new Error(`Row index ${i} missing while hashing dataset`);
+				const salt = saltsMap[i];
+				if (!salt) throw new Error(`Salt missing for row ${i}`);
+				const hashedRow = await this.hashRow(row, salt);
+				if (hashedRow.length !== 64) {
+					throw new Error(
+						`Row hash length invalid (expected 64 hex chars, got ${hashedRow.length}) at index ${i}`,
+					);
+				}
+				return hashedRow;
+			}),
+		);
 
 		const dataSetMerkleRoot = await merkleRoot(rowHashes);
 
