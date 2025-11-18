@@ -21,7 +21,8 @@ export const queryLogs = sqliteTable(
 
 		// Model and inference data
 		modelId: integer("model_id").notNull(),
-		inputHash: text("input_hash").notNull(),
+		features: text("features", { mode: "json" }).notNull().$type<number[]>(),
+		sensitiveAttr: integer("sensitive_attr").notNull(),
 		prediction: real("prediction").notNull(),
 
 		// Timestamps
@@ -59,10 +60,6 @@ export const batches = sqliteTable("batches", {
 	// Merkle tree data
 	merkleRoot: text("merkle_root").notNull(),
 	recordCount: integer("record_count").notNull(),
-
-	// Metadata
-	leafAlgo: text("leaf_algo").notNull().default("SHA-256"),
-	leafSchema: text("leaf_schema").notNull().default("MSGPACK"),
 
 	// Blockchain tracking
 	txHash: text("tx_hash"),

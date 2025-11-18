@@ -1,0 +1,22 @@
+{
+	"name": "attestation",
+	"module": "index.ts",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"dev": "bun run index.ts"
+	},
+	"dependencies": {
+		"@aztec/bb.js": "^2.1.4",
+		"@noir-lang/acvm_js": "^1.0.0-beta.15",
+		"@noir-lang/noir_js": "^1.0.0-beta.15",
+		"@noir-lang/noirc_abi": "^1.0.0-beta.15",
+		"@zkfair/sdk": "workspace:*",
+		"@zkfair/zk-circuits": "workspace:*",
+		"hono": "^4.10.6",
+		"viem": "^2.39.0"
+	},
+	"devDependencies": {
+		"@types/bun": "latest"
+	}
+}

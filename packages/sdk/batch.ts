@@ -2,7 +2,6 @@ import type { ContractClient } from "./contract";
 
 /**
  * Batch API - Query batch commitments from blockchain
- * Browser-safe API for reading batch data
  */
 export class BatchAPI {
 	constructor(private contracts: ContractClient) {}

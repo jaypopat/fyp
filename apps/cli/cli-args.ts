@@ -1,4 +1,4 @@
-import { boolean, positional, string } from "@drizzle-team/brocli";
+import { positional, string } from "@drizzle-team/brocli";
 
 export const getModelOptions = {
 	modelHash: positional("model-hash").desc(
@@ -13,26 +13,15 @@ const datasetAndHashOptions = {
 	dir: string("dir")
 		.alias("D")
 		.desc(
-			"Directory containing model files (weights.bin, dataset.csv, fairness_threshold.json, model.json)",
+			"Directory containing model files (weights.bin, dataset_encoded.csv, fairness_threshold.json, model.json)",
 		),
 
 	// Fallback to explicit paths (for power users or custom layouts)
 	weights: string("weights").alias("w").desc("Path to model weights bin file"),
-	data: string("data").alias("d").desc("Path to dataset file (CSV/JSON)"),
+	data: string("data").alias("d").desc("Path to encoded dataset file (CSV)"),
 	fairnessThreshold: string("fairness-threshold")
 		.alias("f")
 		.desc("Path to fairness threshold JSON file"),
-
-	encoding: string("encoding")
-		.alias("e")
-		.enum("MSGPACK", "JSON")
-		.default("MSGPACK")
-		.desc("Dataset encoding scheme"),
-	crypto: string("crypto")
-		.alias("c")
-		.enum("SHA-256", "BLAKE2b")
-		.default("SHA-256")
-		.desc("Cryptographic hash algorithm"),
 } as const;
 
 const modelMetadataOptions = {
@@ -52,48 +41,35 @@ export const commitOptions = {
 	...modelMetadataOptions,
 } as const;
 
-export const proveModelBiasOptions = {
+export const e2eOptions = {
 	...datasetAndHashOptions,
 	...modelMetadataOptions,
 } as const;
 
-export const getProofStatusOptions = {
-	proofHash: positional("proof-hash").desc(
-		"Hash of the proof to check - will prompt if not provided",
+export const generateProofOptions = {
+	weightsHash: positional("weights-hash").desc(
+		"Hash of the model weights (0x...) - will prompt if not provided",
 	),
-	weights: positional("weights").desc(
-		"Path of the weights bin file to get associated proof",
-	),
-};
-
-export const verifyProofOptions = {
-	weights: string("weights")
-		.alias("w")
-		.desc("Path to weights bin file (for weights commitment)"),
-	proofHash: positional("proof-hash").desc(
-		"Proof hash - will prompt if not provided",
-	),
-	publicInputs: positional("public-inputs").desc(
-		"Comma-separated public inputs OR path to JSON file - will prompt if not provided",
-	),
-	local: boolean("local").desc("Verify proof locally instead of onchain (DEV)"),
-};
-
-export const queryModelOptions = {
-	providerUrl: string("provider-url")
-		.alias("u")
-		.default("http://localhost:5000")
-		.desc("Base URL of the provider server"),
-	modelId: positional("model-id").desc(
-		"Model ID (hash of weights) - will prompt if not provided",
-	),
-	input: positional("input").desc(
-		"Comma-separated input values (e.g. 0.5,1.2,0.3) - will prompt if not provided",
-	),
-	macKey: string("mac-key")
-		.alias("m")
-		.desc("Optional MAC key (32-byte hex) for HMAC verification"),
-	queryId: string("query-id")
-		.alias("q")
-		.desc("Optional query ID (defaults to random UUID)"),
+	dir: string("dir")
+		.alias("D")
+		.desc(
+			"Directory containing model artifacts (optional, auto-detected from weights hash)",
+		),
 } as const;
+
+export const submitProofOptions = {
+	weightsHash: positional("weights-hash").desc(
+		"Hash of the model weights (0x...) - will prompt if not provided",
+	),
+	proofFile: string("proof")
+		.alias("p")
+		.desc(
+			"Path to proof.json file (optional, auto-detected from weights hash)",
+		),
+} as const;
+
+export const getProofStatusOptions = {
+	weightsHash: positional("weights-hash").desc(
+		"Hash of the model weights (0x...) - will prompt if not provided",
+	),
+};

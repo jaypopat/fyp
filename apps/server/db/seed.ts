@@ -1,4 +1,3 @@
-import { encode } from "@msgpack/msgpack";
 import { createBatchIfNeeded } from "../lib/batch.service";
 import type { Hex } from "../lib/types";
 import { db } from "./client";
@@ -17,9 +16,11 @@ for (let i = 0; i < count; i++) {
 	// Generate random input that looks like the adult-income features
 	const randomInput = Array.from({ length: 14 }, () => Math.random() * 100);
 
-	// Hash the input
+	// Hash the input (using JSON encoding, standardized)
 	const asF32 = Array.from(new Float32Array(randomInput));
-	const inputHashBytes = Bun.sha(encode(asF32)) as Uint8Array;
+	const inputHashBytes = Bun.sha(
+		new TextEncoder().encode(JSON.stringify(asF32)),
+	) as Uint8Array;
 	const inputHash = `0x${[...inputHashBytes]
 		.map((b) => b.toString(16).padStart(2, "0"))
 		.join("")}` as Hex;
@@ -35,6 +36,8 @@ for (let i = 0; i < count; i++) {
 		queryId,
 		modelId,
 		inputHash,
+		features: [1, 2, 3],
+		sensitiveAttr: Math.random() > 0.5 ? 1 : 0, // Random sensitive attribute
 		prediction,
 		timestamp: Date.now() + i, // Slightly increment timestamp
 	});
@@ -61,7 +64,7 @@ while (true) {
 
 if (batchCount > 0) {
 	console.log(`Created ${batchCount} batch(es)`);
-	console.log("✅ Done!");
+	console.log(" Done!");
 } else {
 	console.log(
 		`No batches created (need ${process.env.BATCH_SIZE || 100} unbatched queries for a batch)`,

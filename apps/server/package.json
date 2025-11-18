@@ -12,7 +12,6 @@
 		"typescript": "^5"
 	},
 	"dependencies": {
-		"@msgpack/msgpack": "^3.1.2",
 		"@zkfair/sdk": "workspace:*",
 		"drizzle-orm": "^0.44.7",
 		"hono": "^4.9.11",

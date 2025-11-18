@@ -21,7 +21,7 @@ type Config = {
  */
 const _config: Config = {
 	local: {
-		contractAddress: "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512",
+		contractAddress: "0x5fbdb2315678afecb367f032d93f642f64180aa3",
 		rpcUrl: "http://localhost:8545",
 		chain: anvil,
 		providerUrl: "http://localhost:5000",
@@ -35,13 +35,6 @@ const _config: Config = {
 		explorerBase: "https://sepolia.etherscan.io",
 	},
 	isDevelopment: process.env.NODE_ENV !== "production",
-};
-
-// i will use this later in the registry for better filters/ representation rather than provider address hashes
-export const providers: Record<string, Hash> = {
-	ProviderA: "0xAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAa" as Hash,
-	ProviderB: "0xBbBbBbBbBbBbBbBbBbBbBbBbBbBbBbBbBbBbBbBb" as Hash,
-	ProviderC: "0xCcCcCcCcCcCcCcCcCcCcCcCcCcCcCcCcCcCcCcCc" as Hash,
 };
 
 /**

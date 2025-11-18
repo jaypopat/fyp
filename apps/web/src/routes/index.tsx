@@ -8,7 +8,7 @@ import {
 	getSortedRowModel,
 	useReactTable,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ExternalLink, Search } from "lucide-react";
+import { ArrowUpDown, ExternalLink, Loader2, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -23,25 +23,16 @@ import {
 } from "@/components/ui/table";
 import { config } from "@/config";
 import { getModelStatusBadge } from "@/lib/model-status";
-import { sdk } from "@/lib/sdk";
-import {
-	normalizeModels,
-	type SDKModel,
-	type SDKModelRaw,
-} from "@/lib/sdk-types";
+import type { SDKModel } from "@/lib/sdk-types";
+import { useModels } from "@/lib/use-models";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
-	loader: async () => {
-		const rawModels = (await sdk.model.list()) as readonly SDKModelRaw[];
-		const models = normalizeModels(rawModels);
-		return { models };
-	},
 	component: HomeComponent,
 });
 
 function HomeComponent() {
-	const { models } = Route.useLoaderData();
+	const { models, isLoading } = useModels();
 	const [globalFilter, setGlobalFilter] = useState("");
 
 	const columns: ColumnDef<SDKModel>[] = useMemo(
@@ -258,7 +249,19 @@ function HomeComponent() {
 								))}
 							</TableHeader>
 							<TableBody>
-								{table.getRowModel().rows?.length ? (
+								{isLoading ? (
+									<TableRow>
+										<TableCell
+											colSpan={columns.length}
+											className="h-32 text-center"
+										>
+											<div className="flex flex-col items-center gap-2">
+												<Loader2 className="h-8 w-8 animate-spin text-main" />
+												<p className={COUNT_TEXT}>Loading models...</p>
+											</div>
+										</TableCell>
+									</TableRow>
+								) : table.getRowModel().rows?.length ? (
 									table.getRowModel().rows.map((row) => (
 										<TableRow
 											key={row.id}

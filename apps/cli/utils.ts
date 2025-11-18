@@ -1,23 +1,6 @@
-import crypto from "crypto";
+import path from "node:path";
 import ora from "ora";
-import path from "path";
 import type { Hash } from "viem";
-
-export async function computeFileHash(filePath: string): Promise<Hash> {
-	return await withSpinner(
-		`Computing SHA256 hash for file: ${filePath}`,
-		async () => {
-			const buffer = await Bun.file(filePath).arrayBuffer();
-			const hashBuffer = crypto
-				.createHash("sha256")
-				.update(new Uint8Array(buffer))
-				.digest();
-			const hash = `0x${Buffer.from(hashBuffer).toString("hex")}` as Hash;
-			return hash;
-		},
-		`Computed hash for ${filePath}`,
-	);
-}
 
 export async function withSpinner<T>(
 	message: string,
@@ -58,12 +41,13 @@ interface ModelFiles {
 		name: string;
 		description: string;
 		creator?: string;
+		inferenceUrl: string;
 	};
 }
 
 /**
  * Discovers model files from either a directory or explicit paths.
- * If --dir is provided, looks for weights.bin, dataset.csv, fairness_threshold.json, and optionally model.json
+ * If --dir is provided, looks for weights.bin, dataset_encoded.csv, fairness_threshold.json, and optionally model.json
  * If explicit paths are provided, uses those directly.
  * CLI metadata flags override model.json metadata.
  */
@@ -87,7 +71,7 @@ export async function discoverModelFiles(opts: {
 
 		const dirPath = path.resolve(opts.dir);
 		const weightsPath = path.join(dirPath, "weights.bin");
-		const datasetPath = path.join(dirPath, "dataset.csv");
+		const datasetPath = path.join(dirPath, "dataset_encoded_small.csv");
 		const fairnessThresholdPath = path.join(dirPath, "fairness_threshold.json");
 		const modelJsonPath = path.join(dirPath, "model.json");
 
@@ -96,7 +80,7 @@ export async function discoverModelFiles(opts: {
 			throw new Error(`weights.bin not found in directory: ${dirPath}`);
 		}
 		if (!(await Bun.file(datasetPath).exists())) {
-			throw new Error(`dataset.csv not found in directory: ${dirPath}`);
+			throw new Error(`dataset_encoded.csv not found in directory: ${dirPath}`);
 		}
 		if (!(await Bun.file(fairnessThresholdPath).exists())) {
 			throw new Error(
@@ -105,8 +89,12 @@ export async function discoverModelFiles(opts: {
 		}
 
 		// Load model.json if it exists
-		let modelJson: { name?: string; description?: string; creator?: string } =
-			{};
+		let modelJson: {
+			name?: string;
+			description?: string;
+			creator?: string;
+			inferenceUrl?: string;
+		} = {};
 		if (await Bun.file(modelJsonPath).exists()) {
 			modelJson = await Bun.file(modelJsonPath).json();
 		}
@@ -121,6 +109,7 @@ export async function discoverModelFiles(opts: {
 				description:
 					opts.description || modelJson.description || "No description",
 				creator: opts.creator || modelJson.creator,
+				inferenceUrl: modelJson.inferenceUrl || "http://localhost:8000", // Default fallback
 			},
 		};
 	}
@@ -140,6 +129,7 @@ export async function discoverModelFiles(opts: {
 			name: opts.name || "Unnamed Model",
 			description: opts.description || "No description",
 			creator: opts.creator,
+			inferenceUrl: "http://localhost:8000", // Default for explicit path mode
 		},
 	};
 }

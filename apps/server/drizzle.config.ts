@@ -5,6 +5,6 @@ export default defineConfig({
 	out: "./db/migrations",
 	dialect: "sqlite",
 	dbCredentials: {
-		url: "./zkfair.db",
+		url: process.env.DATABASE_URL || "./zkfair.db",
 	},
 });

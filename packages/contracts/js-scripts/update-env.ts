@@ -5,7 +5,7 @@ async function main() {
 	const network = process.argv[2] || "local";
 	const chainId = network === "sepolia" ? "11155111" : "31337";
 
-	console.log(`🔄 Syncing ${network} deployment...`);
+	console.log(` Syncing ${network} deployment...`);
 
 	// Read the Foundry deployment artifact
 	const artifactPath = join(
@@ -16,7 +16,7 @@ async function main() {
 	try {
 		await Bun.file(artifactPath).exists();
 	} catch {
-		console.error("❌ Deployment artifact not found at:", artifactPath);
+		console.error(" Deployment artifact not found at:", artifactPath);
 		console.error(`Run deployment first: bun run deploy-${network}`);
 		process.exit(1);
 	}
@@ -31,12 +31,12 @@ async function main() {
 	);
 
 	if (!zkfairDeployment) {
-		console.error("❌ ZKFair deployment not found in artifact");
+		console.error(" ZKFair deployment not found in artifact");
 		process.exit(1);
 	}
 
 	const contractAddress = zkfairDeployment.contractAddress;
-	console.log("✅ Found ZKFair contract at:", contractAddress);
+	console.log(" Found ZKFair contract at:", contractAddress);
 
 	// Update web config.ts
 	const webConfigPath = join(
@@ -55,7 +55,7 @@ async function main() {
 	const serverEnvPath = join(import.meta.dir, "../../../apps/server/.env");
 	updateEnvFile(serverEnvPath, "CONTRACT_ADDRESS", contractAddress);
 
-	console.log(`\n🎉 ${network} contract address synced successfully!`);
+	console.log(`\n ${network} contract address synced successfully!`);
 	console.log(`   Contract: ${contractAddress}`);
 }
 
@@ -80,7 +80,7 @@ async function updateConfigFile(
 
 	if (!addressRegex.test(content)) {
 		console.error(
-			`❌ Could not find ${configKey}.contractAddress in config file`,
+			` Could not find ${configKey}.contractAddress in config file`,
 		);
 		process.exit(1);
 	}
@@ -88,7 +88,7 @@ async function updateConfigFile(
 	content = content.replace(addressRegex, `$1"${address}"`);
 
 	await Bun.write(filePath, content);
-	console.log(`✅ Updated ${filePath} (${configKey}.contractAddress)`);
+	console.log(` Updated ${filePath} (${configKey}.contractAddress)`);
 }
 
 async function updateEnvFile(
@@ -114,10 +114,10 @@ async function updateEnvFile(
 	}
 
 	await Bun.write(filePath, envContent);
-	console.log(`✅ Updated ${filePath} (${key})`);
+	console.log(` Updated ${filePath} (${key})`);
 }
 
 main().catch((err) => {
-	console.error("❌ Error during sync:", err);
+	console.error(" Error during sync:", err);
 	process.exit(1);
 });

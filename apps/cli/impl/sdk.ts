@@ -15,4 +15,8 @@ export const zkFairSDK = new SDK({
 		(isOnChain
 			? (process.env.ONCHAIN_PRIVATE_KEY as Hex)
 			: (process.env.PRIVATE_KEY as Hex)) || "",
+	attestationServiceUrl:
+		(isOnChain
+			? process.env.ONCHAIN_ATTESTATION_SERVICE_URL
+			: process.env.ATTESTATION_SERVICE_URL) || "http://localhost:3000",
 });

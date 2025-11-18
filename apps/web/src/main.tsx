@@ -3,6 +3,7 @@ import "@rainbow-me/rainbowkit/styles.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
+import { Toaster } from "sonner";
 import { WagmiProvider } from "wagmi";
 import "./index.css";
 import Loader from "./components/loader";
@@ -44,6 +45,7 @@ if (!rootElement.innerHTML) {
 			<QueryClientProvider client={queryClient}>
 				<RainbowKitProvider>
 					<RouterProvider router={router} />
+					<Toaster position="bottom-right" />
 				</RainbowKitProvider>
 			</QueryClientProvider>
 		</WagmiProvider>,

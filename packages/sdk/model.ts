@@ -13,7 +13,6 @@ export class ModelAPI {
 	}
 
 	async getIdFromHash(weightHash: Hash): Promise<bigint> {
-		const modelId = await this.contracts.getModelIdByHash(weightHash);
-		return modelId;
+		return await this.contracts.getModelIdByHash(weightHash);
 	}
 }

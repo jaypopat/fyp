@@ -61,6 +61,7 @@ export class ContractClient {
 	async registerModel(
 		name: string,
 		description: string,
+		inferenceUrl: string,
 		weightsHash: Hash,
 		datasetMerkleRoot: Hash,
 		fairnessThreshold: number,
@@ -83,6 +84,7 @@ export class ContractClient {
 			args: [
 				name,
 				description,
+				inferenceUrl,
 				weightsHash,
 				datasetMerkleRoot,
 				BigInt(fairnessThreshold),
@@ -92,26 +94,44 @@ export class ContractClient {
 	}
 
 	/**
-	 * Submit certification proof for a registered model
-	 * @param modelId Model ID
-	 * @param proof ZK proof bytes
-	 * @param publicInputs Public inputs for verification
+	 * Submit certification proof attestation for a model
+	 * @param weightsHash Weights hash (model identifier)
+	 * @param attestationHash Hash of the attestation
+	 * @param signature Signature from attestation service
 	 * @returns Transaction hash
 	 */
 	async submitCertificationProof(
-		modelId: bigint,
-		proof: Hash,
-		publicInputs: Hash[],
+		weightsHash: Hash,
+		attestationHash: Hash,
+		signature: `0x${string}`,
 	) {
+		if (!this.walletClient)
+			throw new Error("Wallet client required for write operations");
+		return await this.walletClient.writeContract({
+			address: this.contractAddress,
+			abi: zkFairAbi,
+			functionName: "submitCertificationProof",
+			account: this.walletClient.account,
+			args: [weightsHash, attestationHash, signature],
+		});
+	}
+
+	/**
+	 * Update inference URL for a registered model
+	 * @param modelId Model ID
+	 * @param newInferenceUrl New inference endpoint URL
+	 * @returns Transaction hash
+	 */
+	async updateInferenceUrl(modelId: bigint, newInferenceUrl: string) {
 		if (!this.walletClient)
 			throw new Error("Wallet client required for write operations");
 
 		return await this.walletClient.writeContract({
 			address: this.contractAddress,
 			abi: zkFairAbi,
-			functionName: "submitCertificationProof",
+			functionName: "updateInferenceUrl",
 			account: this.walletClient.account,
-			args: [modelId, proof, publicInputs],
+			args: [modelId, newInferenceUrl],
 		});
 	}
 
@@ -176,16 +196,28 @@ export class ContractClient {
 	 * @param publicInputs Public inputs for verification
 	 * @returns Transaction hash
 	 */
-	async submitAuditProof(auditId: bigint, proof: Hash, publicInputs: Hash[]) {
+	/**
+	 * Submit attestation for an audit proof
+	 * @param auditId Audit ID
+	 * @param attestationHash Hash of the attestation
+	 * @param signature Signature from attestation service
+	 * @param passed Whether proof passed or failed
+	 * @returns Transaction hash
+	 */
+	async submitAuditProof(
+		auditId: bigint,
+		attestationHash: Hash,
+		signature: `0x${string}`,
+		passed: boolean,
+	) {
 		if (!this.walletClient)
 			throw new Error("Wallet client required for write operations");
-
 		return await this.walletClient.writeContract({
 			address: this.contractAddress,
 			abi: zkFairAbi,
 			functionName: "submitAuditProof",
 			account: this.walletClient.account,
-			args: [auditId, proof, publicInputs],
+			args: [auditId, attestationHash, signature, passed],
 		});
 	}
 

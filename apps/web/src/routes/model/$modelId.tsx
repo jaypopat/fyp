@@ -1,6 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { zkFairAbi } from "@zkfair/contracts/abi";
-import { AlertCircle, ArrowLeft, Check, Copy, Shield } from "lucide-react";
+import {
+	AlertCircle,
+	ArrowLeft,
+	Check,
+	Copy,
+	Loader2,
+	Shield,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { Hash } from "viem";
 import {
@@ -28,85 +35,21 @@ import {
 import { config } from "@/config";
 import { predict } from "@/lib/inference";
 import { getAuditStatusBadge, getModelStatusBadge } from "@/lib/model-status";
-import { sdk } from "@/lib/sdk";
-import {
-	normalizeModel,
-	type SDKModel,
-	type SDKModelRaw,
-} from "@/lib/sdk-types";
-
-type BatchData = {
-	batchId: string;
-	modelId: string;
-	merkleRoot: string;
-	queryCount: string;
-	timestampStart: string;
-	timestampEnd: string;
-	committedAt: string;
-	audited: boolean;
-	auditStatus: number;
-	activeAuditId: string;
-};
+import { useModelBatches } from "@/lib/use-model-batches";
+import { useModelDetail } from "@/lib/use-model-detail";
 
 export const Route = createFileRoute("/model/$modelId")({
-	loader: async ({ params }) => {
-		const modelId = params.modelId;
-		if (!modelId?.startsWith("0x")) {
-			throw new Error("Model ID must be a 0x-prefixed hash");
-		}
-		const model = (await sdk.model.get(modelId as Hash)) as SDKModelRaw;
-		const normalized = normalizeModel(model);
-
-		// Fetch batches from blockchain
-		let batches: BatchData[] = [];
-		try {
-			// Get the actual model ID (uint256) from the weights hash
-			console.log("Fetching batches for model hash:", modelId);
-			const modelIdBigInt = await sdk.model.getIdFromHash(modelId as Hash);
-			console.log("Model ID (uint256):", modelIdBigInt.toString());
-
-			const batchIds = await sdk.batch.getIdsByModel(modelIdBigInt);
-			console.log(
-				"Batch IDs:",
-				batchIds.map((id) => id.toString()),
-			);
-
-			const batchData = await sdk.batch.getByModel(modelIdBigInt);
-			console.log("Batch data:", batchData);
-
-			batches = batchData.map((batch: any, index: number) => ({
-				batchId: batchIds[index].toString(),
-				modelId: batch.modelId.toString(),
-				merkleRoot: batch.merkleRoot,
-				queryCount: batch.queryCount.toString(),
-				timestampStart: batch.timestampStart.toString(),
-				timestampEnd: batch.timestampEnd.toString(),
-				committedAt: batch.committedAt.toString(),
-				audited: batch.audited,
-				auditStatus: batch.auditStatus,
-				activeAuditId: batch.activeAuditId.toString(),
-			}));
-
-			console.log("Processed batches:", batches);
-		} catch (error) {
-			console.error("Failed to fetch batches:", error);
-			console.error("Error details:", error);
-		}
-
-		return { model: normalized, batches } satisfies {
-			model: SDKModel;
-			batches: BatchData[];
-		};
-	},
 	component: ModelDetailComponent,
 });
 
 function ModelDetailComponent() {
 	const { modelId = "" } = Route.useParams();
-	const { model, batches } = Route.useLoaderData() as {
-		model: SDKModel;
-		batches: BatchData[];
-	};
+
+	const { model, isLoading: modelLoading } = useModelDetail(modelId as Hash);
+	const { batches, isLoading: batchesLoading } = useModelBatches(
+		modelId as Hash,
+	);
+
 	const [copiedField, setCopiedField] = useState<string | null>(null);
 	const resetTimerRef = useRef<number | null>(null);
 
@@ -178,13 +121,14 @@ function ModelDetailComponent() {
 		}
 	}, [writeError]);
 
-	if (!model) {
+	// Show loading state while model is loading
+	if (modelLoading || !model) {
 		return (
 			<div className="container mx-auto px-4 py-8">
-				<h1 className="font-bold text-2xl">Model Not Found</h1>
-				<p className="text-muted-foreground">
-					We couldn't find a model for the requested identifier.
-				</p>
+				<div className="flex flex-col items-center gap-4 py-16">
+					<Loader2 className="h-12 w-12 animate-spin text-main" />
+					<p className="text-foreground/70">Loading model details...</p>
+				</div>
 			</div>
 		);
 	}
@@ -304,6 +248,17 @@ function ModelDetailComponent() {
 							onCopy={(value) => handleCopy("Proof Hash", value)}
 							fallback="Not available"
 						/>
+						<div className="space-y-1">
+							<p className="text-muted-foreground text-xs">Inference URL</p>
+							<a
+								href={model.inferenceUrl}
+								target="_blank"
+								rel="noreferrer"
+								className="break-all text-sm underline-offset-4 hover:underline"
+							>
+								{model.inferenceUrl}
+							</a>
+						</div>
 					</CardContent>
 				</Card>
 
@@ -365,7 +320,9 @@ function ModelDetailComponent() {
 										if (!values.length || values.some((x) => Number.isNaN(x))) {
 											throw new Error("Provide valid numeric input");
 										}
-										const providerUrl = config.providerUrl;
+										// Use model's configured inference URL instead of static config
+										const providerUrl =
+											model?.inferenceUrl || config.providerUrl;
 										const resultData = await predict({
 											providerUrl,
 											modelId,
@@ -403,101 +360,107 @@ function ModelDetailComponent() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<div className="overflow-x-auto">
-							<Table>
-								<TableHeader>
-									<TableRow className="text-xs">
-										<TableHead className="w-20">Batch</TableHead>
-										<TableHead className="w-24">Queries</TableHead>
-										<TableHead>Merkle Root</TableHead>
-										<TableHead className="w-40">Committed</TableHead>
-										<TableHead className="w-20 text-center">Status</TableHead>
-										<TableHead className="w-32">Actions</TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{batches.map((batch) => (
-										<TableRow key={batch.batchId} className="text-xs">
-											<TableCell className="font-medium">
-												#{batch.batchId}
-											</TableCell>
-											<TableCell>{batch.queryCount}</TableCell>
-											<TableCell>
-												<code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-													{formatHash(batch.merkleRoot, "—")}
-												</code>
-											</TableCell>
-											<TableCell className="text-xs">
-												{new Date(
-													Number(batch.committedAt) * 1000,
-												).toLocaleString(undefined, {
-													month: "short",
-													day: "numeric",
-													hour: "2-digit",
-													minute: "2-digit",
-												})}
-											</TableCell>
-											<TableCell className="text-center">
-												{batch.audited ? (
-													getAuditStatusBadge(batch.auditStatus)
-												) : (
-													<Badge variant="outline" className="text-xs">
-														Pending
-													</Badge>
-												)}
-											</TableCell>
-											<TableCell>
-												{!batch.audited ? (
-													batch.activeAuditId !== "0" ? (
-														<Button
-															size="sm"
-															variant="secondary"
-															disabled
-															className="h-7 gap-1 text-xs"
-														>
-															<AlertCircle className="h-3 w-3" />
-															Audit Pending
-														</Button>
-													) : (
-														<Button
-															size="sm"
-															variant="outline"
-															onClick={() => handleChallenge(batch.batchId)}
-															disabled={
-																(isPending &&
-																	challengingBatch === batch.batchId) ||
-																(isConfirming &&
-																	challengingBatch === batch.batchId)
-															}
-															className="h-7 gap-1 text-xs"
-														>
-															<AlertCircle className="h-3 w-3" />
-															{(isPending || isConfirming) &&
-															challengingBatch === batch.batchId
-																? "..."
-																: "Challenge"}
-														</Button>
-													)
-												) : batch.auditStatus === 1 ? (
-													<span className="text-green-600 text-xs">
-														✓ Verified
-													</span>
-												) : (
-													<a
-														href={`${config.explorerBase}/tx/${batch.activeAuditId}`}
-														target="_blank"
-														rel="noreferrer"
-														className="text-blue-600 text-xs underline-offset-4 hover:underline"
-													>
-														View Audit
-													</a>
-												)}
-											</TableCell>
+						{batchesLoading ? (
+							<div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
+								Loading batches...
+							</div>
+						) : (
+							<div className="overflow-x-auto">
+								<Table>
+									<TableHeader>
+										<TableRow className="text-xs">
+											<TableHead className="w-20">Batch</TableHead>
+											<TableHead className="w-24">Queries</TableHead>
+											<TableHead>Merkle Root</TableHead>
+											<TableHead className="w-40">Committed</TableHead>
+											<TableHead className="w-20 text-center">Status</TableHead>
+											<TableHead className="w-32">Actions</TableHead>
 										</TableRow>
-									))}
-								</TableBody>
-							</Table>
-						</div>
+									</TableHeader>
+									<TableBody>
+										{batches.map((batch) => (
+											<TableRow key={batch.batchId} className="text-xs">
+												<TableCell className="font-medium">
+													#{batch.batchId}
+												</TableCell>
+												<TableCell>{batch.queryCount}</TableCell>
+												<TableCell>
+													<code className="rounded bg-muted px-1.5 py-0.5 text-xs">
+														{formatHash(batch.merkleRoot, "—")}
+													</code>
+												</TableCell>
+												<TableCell className="text-xs">
+													{new Date(
+														Number(batch.committedAt) * 1000,
+													).toLocaleString(undefined, {
+														month: "short",
+														day: "numeric",
+														hour: "2-digit",
+														minute: "2-digit",
+													})}
+												</TableCell>
+												<TableCell className="text-center">
+													{batch.audited ? (
+														getAuditStatusBadge(batch.auditStatus)
+													) : (
+														<Badge variant="outline" className="text-xs">
+															Pending
+														</Badge>
+													)}
+												</TableCell>
+												<TableCell>
+													{!batch.audited ? (
+														batch.activeAuditId !== "0" ? (
+															<Button
+																size="sm"
+																variant="secondary"
+																disabled
+																className="h-7 gap-1 text-xs"
+															>
+																<AlertCircle className="h-3 w-3" />
+																Audit Pending
+															</Button>
+														) : (
+															<Button
+																size="sm"
+																variant="outline"
+																onClick={() => handleChallenge(batch.batchId)}
+																disabled={
+																	(isPending &&
+																		challengingBatch === batch.batchId) ||
+																	(isConfirming &&
+																		challengingBatch === batch.batchId)
+																}
+																className="h-7 gap-1 text-xs"
+															>
+																<AlertCircle className="h-3 w-3" />
+																{(isPending || isConfirming) &&
+																challengingBatch === batch.batchId
+																	? "..."
+																	: "Challenge"}
+															</Button>
+														)
+													) : batch.auditStatus === 1 ? (
+														<span className="text-green-600 text-xs">
+															✓ Verified
+														</span>
+													) : (
+														<a
+															href={`${config.explorerBase}/tx/${batch.activeAuditId}`}
+															target="_blank"
+															rel="noreferrer"
+															className="text-blue-600 text-xs underline-offset-4 hover:underline"
+														>
+															View Audit
+														</a>
+													)}
+												</TableCell>
+											</TableRow>
+										))}
+									</TableBody>
+								</Table>
+							</div>
+						)}
 					</CardContent>
 				</Card>
 			)}

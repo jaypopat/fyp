@@ -1,32 +1,19 @@
 import type { Hex } from "viem";
-import type { hashAlgos } from "./types";
-import { hashBytes, hexToBytes } from "./utils";
-
-// Internal node domain separation prefix (leaves are treated as already-digested values)
-const NODE_PREFIX = new Uint8Array([0x01]);
-
-function concat(a: Uint8Array, b: Uint8Array): Uint8Array {
-	const out = new Uint8Array(a.length + b.length);
-	out.set(a, 0);
-	out.set(b, a.length);
-	return out;
-}
+import { hashPoseidonFields } from "./utils";
 
 function ensure0x(h: string): Hex {
 	return (h.startsWith("0x") ? h : `0x${h}`) as Hex;
 }
 
-// Returns plain 64-hex (no 0x) for internal nodes
-async function hashNode(left: string, right: string, algo: hashAlgos) {
-	const l = hexToBytes(ensure0x(left));
-	const r = hexToBytes(ensure0x(right));
-	return await hashBytes(concat(NODE_PREFIX, concat(l, r)), algo);
+// Returns plain 64-hex (no 0x) for internal nodes using Poseidon
+async function hashNode(left: string, right: string) {
+	// Convert hex strings to bigints and hash with Poseidon
+	const leftBigInt = BigInt(ensure0x(left));
+	const rightBigInt = BigInt(ensure0x(right));
+	return hashPoseidonFields([leftBigInt, rightBigInt]);
 }
 
-export async function merkleRoot(
-	leaves: string[],
-	algo: hashAlgos,
-): Promise<Hex> {
+export async function merkleRoot(leaves: string[]): Promise<Hex> {
 	if (leaves.length === 0) throw new Error("No leaves provided");
 	for (let i = 0; i < leaves.length; i++) {
 		const leaf = leaves[i];
@@ -48,7 +35,7 @@ export async function merkleRoot(
 			if (!left) throw new Error("Unexpected undefined left node");
 			const candidateRight = currentLevel[i + 1];
 			const right = candidateRight ?? left; // duplicate last if odd
-			next.push(await hashNode(left, right, algo));
+			next.push(await hashNode(left, right));
 		}
 		currentLevel = next;
 	}
@@ -61,14 +48,13 @@ export async function verifyMerkleProof(
 	leaf: string,
 	root: Hex,
 	proof: { sibling: string; position: "left" | "right" }[],
-	algo: hashAlgos,
 ): Promise<boolean> {
 	let current = leaf;
 	for (const { sibling, position } of proof) {
 		if (position === "left") {
-			current = await hashNode(sibling, current, algo);
+			current = await hashNode(sibling, current);
 		} else {
-			current = await hashNode(current, sibling, algo);
+			current = await hashNode(current, sibling);
 		}
 	}
 	return ensure0x(current) === root;
@@ -77,7 +63,6 @@ export async function verifyMerkleProof(
 export async function createMerkleProof(
 	leaves: string[],
 	index: number,
-	algo: hashAlgos,
 ): Promise<{
 	root: Hex;
 	proof: { sibling: string; position: "left" | "right" }[];
@@ -112,7 +97,7 @@ export async function createMerkleProof(
 			const left = level[i];
 			if (!left) throw new Error("Internal: left undefined");
 			const right = level[i + 1] ?? left; // duplicate last if odd
-			const parent = await hashNode(left, right, algo); // parent plain 64-hex
+			const parent = await hashNode(left, right); // parent plain 64-hex
 			next.push(parent);
 		}
 		level = next;
@@ -122,4 +107,40 @@ export async function createMerkleProof(
 	if (!rootPlain) throw new Error("Internal: root undefined");
 	const root = ensure0x(rootPlain);
 	return { root, proof };
+}
+
+/**
+ * Generate all Merkle proofs for every leaf in the tree.
+ * Returns arrays suitable for circuit input (merkle_paths and is_even_flags).
+ */
+export async function generateAllMerkleProofs(
+	leaves: string[],
+	maxTreeHeight: number,
+): Promise<{
+	merkle_paths: string[][];
+	is_even_flags: boolean[][];
+}> {
+	const merkle_paths: string[][] = [];
+	const is_even_flags: boolean[][] = [];
+
+	for (let i = 0; i < leaves.length; i++) {
+		const { proof } = await createMerkleProof(leaves, i);
+
+		// Convert proof to circuit format
+		const path: string[] = new Array(maxTreeHeight).fill("0");
+		const flags: boolean[] = new Array(maxTreeHeight).fill(false);
+
+		for (let j = 0; j < proof.length && j < maxTreeHeight; j++) {
+			const step = proof[j];
+			if (!step) continue;
+			path[j] = ensure0x(step.sibling);
+			// is_even means "current node is left child" (even index)
+			flags[j] = step.position === "right"; // if sibling is right, current is left (even)
+		}
+
+		merkle_paths.push(path);
+		is_even_flags.push(flags);
+	}
+
+	return { merkle_paths, is_even_flags };
 }

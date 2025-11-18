@@ -2,18 +2,13 @@ import type { TypeOf } from "@drizzle-team/brocli";
 import { select } from "@inquirer/prompts";
 import type { Hash } from "viem";
 import type { getModelOptions } from "../cli-args";
-import {
-	computeFileHash,
-	modelStatusToString,
-	validateHash,
-	withSpinner,
-} from "../utils";
+import { modelStatusToString, validateHash, withSpinner } from "../utils";
 import { zkFairSDK } from "./sdk";
 
 export type GetModelOpts = TypeOf<typeof getModelOptions>;
 
 export async function listModels() {
-	console.log("📋 Fetching all registered models...");
+	console.log(" Fetching all registered models...");
 
 	const models = await withSpinner(
 		"Loading models",
@@ -23,7 +18,7 @@ export async function listModels() {
 		"Models loaded successfully",
 	);
 
-	console.log(`\n📊 Found ${models.length} registered models:`);
+	console.log(`\n Found ${models.length} registered models:`);
 	console.log("==========================================");
 
 	if (models.length === 0) {
@@ -49,16 +44,9 @@ export async function listModels() {
 export async function getModel(options: GetModelOpts) {
 	let hashToUse: Hash;
 
-	if (options.modelHash && options.weightsFile) {
-		throw new Error("Provide either model hash or weights file, not both");
-	}
-
 	if (options.modelHash) {
 		hashToUse = validateHash(options.modelHash);
-		console.log(`🔍 Using provided model hash: ${hashToUse}`);
-	} else if (options.weightsFile) {
-		hashToUse = await computeFileHash(options.weightsFile);
-		console.log(`🔍 Computed hash from weights file: ${hashToUse}`);
+		console.log(` Using provided model hash: ${hashToUse}`);
 	} else {
 		// Interactive: Select from available models
 		const models = await withSpinner(
@@ -94,7 +82,7 @@ export async function getModel(options: GetModelOpts) {
 		"Model details retrieved",
 	);
 
-	console.log("\n📋 Model Details:");
+	console.log("\n Model Details:");
 	console.log("================");
 	console.log(`Name: ${model.name}`);
 	console.log(`Author: ${model.provider}`);

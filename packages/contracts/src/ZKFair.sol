@@ -3,56 +3,67 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-import {IVerifier} from "./Verifier.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 /// @title ZKFair - Zero-Knowledge Fairness Auditing for ML Models
 /// @notice Implements OATH protocol: Certification, Query Batching, Continuous Auditing
+/// @dev Uses off-chain attestation service for proof verification
 contract ZKFair is Ownable, Pausable {
-    
     // ============================================
     // STATE VARIABLES
     // ============================================
-    
-    IVerifier public verifier;
-    
+
+    address public attestationService; // Off-chain attestation service signer
+
     uint256 private modelCounter;
     uint256 private batchCounter;
     uint256 private auditCounter;
-    
+
     // ============================================
     // CONSTANTS
     // ============================================
-    
+
     uint256 public constant PROVIDER_STAKE = 10 ether;
     uint256 public constant AUDIT_RESPONSE_DEADLINE = 24 hours;
     uint256 public constant REQUIRED_SAMPLES = 100;
-    
+
     // ============================================
     // ENUMS
     // ============================================
-    
-    enum ModelStatus { REGISTERED, CERTIFIED, SLASHED }
-    enum AuditStatus { PENDING, PASSED, FAILED, EXPIRED }
-    
+
+    enum ModelStatus {
+        REGISTERED,
+        CERTIFIED,
+        SLASHED
+    }
+    enum AuditStatus {
+        PENDING,
+        PASSED,
+        FAILED,
+        EXPIRED
+    }
+
     // ============================================
     // STRUCTS
     // ============================================
-    
+
     /// @notice Phase 1: Model Registration & Certification
     struct Model {
         string name;
         address provider;
         string description;
+        string inferenceUrl; // Provider's inference endpoint
         bytes32 weightsHash;
         bytes32 datasetMerkleRoot;
-        uint256 fairnessThreshold;      // Scaled by 100 (e.g., 10 = 0.10 = 10%)
+        uint256 fairnessThreshold; // Scaled by 100 (e.g., 10 = 0.10 = 10%)
         ModelStatus status;
         uint256 stake;
         uint256 registeredAt;
         uint256 verifiedAt;
         bytes32 certificationProofHash;
     }
-    
+
     /// @notice Phase 2: Query Batch Commitment
     struct Batch {
         uint256 modelId;
@@ -65,7 +76,7 @@ contract ZKFair is Ownable, Pausable {
         AuditStatus auditStatus;
         uint256 activeAuditId;
     }
-    
+
     /// @notice Phase 3: Audit Request & Response
     struct Audit {
         uint256 batchId;
@@ -77,44 +88,77 @@ contract ZKFair is Ownable, Pausable {
         AuditStatus status;
         bytes32 proofHash;
     }
-    
+
     // ============================================
     // STORAGE MAPPINGS
     // ============================================
-    
+
     mapping(uint256 => Model) public models;
     mapping(uint256 => Batch) public batches;
     mapping(uint256 => Audit) public audits;
-    
+
     mapping(bytes32 => uint256) private modelByWeightsHash;
     mapping(address => uint256[]) private modelsByProvider;
     mapping(uint256 => uint256[]) private batchesByModel;
-    
+
     // ============================================
     // EVENTS
     // ============================================
-    
-    event ModelRegistered(uint256 indexed modelId, address indexed provider, bytes32 weightsHash, uint256 fairnessThreshold);
+
+    event ModelRegistered(
+        uint256 indexed modelId,
+        address indexed provider,
+        bytes32 weightsHash,
+        uint256 fairnessThreshold
+    );
     event ModelCertified(uint256 indexed modelId, bytes32 proofHash);
-    event BatchCommitted(uint256 indexed batchId, uint256 indexed modelId, bytes32 merkleRoot, uint256 queryCount);
-    event AuditRequested(uint256 indexed auditId, uint256 indexed batchId, uint256[] sampleIndices, uint256 deadline);
+    event InferenceUrlUpdated(uint256 indexed modelId, string newUrl);
+    event BatchCommitted(
+        uint256 indexed batchId,
+        uint256 indexed modelId,
+        bytes32 merkleRoot,
+        uint256 queryCount
+    );
+    event AuditRequested(
+        uint256 indexed auditId,
+        uint256 indexed batchId,
+        uint256[] sampleIndices,
+        uint256 deadline
+    );
     event AuditProofSubmitted(uint256 indexed auditId, bool passed);
-    event AuditExpired(uint256 indexed auditId, uint256 indexed batchId, address indexed slasher);
-    event ProviderSlashed(uint256 indexed modelId, address indexed provider, uint256 amount, string reason);
-    event StakeWithdrawn(uint256 indexed modelId, address indexed provider, uint256 amount);
-    event VerifierUpdated(address indexed oldVerifier, address indexed newVerifier);
-    
+    event AuditExpired(
+        uint256 indexed auditId,
+        uint256 indexed batchId,
+        address indexed slasher
+    );
+    event ProviderSlashed(
+        uint256 indexed modelId,
+        address indexed provider,
+        uint256 amount,
+        string reason
+    );
+    event StakeWithdrawn(
+        uint256 indexed modelId,
+        address indexed provider,
+        uint256 amount
+    );
+    event AttestationServiceUpdated(
+        address indexed oldService,
+        address indexed newService
+    );
+
     // ============================================
     // ERRORS
     // ============================================
-    
+
     error InvalidInput();
     error ModelNotFound();
     error BatchNotFound();
     error AuditNotFound();
     error UnauthorizedAccess();
     error InsufficientStake();
-    error InvalidProof();
+    error InvalidAttestation();
+    error InvalidSignature();
     error ModelAlreadyExists();
     error InvalidModelStatus();
     error DeadlineNotPassed();
@@ -125,69 +169,78 @@ contract ZKFair is Ownable, Pausable {
     error NoStakeToWithdraw();
     error HasPendingAudits();
     error ActiveAuditExists();
-    
+
     // ============================================
     // CONSTRUCTOR
     // ============================================
-    
-    constructor(address _verifier) Ownable(msg.sender) {
-        if (_verifier == address(0)) revert InvalidInput();
-        verifier = IVerifier(_verifier);
+
+    constructor(address _attestationService) Ownable(msg.sender) {
+        if (_attestationService == address(0)) revert InvalidInput();
+        attestationService = _attestationService;
     }
-    
+
     // ============================================
     // MODIFIERS
     // ============================================
-    
+
     modifier onlyProvider(uint256 modelId) {
         if (models[modelId].provider != msg.sender) revert UnauthorizedAccess();
         _;
     }
-    
+
     modifier validModel(uint256 modelId) {
         if (modelId == 0 || modelId > modelCounter) revert ModelNotFound();
         _;
     }
-    
+
     modifier validBatch(uint256 batchId) {
         if (batchId == 0 || batchId > batchCounter) revert BatchNotFound();
         _;
     }
-    
+
     modifier validAudit(uint256 auditId) {
         if (auditId == 0 || auditId > auditCounter) revert AuditNotFound();
         _;
     }
-    
+
     // ============================================
     // PHASE 1: MODEL CERTIFICATION
     // ============================================
-    
+
     /// @notice Register a new ML model with stake
     /// @param name Human-readable model name
     /// @param weightsHash Keccak256 hash of model weights
     /// @param datasetMerkleRoot Merkle root of calibration dataset D_val
     /// @param fairnessThreshold Maximum allowed fairness disparity (scaled by 100, e.g., 10 = 10%)
+    /// @param inferenceUrl Provider's inference endpoint URL
     /// @return modelId Unique identifier for the model
     function registerModel(
         string calldata name,
         string calldata description,
+        string calldata inferenceUrl,
         bytes32 weightsHash,
         bytes32 datasetMerkleRoot,
         uint256 fairnessThreshold
-    ) external payable whenNotPaused nonReentrant returns (uint256 modelId) {
-        if (bytes(name).length == 0 || weightsHash == bytes32(0) || datasetMerkleRoot == bytes32(0)) {
+    ) external payable whenNotPaused returns (uint256 modelId) {
+        if (
+            bytes(name).length == 0 ||
+            weightsHash == bytes32(0) ||
+            datasetMerkleRoot == bytes32(0)
+        ) {
             revert InvalidInput();
         }
-        if (fairnessThreshold == 0 || fairnessThreshold > 100) revert InvalidInput();
+        if (bytes(inferenceUrl).length == 0) revert InvalidInput();
+        if (fairnessThreshold == 0 || fairnessThreshold > 100)
+            revert InvalidInput();
         if (msg.value != PROVIDER_STAKE) revert InsufficientStake();
         if (modelByWeightsHash[weightsHash] != 0) revert ModelAlreadyExists();
-        
+
         modelId = ++modelCounter;
-        
+
         models[modelId] = Model({
             name: name,
             description: description,
+            inferenceUrl: inferenceUrl,
             provider: msg.sender,
             weightsHash: weightsHash,
             datasetMerkleRoot: datasetMerkleRoot,
@@ -198,40 +251,79 @@ contract ZKFair is Ownable, Pausable {
             verifiedAt: 0,
             certificationProofHash: bytes32(0)
         });
-        
+
         modelByWeightsHash[weightsHash] = modelId;
         modelsByProvider[msg.sender].push(modelId);
-        
-        emit ModelRegistered(modelId, msg.sender, weightsHash, fairnessThreshold);
+
+        emit ModelRegistered(
+            modelId,
+            msg.sender,
+            weightsHash,
+            fairnessThreshold
+        );
     }
-    
-    /// @notice Submit ZK proof that model satisfies fairness on calibration dataset D_val
-    /// @param modelId ID of the registered model
-    /// @param proof Noir ZK proof bytes
-    /// @param publicInputs Public inputs: [weightsHash, datasetMerkleRoot, fairnessThreshold]
+
+    /// @notice Submit attestation that proof was verified off-chain by attestation service
+    /// @param weightsHash Hash of model weights (canonical identifier)
+    /// @param attestationHash Hash of the attestation (keccak256(proof || "TRAINING_CERT"))
+    /// @param signature Signature from attestation service
     function submitCertificationProof(
-        uint256 modelId,
-        bytes calldata proof,
-        bytes32[] calldata publicInputs
-    ) external onlyProvider(modelId) validModel(modelId) whenNotPaused {
+        bytes32 weightsHash,
+        bytes32 attestationHash,
+        bytes calldata signature
+    ) external whenNotPaused {
+        uint256 modelId = modelByWeightsHash[weightsHash];
+        if (modelId == 0) revert ModelNotFound();
+
         Model storage model = models[modelId];
-        
+
+        if (model.provider != msg.sender) revert UnauthorizedAccess();
         if (model.status != ModelStatus.REGISTERED) revert InvalidModelStatus();
-        
-        bool valid = verifier.verify(proof, publicInputs);
-        if (!valid) revert InvalidProof();
-        
+
+        // Verify attestation signature
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(weightsHash, attestationHash, "TRAINING_CERT")
+        );
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
+            messageHash
+        );
+        address recoveredSigner = ECDSA.recover(
+            ethSignedMessageHash,
+            signature
+        );
+
+        if (recoveredSigner != attestationService) revert InvalidSignature();
+
         model.status = ModelStatus.CERTIFIED;
         model.verifiedAt = block.timestamp;
-        model.certificationProofHash = keccak256(proof);
-        
-        emit ModelCertified(modelId, model.certificationProofHash);
+        model.certificationProofHash = attestationHash;
+
+        emit ModelCertified(modelId, attestationHash);
     }
-    
+
+    /// @notice Update inference URL for a registered model
+    /// @param modelId ID of the model
+    /// @param newInferenceUrl New inference endpoint URL
+    function updateInferenceUrl(
+        uint256 modelId,
+        string calldata newInferenceUrl
+    ) external whenNotPaused {
+        if (modelId == 0 || modelId > modelCounter) revert ModelNotFound();
+
+        Model storage model = models[modelId];
+
+        if (model.provider != msg.sender) revert UnauthorizedAccess();
+        if (bytes(newInferenceUrl).length == 0) revert InvalidInput();
+
+        model.inferenceUrl = newInferenceUrl;
+
+        emit InferenceUrlUpdated(modelId, newInferenceUrl);
+    }
+
     // ============================================
     // PHASE 2: QUERY BATCH COMMITMENT
     // ============================================
-    
+
     /// @notice Commit a batch of queries served to clients
     /// @param modelId ID of the certified model used
     /// @param merkleRoot Merkle root of (query, output) pairs
@@ -245,19 +337,28 @@ contract ZKFair is Ownable, Pausable {
         uint256 queryCount,
         uint256 timestampStart,
         uint256 timestampEnd
-    ) external onlyProvider(modelId) validModel(modelId) whenNotPaused returns (uint256 batchId) {
+    )
+        external
+        onlyProvider(modelId)
+        validModel(modelId)
+        whenNotPaused
+        returns (uint256 batchId)
+    {
         Model storage model = models[modelId];
-        
+
         // Allow REGISTERED or CERTIFIED for development
         // In production, require CERTIFIED only
-        if (model.status != ModelStatus.CERTIFIED && model.status != ModelStatus.REGISTERED) {
+        if (
+            model.status != ModelStatus.CERTIFIED &&
+            model.status != ModelStatus.REGISTERED
+        ) {
             revert InvalidModelStatus();
         }
         if (merkleRoot == bytes32(0) || queryCount == 0) revert InvalidInput();
         if (timestampEnd < timestampStart) revert InvalidInput();
-        
+
         batchId = ++batchCounter;
-        
+
         batches[batchId] = Batch({
             modelId: modelId,
             merkleRoot: merkleRoot,
@@ -269,12 +370,12 @@ contract ZKFair is Ownable, Pausable {
             auditStatus: AuditStatus.PENDING,
             activeAuditId: 0
         });
-        
+
         batchesByModel[modelId].push(batchId);
-        
+
         emit BatchCommitted(batchId, modelId, merkleRoot, queryCount);
     }
-    
+
     // ============================================
     // PHASE 3: AUDITING
     // ============================================
@@ -283,16 +384,13 @@ contract ZKFair is Ownable, Pausable {
     /// @dev Uses blockhash-based pseudo-randomness - sufficient for most use cases
     /// @param batchId ID of the batch to audit
     /// @return auditId Unique identifier for the audit
-    function requestAudit(uint256 batchId)
-        external
-        validBatch(batchId)
-        whenNotPaused
-        returns (uint256 auditId)
-    {
+    function requestAudit(
+        uint256 batchId
+    ) external validBatch(batchId) whenNotPaused returns (uint256 auditId) {
         Batch storage batch = batches[batchId];
-        
+
         if (batch.audited) revert AlreadyAudited();
-        
+
         // Check for active audit
         if (batch.activeAuditId != 0) {
             Audit storage activeAudit = audits[batch.activeAuditId];
@@ -300,28 +398,34 @@ contract ZKFair is Ownable, Pausable {
                 revert ActiveAuditExists();
             }
         }
-        
+
         // Generate pseudo-random seed using blockhash
         // Using previous block hash for unpredictability
-        uint256 seed = uint256(keccak256(abi.encodePacked(
-            blockhash(block.number - 1),
-            batchId,
-            msg.sender,
-            block.timestamp,
-            auditCounter
-        )));
-        
+        uint256 seed = uint256(
+            keccak256(
+                abi.encodePacked(
+                    blockhash(block.number - 1),
+                    batchId,
+                    msg.sender,
+                    block.timestamp,
+                    auditCounter
+                )
+            )
+        );
+
         // Generate REQUIRED_SAMPLES random indices within batch range
         uint256[] memory sampleIndices = new uint256[](REQUIRED_SAMPLES);
         for (uint256 i = 0; i < REQUIRED_SAMPLES; i++) {
-            uint256 randomNumber = uint256(keccak256(abi.encodePacked(seed, i)));
+            uint256 randomNumber = uint256(
+                keccak256(abi.encodePacked(seed, i))
+            );
             sampleIndices[i] = randomNumber % batch.queryCount;
         }
-        
+
         // Create audit
         auditId = ++auditCounter;
         uint256 deadline = block.timestamp + AUDIT_RESPONSE_DEADLINE;
-        
+
         audits[auditId] = Audit({
             batchId: batchId,
             sampleIndices: sampleIndices,
@@ -332,101 +436,127 @@ contract ZKFair is Ownable, Pausable {
             status: AuditStatus.PENDING,
             proofHash: bytes32(0)
         });
-        
+
         batch.activeAuditId = auditId;
-        
+
         emit AuditRequested(auditId, batchId, sampleIndices, deadline);
     }
 
-    
     /// @notice Provider submits ZK proof responding to audit
     /// @param auditId ID of the audit request
-    /// @param proof Noir ZK proof bytes
-    /// @param publicInputs Public inputs: [batchMerkleRoot, modelWeightsHash, fairnessThreshold]
+    /// @notice Submit attestation that audit proof was verified off-chain by attestation service
+    /// @param auditId ID of the audit request
+    /// @param attestationHash Hash of the attestation (keccak256(proof || "AUDIT"))
+    /// @param signature Signature from attestation service
+    /// @param passed Whether the proof passed or failed
     function submitAuditProof(
         uint256 auditId,
-        bytes calldata proof,
-        bytes32[] calldata publicInputs
+        bytes32 attestationHash,
+        bytes calldata signature,
+        bool passed
     ) external validAudit(auditId) whenNotPaused {
         Audit storage audit = audits[auditId];
         Batch storage batch = batches[audit.batchId];
         Model storage model = models[batch.modelId];
-        
+
         if (model.provider != msg.sender) revert UnauthorizedAccess();
         if (audit.responded) revert AlreadyResponded();
         if (block.timestamp > audit.deadline) revert DeadlinePassed();
-        
-        bool valid = verifier.verify(proof, publicInputs);
-        
+
+        // Verify attestation signature
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(uint256(auditId), attestationHash, passed, "AUDIT")
+        );
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
+            messageHash
+        );
+        address recoveredSigner = ECDSA.recover(
+            ethSignedMessageHash,
+            signature
+        );
+
+        if (recoveredSigner != attestationService) revert InvalidSignature();
+
         audit.responded = true;
-        audit.proofHash = keccak256(proof);
+        audit.proofHash = attestationHash;
         batch.audited = true;
-        
-        if (valid) {
+
+        if (passed) {
             audit.status = AuditStatus.PASSED;
             batch.auditStatus = AuditStatus.PASSED;
         } else {
             audit.status = AuditStatus.FAILED;
             batch.auditStatus = AuditStatus.FAILED;
-            _slashProvider(batch.modelId, audit.challenger, "Invalid audit proof");
+            _slashProvider(
+                batch.modelId,
+                audit.challenger,
+                "Invalid audit proof"
+            );
         }
-        
-        emit AuditProofSubmitted(auditId, valid);
+
+        emit AuditProofSubmitted(auditId, passed);
     }
-    
+
     /// @notice Slash provider for missing audit deadline (permissionless)
     /// @dev Anyone can call after deadline - challenger gets slashed stake as reward
     /// @param auditId ID of the expired audit
-    function slashExpiredAudit(uint256 auditId) external validAudit(auditId) whenNotPaused {
+    function slashExpiredAudit(
+        uint256 auditId
+    ) external validAudit(auditId) whenNotPaused {
         Audit storage audit = audits[auditId];
         Batch storage batch = batches[audit.batchId];
-        
+
         if (audit.responded) revert AlreadyResponded();
         if (block.timestamp <= audit.deadline) revert DeadlineNotPassed();
-        
+
         audit.responded = true;
         audit.status = AuditStatus.EXPIRED;
         batch.audited = true;
         batch.auditStatus = AuditStatus.EXPIRED;
-        
+
         // Slash and reward challenger
-        _slashProvider(batch.modelId, audit.challenger, "Missed audit deadline");
-        
+        _slashProvider(
+            batch.modelId,
+            audit.challenger,
+            "Missed audit deadline"
+        );
+
         emit AuditExpired(auditId, audit.batchId, msg.sender);
     }
-    
+
     // ============================================
     // STAKE MANAGEMENT
     // ============================================
-    
+
     /// @dev Internal slashing function - sends stake to challenger
-    function _slashProvider(uint256 modelId, address recipient, string memory reason) internal {
+    function _slashProvider(
+        uint256 modelId,
+        address recipient,
+        string memory reason
+    ) internal {
         Model storage model = models[modelId];
-        
+
         if (model.status == ModelStatus.SLASHED) return;
-        
+
         uint256 slashAmount = model.stake;
         model.stake = 0;
         model.status = ModelStatus.SLASHED;
-        
+
         _safeTransfer(recipient, slashAmount);
-        
+
         emit ProviderSlashed(modelId, model.provider, slashAmount, reason);
     }
-    
+
     /// @notice Withdraw stake if all batches audited and passed
     /// @param modelId ID of the model
-    function withdrawStake(uint256 modelId)
-        external
-        onlyProvider(modelId)
-        validModel(modelId)
-        whenNotPaused
-    {
+    function withdrawStake(
+        uint256 modelId
+    ) external onlyProvider(modelId) validModel(modelId) whenNotPaused {
         Model storage model = models[modelId];
-        
+
         if (model.status != ModelStatus.CERTIFIED) revert InvalidModelStatus();
         if (model.stake == 0) revert NoStakeToWithdraw();
-        
+
         // Verify all batches are audited
         uint256[] memory modelBatches = batchesByModel[modelId];
         for (uint256 i = 0; i < modelBatches.length; i++) {
@@ -435,96 +565,108 @@ contract ZKFair is Ownable, Pausable {
                 revert HasPendingAudits();
             }
         }
-        
+
         uint256 amount = model.stake;
         model.stake = 0;
-        
+
         _safeTransfer(msg.sender, amount);
-        
+
         emit StakeWithdrawn(modelId, msg.sender, amount);
     }
-    
+
     // ============================================
     // INTERNAL HELPERS
     // ============================================
-    
+
     function _safeTransfer(address to, uint256 amount) internal {
         (bool success, ) = payable(to).call{value: amount}("");
         if (!success) revert TransferFailed();
     }
-    
+
     // ============================================
     // VIEW FUNCTIONS
     // ============================================
-    
-    function getModel(uint256 modelId) external view validModel(modelId) returns (Model memory) {
+
+    function getModel(
+        uint256 modelId
+    ) external view validModel(modelId) returns (Model memory) {
         return models[modelId];
     }
 
-    function getModelByWeightsHash(bytes32 weightsHash)
-        external
-        view
-        returns (Model memory model)
-    {
+    function getModelByWeightsHash(
+        bytes32 weightsHash
+    ) external view returns (Model memory model) {
         uint256 modelId = modelByWeightsHash[weightsHash];
         if (modelId == 0) revert ModelNotFound();
         return models[modelId];
     }
+
     function getAllModels() external view returns (Model[] memory _models) {
         _models = new Model[](modelCounter);
         for (uint256 i = 1; i <= modelCounter; i++) {
             _models[i - 1] = models[i];
         }
     }
-    function getBatch(uint256 batchId) external view validBatch(batchId) returns (Batch memory) {
+
+    function getBatch(
+        uint256 batchId
+    ) external view validBatch(batchId) returns (Batch memory) {
         return batches[batchId];
     }
-    
-    function getAudit(uint256 auditId) external view validAudit(auditId) returns (Audit memory) {
+
+    function getAudit(
+        uint256 auditId
+    ) external view validAudit(auditId) returns (Audit memory) {
         return audits[auditId];
     }
-    
-    function getModelsByProvider(address provider) external view returns (uint256[] memory) {
+
+    function getModelsByProvider(
+        address provider
+    ) external view returns (uint256[] memory) {
         return modelsByProvider[provider];
     }
-    
-    function getBatchesByModel(uint256 modelId) external view validModel(modelId) returns (uint256[] memory) {
+
+    function getBatchesByModel(
+        uint256 modelId
+    ) external view validModel(modelId) returns (uint256[] memory) {
         return batchesByModel[modelId];
     }
-    
-    function getModelIdByWeightsHash(bytes32 weightsHash) external view returns (uint256) {
+
+    function getModelIdByWeightsHash(
+        bytes32 weightsHash
+    ) external view returns (uint256) {
         uint256 modelId = modelByWeightsHash[weightsHash];
         if (modelId == 0) revert ModelNotFound();
         return modelId;
     }
-    
+
     function getTotalModels() external view returns (uint256) {
         return modelCounter;
     }
-    
+
     function getTotalBatches() external view returns (uint256) {
         return batchCounter;
     }
-    
+
     function getTotalAudits() external view returns (uint256) {
         return auditCounter;
     }
-    
+
     // ============================================
     // ADMIN FUNCTIONS
     // ============================================
-    
-    function setVerifier(address newVerifier) external onlyOwner {
-        if (newVerifier == address(0)) revert InvalidInput();
-        address oldVerifier = address(verifier);
-        verifier = IVerifier(newVerifier);
-        emit VerifierUpdated(oldVerifier, newVerifier);
+
+    function setAttestationService(address newService) external onlyOwner {
+        if (newService == address(0)) revert InvalidInput();
+        address oldService = attestationService;
+        attestationService = newService;
+        emit AttestationServiceUpdated(oldService, newService);
     }
-    
+
     function pause() external onlyOwner {
         _pause();
     }
-    
+
     function unpause() external onlyOwner {
         _unpause();
     }

@@ -1,12 +1,25 @@
-import { encode } from "@msgpack/msgpack";
+import { UltraHonkBackend } from "@aztec/bb.js";
+import initACVM from "@noir-lang/acvm_js";
+import { type CompiledCircuit, Noir } from "@noir-lang/noir_js";
+import initNoirWasm from "@noir-lang/noirc_abi";
+import {
+	fairness_audit_circuit,
+	type fairness_auditInputType,
+} from "@zkfair/zk-circuits/codegen";
 import type { Hash, Hex } from "viem";
 import type { ContractClient } from "./contract";
 import { createMerkleProof, merkleRoot } from "./merkle";
-import type { hashAlgos } from "./types";
-import { hashBytes, hexToBytes } from "./utils";
+import { hashBytes } from "./utils";
 
-const LEAF_SCHEMA = "MSGPACK" as const;
-const DEFAULT_HASH_ALGO: hashAlgos = "SHA-256";
+// Initialize WASM modules once (shared with proof.ts)
+let wasmInitialized = false;
+async function ensureWasmInitialized() {
+	if (!wasmInitialized) {
+		await initNoirWasm();
+		await initACVM();
+		wasmInitialized = true;
+	}
+}
 
 /**
  * Canonical query record for audit trail
@@ -15,7 +28,8 @@ const DEFAULT_HASH_ALGO: hashAlgos = "SHA-256";
 export type AuditRecord = {
 	queryId: string;
 	modelId: number;
-	inputHash: Hex;
+	features: number[];
+	sensitiveAttr: number;
 	prediction: number;
 	timestamp: number;
 };
@@ -29,8 +43,6 @@ export type AuditBatch = {
 	endIndex: number; // inclusive
 	count: number; // should equal (endIndex - startIndex + 1)
 	root: Hex;
-	leafAlgo: hashAlgos;
-	leafSchema: typeof LEAF_SCHEMA;
 	createdAt: number; // ms timestamp
 };
 
@@ -51,152 +63,132 @@ function f32(n: number): number {
 
 /**
  * Encode a query record as a canonical leaf for Merkle tree
- * Domain-separated with version prefix
+ * Domain-separated with version prefix, includes all mutable fields:
+ * queryId, modelId, features, sensitiveAttr, inputHash, prediction, timestamp
  */
 function encodeRecordLeaf(r: AuditRecord): Uint8Array {
 	const tuple: unknown[] = [
 		"ZKFAIR:RECORD:V1",
 		r.queryId,
 		r.modelId,
-		hexToBytes(r.inputHash),
+		r.features,
+		r.sensitiveAttr,
 		f32(r.prediction),
 		r.timestamp,
 	];
-	return encode(tuple);
-}
-
-/**
- * Convert audit records to Merkle tree leaves
- * Returns leaves as plain 64-hex strings (no 0x prefix) and index mapping
- */
-export async function recordsToLeaves(
-	records: AuditRecord[],
-	hashAlgo: hashAlgos = DEFAULT_HASH_ALGO,
-): Promise<{ leaves: string[]; indexById: Map<string, number> }> {
-	const leaves: string[] = [];
-	const indexById = new Map<string, number>();
-
-	for (const [i, rec] of records.entries()) {
-		const encoded = encodeRecordLeaf(rec);
-		const leaf = await hashBytes(encoded, hashAlgo);
-		leaves.push(leaf.toLowerCase());
-		indexById.set(rec.queryId, i);
-	}
-
-	return { leaves, indexById };
-}
-
-/**
- * Compute Merkle root and metadata for a batch of query records
- * This is storage-agnostic - you provide the records
- */
-export async function computeAuditBatch(
-	records: AuditRecord[],
-	hashAlgo: hashAlgos = DEFAULT_HASH_ALGO,
-): Promise<{
-	root: Hex;
-	count: number;
-	leafAlgo: hashAlgos;
-	leafSchema: typeof LEAF_SCHEMA;
-	indices: { queryId: string; index: number }[];
-}> {
-	if (records.length === 0) {
-		throw new Error("No records provided for batch");
-	}
-
-	const { leaves, indexById } = await recordsToLeaves(records, hashAlgo);
-	const root = await merkleRoot(leaves, hashAlgo);
-
-	const indices = records.map((r, i) => ({
-		queryId: r.queryId,
-		index: indexById.get(r.queryId) ?? i,
-	}));
-
-	return {
-		root,
-		count: leaves.length,
-		leafAlgo: hashAlgo,
-		leafSchema: LEAF_SCHEMA,
-		indices,
-	};
-}
-
-/**
- * Create a Merkle membership proof for a specific query in a batch
- * Returns the root and proof path
- */
-export async function createAuditProof(
-	records: AuditRecord[],
-	queryId: string,
-	hashAlgo: hashAlgos = DEFAULT_HASH_ALGO,
-): Promise<AuditProof> {
-	if (records.length === 0) {
-		throw new Error("No records provided");
-	}
-
-	const { leaves, indexById } = await recordsToLeaves(records, hashAlgo);
-	const index = indexById.get(queryId);
-
-	if (index === undefined) {
-		throw new Error(`Query ID "${queryId}" not found in records`);
-	}
-
-	const { root, proof } = await createMerkleProof(leaves, index, hashAlgo);
-
-	return { root, index, proof };
-}
-
-/**
- * Verify an audit proof for a query record
- */
-export async function verifyAuditProof(
-	record: AuditRecord,
-	proof: AuditProof,
-	hashAlgo: hashAlgos = DEFAULT_HASH_ALGO,
-): Promise<boolean> {
-	const encoded = encodeRecordLeaf(record);
-	let current = await hashBytes(encoded, hashAlgo);
-
-	for (const { sibling, position } of proof.proof) {
-		const left = position === "left" ? sibling : current;
-		const right = position === "left" ? current : sibling;
-
-		const leftBytes = hexToBytes(`0x${left}` as Hex);
-		const rightBytes = hexToBytes(`0x${right}` as Hex);
-		const NODE_PREFIX = new Uint8Array([0x01]);
-		const combined = new Uint8Array(1 + leftBytes.length + rightBytes.length);
-		combined.set(NODE_PREFIX, 0);
-		combined.set(leftBytes, 1);
-		combined.set(rightBytes, 1 + leftBytes.length);
-
-		current = await hashBytes(combined, hashAlgo);
-	}
-
-	const computedRoot = `0x${current}` as Hex;
-	return computedRoot.toLowerCase() === proof.root.toLowerCase();
+	return new TextEncoder().encode(JSON.stringify(tuple));
 }
 
 /**
  * AuditAPI - High-level audit operations with contract integration
  * Provides both local computation and on-chain submission capabilities
+ * Uses standardized Poseidon hash and JSON encoding
  */
 export class AuditAPI {
 	constructor(
 		private contracts: ContractClient,
-		private hashAlgo: hashAlgos = DEFAULT_HASH_ALGO,
+		private attestationServiceUrl: string,
 	) {}
 
 	/**
 	 * Build a batch from records
+	 * Uses standardized Poseidon hash and JSON encoding
 	 */
 	async buildBatch(records: AuditRecord[]): Promise<{
 		root: Hex;
 		count: number;
-		leafAlgo: hashAlgos;
-		leafSchema: typeof LEAF_SCHEMA;
 		indices: { queryId: string; index: number }[];
 	}> {
-		return computeAuditBatch(records, this.hashAlgo);
+		if (!records.length) {
+			throw new Error("Cannot build batch from empty records");
+		}
+
+		const leaves: string[] = [];
+		const indexById = new Map<string, number>();
+
+		for (const [i, rec] of records.entries()) {
+			const encoded = encodeRecordLeaf(rec);
+			const leaf = hashBytes(encoded);
+			leaves.push(leaf.toLowerCase());
+			indexById.set(rec.queryId, i);
+		}
+
+		const root = await merkleRoot(leaves);
+
+		const indices = records.map((r, i) => ({
+			queryId: r.queryId,
+			index: indexById.get(r.queryId) ?? i,
+		}));
+
+		return {
+			root,
+			count: records.length,
+			indices,
+		};
+	}
+	async generateFairnessZKProof(
+		root: Hex,
+		sampleIndices: number[],
+		records: AuditRecord[],
+		merkleProofs: AuditProof[],
+	): Promise<{
+		zkProof: Hex;
+		publicInputs: Hex[];
+		attestationHash: Hash;
+		signature: Hex;
+		passed: boolean;
+	}> {
+		// Initialize WASM modules before using Noir
+		await ensureWasmInitialized();
+
+		// process merkleProofs auditProof type to fit circuit input
+		// & read thresholds off of .zkfair dir and model features data
+		const input: fairness_auditInputType = {
+			// TODO: populate with actual fairness audit inputs from parameters
+		} as fairness_auditInputType;
+
+		const noir = new Noir(fairness_audit_circuit as CompiledCircuit);
+		const { witness } = await noir.execute(input);
+
+		const backend = new UltraHonkBackend(fairness_audit_circuit.bytecode);
+		const proofData = await backend.generateProof(witness);
+
+		const proofHash = `0x${Array.from(proofData.proof)
+			.map((b) => b.toString(16).padStart(2, "0"))
+			.join("")}` as Hash;
+
+		// Request attestation from service
+		const attestationResponse = await fetch(
+			`${this.attestationServiceUrl}/attest/audit`,
+			{
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					proof: proofHash,
+					publicInputs: proofData.publicInputs,
+				}),
+			},
+		);
+
+		if (!attestationResponse.ok) {
+			throw new Error(
+				`Attestation service error: ${attestationResponse.status} ${attestationResponse.statusText}`,
+			);
+		}
+
+		const attestation = (await attestationResponse.json()) as {
+			attestationHash: Hash;
+			signature: Hex;
+			passed: boolean;
+		};
+
+		return {
+			zkProof: proofHash,
+			publicInputs: proofData.publicInputs as Hex[],
+			attestationHash: attestation.attestationHash,
+			signature: attestation.signature,
+			passed: attestation.passed,
+		};
 	}
 
 	/**
@@ -206,14 +198,29 @@ export class AuditAPI {
 		records: AuditRecord[],
 		queryId: string,
 	): Promise<AuditProof> {
-		return createAuditProof(records, queryId, this.hashAlgo);
-	}
+		if (records.length === 0) {
+			throw new Error("No records provided");
+		}
 
-	/**
-	 * Verify a proof
-	 */
-	async verifyProof(record: AuditRecord, proof: AuditProof): Promise<boolean> {
-		return verifyAuditProof(record, proof, this.hashAlgo);
+		const leaves: string[] = [];
+		const indexById = new Map<string, number>();
+
+		for (const [i, rec] of records.entries()) {
+			const encoded = encodeRecordLeaf(rec);
+			const leaf = hashBytes(encoded);
+			leaves.push(leaf.toLowerCase());
+			indexById.set(rec.queryId, i);
+		}
+
+		const index = indexById.get(queryId);
+
+		if (index === undefined) {
+			throw new Error(`Query ID "${queryId}" not found in records`);
+		}
+
+		const { root, proof } = await createMerkleProof(leaves, index);
+
+		return { root, index, proof };
 	}
 
 	// ============================================
@@ -255,18 +262,25 @@ export class AuditAPI {
 	}
 
 	/**
-	 * Submit audit proof in response to an audit request
+	 * Submit audit proof attestation in response to an audit request
 	 * @param auditId Audit ID
-	 * @param proof ZK proof bytes
-	 * @param publicInputs Public inputs for verification
+	 * @param attestationHash Hash of the attestation
+	 * @param signature Signature from attestation service
+	 * @param passed Whether the audit passed or failed
 	 * @returns Transaction hash
 	 */
 	async submitAuditProof(
 		auditId: bigint,
-		proof: Hash,
-		publicInputs: Hash[],
+		attestationHash: Hash,
+		signature: `0x${string}`,
+		passed: boolean,
 	): Promise<Hash> {
-		return await this.contracts.submitAuditProof(auditId, proof, publicInputs);
+		return await this.contracts.submitAuditProof(
+			auditId,
+			attestationHash,
+			signature,
+			passed,
+		);
 	}
 
 	/**

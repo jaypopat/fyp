@@ -1,11 +1,13 @@
 import { mkdir } from "node:fs/promises";
-import { encode } from "@msgpack/msgpack";
 import type { Hash } from "viem";
-import type { FairnessFile } from "./artifacts";
+import type { FairnessFile, PathsFile } from "./artifacts";
 import type { ContractClient } from "./contract";
-import { merkleRoot } from "./merkle";
-import type { CommitOptions, encodingSchemas, hashAlgos } from "./types";
-import { getArtifactDir, hashBytes, parseCSV } from "./utils";
+import { generateAllMerkleProofs, merkleRoot } from "./merkle";
+import type { CommitOptions } from "./types";
+import { getArtifactDir, parseCSV, weightsToFields } from "./utils";
+
+const FIELD_MODULUS =
+	21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
 export class CommitAPI {
 	constructor(private contracts: ContractClient) {}
@@ -22,23 +24,52 @@ export class CommitAPI {
 			fairnessThresholdPath,
 		).json()) as FairnessFile;
 
-		// Generate deterministic master salt from model files
-		const masterSalt = await this.generateMasterSalt(
-			weightsPath,
+		// Compute weights hash first (used for cache directory)
+		const weightsHash = await this.hashWeights(new Uint8Array(weights));
+
+		// Check for cached commitments
+		const cachedData = await this.loadCachedCommitments(
+			weightsHash,
 			dataSetPath,
+			weightsPath,
 			options.model,
 		);
 
-		const { saltsMap, dataSetMerkleRoot, weightsHash } =
-			await this.getCommitments(
+		let masterSalt: string;
+		let saltsMap: Record<number, string>;
+		let dataSetMerkleRoot: Hash;
+		let merklePaths: string[][];
+		let isEvenFlags: boolean[][];
+
+		if (cachedData) {
+			console.log(" Using cached commitments (files unchanged)");
+			masterSalt = cachedData.masterSalt;
+			saltsMap = cachedData.salts;
+			dataSetMerkleRoot = cachedData.datasetMerkleRoot;
+			merklePaths = cachedData.merklePaths;
+			isEvenFlags = cachedData.isEvenFlags;
+		} else {
+			console.log("Computing fresh commitments...");
+
+			// Generate deterministic master salt from model files
+			masterSalt = await this.generateMasterSalt(
+				weightsPath,
+				dataSetPath,
+				options.model,
+			);
+
+			const commitments = await this.getCommitments(
 				datasetRows,
 				new Uint8Array(weights),
 				masterSalt,
-				{
-					encoding: options.schema.encodingSchema,
-					hashAlgo: options.schema.cryptoAlgo,
-				},
+				weightsHash, // Pass already-computed hash to avoid recomputation
 			);
+
+			saltsMap = commitments.saltsMap;
+			dataSetMerkleRoot = commitments.dataSetMerkleRoot;
+			merklePaths = commitments.merklePaths;
+			isEvenFlags = commitments.isEvenFlags;
+		}
 
 		// Attempt to register the model - if it already exists, provide a clear error
 		let hash: Hash;
@@ -48,10 +79,15 @@ export class CommitAPI {
 			const fairnessThresholdPercent = Math.ceil(
 				fairnessThreshold.targetDisparity * 100,
 			);
+			// log the commitments
+			console.log("Registering model with the following commitments:");
+			console.log(" Weights Hash:", weightsHash);
+			console.log(" Dataset Merkle Root:", dataSetMerkleRoot);
 
 			hash = await this.contracts.registerModel(
 				options.model.name,
 				options.model.description,
+				options.model.inferenceUrl,
 				weightsHash,
 				dataSetMerkleRoot,
 				fairnessThresholdPercent,
@@ -70,11 +106,12 @@ export class CommitAPI {
 				fairnessThreshold: fairnessThresholdPath,
 			},
 			options.model,
-			options.schema,
 			masterSalt,
 			saltsMap,
 			dataSetMerkleRoot,
 			weightsHash,
+			merklePaths,
+			isEvenFlags,
 		);
 
 		return hash;
@@ -82,90 +119,158 @@ export class CommitAPI {
 
 	/**
 	 * Generate deterministic master salt from model files.
-	 * This ensures same model files always produce the same commitment.
-	 *
-	 * master_salt = HASH(weights_hash || dataset_hash || metadata_json)
+	 * Uses SHA-256 only (circuit receives pre-computed salts from salts.json).
+	 * Outputs integer representation (first 31 bytes as Field element)
+	 * master_salt = SHA-256(weights_hash || dataset_hash || metadata_hash)
 	 */
 	private async generateMasterSalt(
 		weightsPath: string,
 		datasetPath: string,
 		metadata: CommitOptions["model"],
 	): Promise<string> {
-		// Hash the weights file
+		// Hash each file/data independently
 		const weightsBuffer = await Bun.file(weightsPath).arrayBuffer();
-		const weightsHash = await hashBytes(
-			new Uint8Array(weightsBuffer),
-			"SHA-256",
-		);
+		const weightsHashBuf = await crypto.subtle.digest("SHA-256", weightsBuffer);
+		const weightsHash = Buffer.from(weightsHashBuf).toString("hex");
 
-		// Hash the dataset file
 		const datasetBuffer = await Bun.file(datasetPath).arrayBuffer();
-		const datasetHash = await hashBytes(
-			new Uint8Array(datasetBuffer),
-			"SHA-256",
-		);
+		const datasetHashBuf = await crypto.subtle.digest("SHA-256", datasetBuffer);
+		const datasetHash = Buffer.from(datasetHashBuf).toString("hex");
 
-		// Hash the metadata (for determinism based on model identity)
 		const metadataString = JSON.stringify({
 			name: metadata.name,
 			description: metadata.description,
 			creator: metadata.creator,
 		});
-		const metadataHash = await hashBytes(
+		const metadataHashBuf = await crypto.subtle.digest(
+			"SHA-256",
 			new TextEncoder().encode(metadataString),
-			"SHA-256",
 		);
+		const metadataHash = Buffer.from(metadataHashBuf).toString("hex");
 
-		// Combine all hashes to create master salt
-		const combined = `${weightsHash}:${datasetHash}:${metadataHash}`;
-		const masterSalt = await hashBytes(
-			new TextEncoder().encode(combined),
+		// Combine with SHA-256
+		const combined = weightsHash + datasetHash + metadataHash;
+		const masterSaltBuf = await crypto.subtle.digest(
 			"SHA-256",
+			new TextEncoder().encode(combined),
 		);
+		const masterSaltHex = Buffer.from(masterSaltBuf).toString("hex");
+		const masterSaltBigInt = BigInt(`0x${masterSaltHex}`);
+
+		const masterSalt = (masterSaltBigInt % FIELD_MODULUS).toString();
 
 		return masterSalt;
+	}
+
+	/**
+	 * Load cached commitments if they exist and files haven't changed.
+	 * Returns null if cache is invalid or doesn't exist.
+	 */
+	private async loadCachedCommitments(
+		weightsHash: Hash,
+		datasetPath: string,
+		weightsPath: string,
+		_metadata: CommitOptions["model"],
+	): Promise<{
+		masterSalt: string;
+		salts: Record<number, string>;
+		datasetMerkleRoot: Hash;
+		merklePaths: string[][];
+		isEvenFlags: boolean[][];
+	} | null> {
+		try {
+			const dir = getArtifactDir(weightsHash);
+
+			// Check if cache directory exists
+			const dirExists = await Bun.file(`${dir}/master_salt.txt`).exists();
+			if (!dirExists) {
+				return null;
+			}
+
+			// Load cached paths to verify files haven't changed
+			const pathsFile = Bun.file(`${dir}/paths.json`);
+			if (!(await pathsFile.exists())) {
+				return null;
+			}
+
+			const cachedPaths = (await pathsFile.json()) as PathsFile;
+
+			// Verify paths match (ie cache aint invalid)
+			if (
+				cachedPaths.dataset !== datasetPath ||
+				cachedPaths.weights !== weightsPath
+			) {
+				console.log(" Cache invalid: file paths changed");
+				return null;
+			}
+
+			// Load all cached artifacts
+			const [masterSalt, salts, commitments, merkleProofs] = await Promise.all([
+				Bun.file(`${dir}/master_salt.txt`).text(),
+				Bun.file(`${dir}/salts.json`).json() as Promise<Record<number, string>>,
+				Bun.file(`${dir}/commitments.json`).json() as Promise<{
+					datasetMerkleRoot: Hash;
+				}>,
+				Bun.file(`${dir}/merkle_proofs.json`).json() as Promise<{
+					merklePaths: string[][];
+					isEvenFlags: boolean[][];
+				}>,
+			]);
+
+			return {
+				masterSalt: masterSalt.trim(),
+				salts,
+				datasetMerkleRoot: commitments.datasetMerkleRoot,
+				merklePaths: merkleProofs.merklePaths,
+				isEvenFlags: merkleProofs.isEvenFlags,
+			};
+		} catch {
+			// Cache doesn't exist or is corrupted
+			return null;
+		}
 	}
 
 	private async getCommitments(
 		datasetRows: string[][],
 		weights: Uint8Array,
 		masterSalt: string,
-		options: {
-			encoding: encodingSchemas;
-			hashAlgo: hashAlgos;
-		},
+		weightsHash?: Hash,
 	): Promise<{
 		saltsMap: Record<number, string>;
 		dataSetMerkleRoot: Hash;
 		weightsHash: Hash;
+		merklePaths: string[][];
+		isEvenFlags: boolean[][];
 	}> {
-		const weightsHash = await this.hashWeights(weights, options.hashAlgo);
+		// Use provided weightsHash (used for cache lookup in fs)
+		const finalWeightsHash = weightsHash || (await this.hashWeights(weights));
 
 		// Derive per-row salts from master salt
 		const saltsMap = await this.deriveSalts(
 			masterSalt,
 			datasetRows.length,
-			weightsHash,
-			options.hashAlgo,
+			finalWeightsHash,
 		);
 
-		const rowHashes: string[] = [];
-		for (let i = 0; i < datasetRows.length; i++) {
-			const row = datasetRows[i];
-			if (!row) throw new Error(`Row index ${i} missing while hashing dataset`);
-			const encodedRow = await this.encodeRow(row, options.encoding);
-			const salt = saltsMap[i];
-			if (!salt) throw new Error(`Salt missing for row ${i}`);
-			const hashedRow = await this.hashRow(encodedRow, salt, options.hashAlgo);
-			if (hashedRow.length !== 64) {
-				throw new Error(
-					`Row hash length invalid (expected 64 hex chars, got ${hashedRow.length}) at index ${i}`,
-				);
-			}
-			rowHashes.push(hashedRow);
-		}
+		console.log(` Hashing ${datasetRows.length} dataset rows with Poseidon...`);
 
-		const dataSetMerkleRoot = await merkleRoot(rowHashes, options.hashAlgo);
+		const rowHashes = await Promise.all(
+			datasetRows.map(async (row, i) => {
+				if (!row)
+					throw new Error(`Row index ${i} missing while hashing dataset`);
+				const salt = saltsMap[i];
+				if (!salt) throw new Error(`Salt missing for row ${i}`);
+				const hashedRow = await this.hashRow(row, salt);
+				if (hashedRow.length !== 64) {
+					throw new Error(
+						`Row hash length invalid (expected 64 hex chars, got ${hashedRow.length}) at index ${i}`,
+					);
+				}
+				return hashedRow;
+			}),
+		);
+
+		const dataSetMerkleRoot = await merkleRoot(rowHashes);
 
 		if (
 			!(dataSetMerkleRoot.startsWith("0x") && dataSetMerkleRoot.length === 66)
@@ -173,28 +278,50 @@ export class CommitAPI {
 			throw new Error(`Merkle root malformed: ${dataSetMerkleRoot}`);
 		}
 
+		// Generate Merkle proofs for all leaves
+		console.log(` Generating Merkle proofs for ${rowHashes.length} leaves...`);
+		const MAX_TREE_HEIGHT = 15; // Same as circuit constant
+		const { merkle_paths, is_even_flags } = await generateAllMerkleProofs(
+			rowHashes,
+			MAX_TREE_HEIGHT,
+		);
+
 		return {
 			saltsMap,
 			dataSetMerkleRoot,
-			weightsHash,
+			weightsHash: finalWeightsHash,
+			merklePaths: merkle_paths,
+			isEvenFlags: is_even_flags,
 		};
 	}
 
 	/**
-	 * Derive per-row salts from master salt using:
-	 * row_salt[i] = HASH(master_salt || ":" || row_index || ":" || weightsHash)
+	 * Derive per-row salts using SHA-256 (fast, deterministic).
+	 * Outputs integer representation (first 31 bytes as Field element)
+	 * Salts are private inputs to circuit, no need for ZK-friendly derivation.
+	 * row_salt[i] = SHA-256(master_salt || row_index || weightsHash) → converted to integer
 	 */
 	private async deriveSalts(
 		masterSalt: string,
 		rowCount: number,
 		weightsHash: Hash,
-		hashAlgo: hashAlgos,
 	): Promise<Record<number, string>> {
 		const salts: Record<number, string> = {};
+
+		console.log(` Deriving ${rowCount} row salts with SHA-256...`);
 		for (let i = 0; i < rowCount; i++) {
-			const input = `${masterSalt}:${i}:${weightsHash}`;
-			const inputBytes = new TextEncoder().encode(input);
-			salts[i] = await hashBytes(inputBytes, hashAlgo);
+			// Combine master_salt + index + weightsHash
+			// Note: masterSalt is now an integer string, so reconstruct the hash
+			const input = `${masterSalt}${i}${weightsHash}`;
+			const saltBuf = await crypto.subtle.digest(
+				"SHA-256",
+				new TextEncoder().encode(input),
+			);
+			const saltHex = Buffer.from(saltBuf).toString("hex");
+			const saltBigInt = BigInt(`0x${saltHex}`);
+
+			const saltField = saltBigInt % FIELD_MODULUS;
+			salts[i] = saltField.toString();
 		}
 		return salts;
 	}
@@ -202,11 +329,12 @@ export class CommitAPI {
 	private async generateConfigDirectory(
 		filePaths: { dataset: string; weights: string; fairnessThreshold: string },
 		metadata: CommitOptions["model"],
-		schema: CommitOptions["schema"],
 		masterSalt: string,
 		salts: Record<number, string>,
 		dataSetMerkleRoot: Hash,
 		weightsHash: Hash,
+		merklePaths: string[][],
+		isEvenFlags: boolean[][],
 	) {
 		const dir = getArtifactDir(weightsHash);
 		await mkdir(dir, { recursive: true });
@@ -223,7 +351,6 @@ export class CommitAPI {
 					2,
 				),
 			),
-			Bun.write(`${dir}/schema.json`, JSON.stringify(schema, null, 2)),
 			Bun.write(
 				`${dir}/paths.json`,
 				JSON.stringify(
@@ -236,44 +363,39 @@ export class CommitAPI {
 					2,
 				),
 			),
+			Bun.write(
+				`${dir}/merkle_proofs.json`,
+				JSON.stringify({ merklePaths, isEvenFlags }, null, 2),
+			),
 		]);
-		console.log(`✅ Artifacts saved to ${dir}`);
+		console.log(` Artifacts saved to ${dir}`);
 	}
 
-	private async hashWeights(
-		weightsBuffer: Uint8Array,
-		algo: hashAlgos,
-	): Promise<Hash> {
-		const plain = await hashBytes(weightsBuffer, algo);
-		if (plain.length !== 64) throw new Error("weights hash length invalid");
-		return `0x${plain}` as Hash;
-	}
+	private async hashWeights(weightsBuffer: Uint8Array): Promise<Hash> {
+		// Parse binary weights file (float32 array)
+		const weightsFloat32 = new Float32Array(weightsBuffer.buffer);
 
-	private async encodeRow(
-		row: string[],
-		encoding: encodingSchemas,
-	): Promise<Uint8Array> {
-		switch (encoding) {
-			case "MSGPACK":
-				return encode(row);
-			case "JSON":
-				return new TextEncoder().encode(JSON.stringify(row));
-		}
+		// Convert to Field array
+		const weightsFields = await weightsToFields(weightsFloat32);
+
+		// Hash with Poseidon for ZK-verifiable commitment
+		const { hashPoseidonFields } = await import("./utils");
+		const weightsHash = hashPoseidonFields(weightsFields);
+
+		return `0x${weightsHash}` as Hash;
 	}
 
 	private async hashRow(
-		row: Uint8Array,
+		row: Array<number | string>,
 		salt: string,
-		hashAlgo: hashAlgos,
 	): Promise<string> {
-		// plain hex leaf hash (row || salt)
-		const saltBytes = new TextEncoder().encode(salt);
-		const combined = new Uint8Array(row.length + saltBytes.length);
-		combined.set(row, 0);
-		combined.set(saltBytes, row.length);
-		const plain = await hashBytes(combined, hashAlgo); // already plain 64
-		if (plain.length !== 64)
+		// Hash: Poseidon([...row_values, salt_bigint])
+		const { hashPoseidonFields } = await import("./utils");
+		const saltBigInt = BigInt(salt);
+		const rowWithSalt = [...row, saltBigInt];
+		const hash = await hashPoseidonFields(rowWithSalt);
+		if (hash.length !== 64)
 			throw new Error("row hash length invalid post hashing");
-		return plain;
+		return hash;
 	}
 }

@@ -9,6 +9,7 @@ primary_region = "lhr"
 [env]
   NODE_ENV = "production"
   PORT = "5000"
+  DATABASE_URL = "/app/data/zkfair.db"
 
 [http_service]
   internal_port = 5000

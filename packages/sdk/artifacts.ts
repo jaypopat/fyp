@@ -1,5 +1,4 @@
 import type { Hash } from "viem";
-import type { encodingSchemas, hashAlgos } from "./types";
 
 function assert(condition: unknown, msg: string): asserts condition {
 	if (!condition) throw new Error(msg);
@@ -20,17 +19,65 @@ export function assertHash(
 export interface PathsFile {
 	dataset: string;
 	weights: string;
-	threshold: string;
+	fairnessThreshold: string;
 }
+export interface Thresholds {
+	group_a: number;
+	group_b: number;
+}
+
 export interface FairnessThresholdFile {
 	metric: "demographic_parity" | "equalized_odds";
 	targetDisparity: number;
 	protectedAttribute: string;
+	protectedAttributeIndex: number; // Column index of sensitive attribute in dataset
+	thresholds: Thresholds;
+	calculatedMetrics?: Record<string, number>;
 }
-export interface SchemaFile {
-	cryptoAlgo: hashAlgos;
-	encodingSchema: encodingSchemas;
+
+export function parseFairnessThresholdFile(
+	data: unknown,
+): FairnessThresholdFile {
+	assert(data && typeof data === "object", "threshold file malformed");
+	const d = data as Record<string, unknown>;
+	assert(typeof d.metric === "string", "threshold.metric missing");
+	assert(
+		typeof d.targetDisparity === "number",
+		"threshold.targetDisparity missing",
+	);
+	assert(
+		typeof d.protectedAttribute === "string",
+		"threshold.protectedAttribute missing",
+	);
+	assert(
+		typeof d.protectedAttributeIndex === "number",
+		"threshold.protectedAttributeIndex missing",
+	);
+	assert(
+		d.thresholds && typeof d.thresholds === "object",
+		"thresholds missing",
+	);
+	const t = d.thresholds as Record<string, unknown>;
+	assert(typeof t.group_a === "number", "thresholds.group_a missing");
+	assert(typeof t.group_b === "number", "thresholds.group_b missing");
+
+	const calc = d.calculatedMetrics as Record<string, unknown> | undefined;
+	const calculatedMetrics = calc
+		? (Object.fromEntries(
+				Object.entries(calc).filter(([_, v]) => typeof v === "number"),
+			) as Record<string, number>)
+		: undefined;
+
+	return {
+		metric: d.metric as "demographic_parity" | "equalized_odds",
+		targetDisparity: d.targetDisparity as number,
+		protectedAttribute: d.protectedAttribute as string,
+		protectedAttributeIndex: d.protectedAttributeIndex as number,
+		thresholds: { group_a: t.group_a as number, group_b: t.group_b as number },
+		calculatedMetrics,
+	};
 }
+
 export interface CommitmentsFile {
 	datasetMerkleRoot: Hash;
 	weightsHash: Hash;
@@ -62,12 +109,12 @@ export function parsePathsFile(data: unknown): PathsFile {
 	const d = data as Record<string, unknown>;
 	assert(typeof d.dataset === "string", "paths.dataset missing");
 	assert(typeof d.weights === "string", "paths.weights missing");
-	assert(typeof d.threshold === "string", "paths.threshold missing");
+	assert(typeof d.fairnessThreshold === "string", "paths.threshold missing");
 
 	return {
 		dataset: d.dataset as string,
 		weights: d.weights as string,
-		threshold: d.threshold as string,
+		fairnessThreshold: d.fairnessThreshold as string,
 	};
 }
 export function parseCommitmentsFile(data: unknown): CommitmentsFile {
@@ -103,21 +150,5 @@ export function parseProofFile(data: unknown): ProofFile {
 		generatedAt: d.generatedAt as number,
 		proof: d.proof as Hash,
 		publicInputs,
-	};
-}
-export function parseSchemaFile(data: unknown): SchemaFile {
-	assert(data && typeof data === "object", "schema.json malformed");
-	const d = data as Record<string, unknown>;
-	assert(
-		d.cryptoAlgo === "SHA-256" || d.cryptoAlgo === "BLAKE2b",
-		"schema.cryptoAlgo invalid",
-	);
-	assert(
-		d.encodingSchema === "JSON" || d.encodingSchema === "MSGPACK",
-		"schema.encodingSchema invalid",
-	);
-	return {
-		cryptoAlgo: d.cryptoAlgo as "SHA-256" | "BLAKE2b",
-		encodingSchema: d.encodingSchema as "JSON" | "MSGPACK",
 	};
 }

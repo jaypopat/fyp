@@ -1,5 +1,5 @@
+import { join } from "node:path";
 import * as ort from "onnxruntime-node";
-import { join } from "path";
 import registryData from "../registry.json";
 
 // model id is the contract identifier for the registered model
@@ -28,8 +28,8 @@ export async function loadAllModels() {
 		examplesPath = join(process.cwd(), "../../examples/");
 	}
 
-	console.log(`📂 Looking for models in: ${examplesPath}`);
-	console.log(`📂 Working directory: ${process.cwd()}`);
+	console.log(` Looking for models in: ${examplesPath}`);
+	console.log(` Working directory: ${process.cwd()}`);
 
 	for (const modelMetadata of registryData.models) {
 		const modelId = modelMetadata.id;

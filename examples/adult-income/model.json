@@ -1,5 +1,6 @@
 {
 	"name": "Adult Income Prediction Model",
 	"description": "Logistic regression model predicting income >50K from census data",
-	"creator": "ZKFair Team"
+	"creator": "ZKFair Team",
+	"inferenceUrl": "https://zkfair-provider.fly.dev"
 }

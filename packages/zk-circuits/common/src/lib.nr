@@ -1,11 +1,26 @@
-fn not_equal(x: Field, y: Field) -> bool {
-    x != y
+// merkle logic
+use dep::poseidon::poseidon2;
+pub fn compute_merkle_root(
+    leaf: Field,
+    merkle_proof: [Field; 20],
+    is_even: [bool; 20],
+) -> Field {
+    // temporary variable to store the hash for the current level we are working on
+    let mut hash: Field = leaf;
+    // increment through the levels
+    for i in 0..20 {
+        let (left, right) = if is_even[i] {
+            (hash, merkle_proof[i])
+        } else {
+            (merkle_proof[i], hash)
+        };
+        // compute the hash for the current level
+        hash = poseidon2::Poseidon2::hash([left, right], 2);
+    }
+    // return the root of the Merkle tree
+    hash
 }
 
-#[test]
-fn test_not_equal() {
-    assert(not_equal(1, 2));
+// fairness metric calculation
 
-    // Uncomment to make test fail
-    // assert(not_equal(1, 1));
-}
+// data selection from csv dataset
