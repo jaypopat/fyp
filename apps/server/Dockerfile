@@ -1,14 +1,14 @@
-FROM oven/bun:1 as builder
+FROM oven/bun:latest as builder
 
 WORKDIR /build
 COPY . .
 
-RUN bun install --verbose --frozen-lockfile --ignore-scripts
+RUN bun install --frozen-lockfile
 
 WORKDIR /build/apps/server
 RUN bun run build.ts
 
-FROM oven/bun:1
+FROM oven/bun:latest
 
 WORKDIR /app
 

@@ -62,7 +62,7 @@ async function generateAndSubmitProof(weightsHash: Hash) {
 	);
 
 	const input: trainingInputType = {
-		// private inputs...
+		// private inputs
 		_model_weights: weightsFields.map(String),
 		_dataset_size: String(dataset.length),
 		_dataset_features: dataset.flatMap((row) => row.slice(0, -1).map(String)),
@@ -75,7 +75,7 @@ async function generateAndSubmitProof(weightsHash: Hash) {
 		_dataset_salts: Object.values(salts),
 		_merkle_paths: merklePathsDecimal,
 		_is_even_flags: merkleProofs.isEvenFlags,
-		// public inputs...
+		// public inputs
 		_weights_hash: weightsHash,
 		_dataset_merkle_root: commitments.datasetMerkleRoot,
 		_fairness_threshold_epsilon: Math.ceil(
@@ -91,8 +91,11 @@ async function generateAndSubmitProof(weightsHash: Hash) {
 	console.log(" Generating proof...");
 	const backend = new UltraHonkBackend(training_circuit.bytecode);
 	const proofData = await backend.generateProof(witness);
-	console.log(proofData.proof);
-	console.log(proofData.publicInputs);
+
+	const proofHash = `0x${Array.from(proofData.proof)
+		.map((b) => b.toString(16).padStart(2, "0"))
+		.join("")}` as Hash;
+	console.log(" Proof generated successfully, hash:", proofHash);
 
 	console.log(" Proof generated successfully");
 }

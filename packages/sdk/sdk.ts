@@ -7,6 +7,9 @@ import { ModelAPI } from "./model";
 import { ProofAPI } from "./proof";
 import type { ZkFairOptions } from "./types";
 
+const DEFAULT_ATTESTATION_URL =
+	process.env.ATTESTATION_SERVICE_URL || "http://localhost:3000";
+
 export class SDK {
 	// internal
 	private contracts: ContractClient;
@@ -23,9 +26,9 @@ export class SDK {
 
 		this.model = new ModelAPI(this.contracts);
 		this.batch = new BatchAPI(this.contracts);
-		this.proof = new ProofAPI(this.contracts);
+		this.proof = new ProofAPI(this.contracts, DEFAULT_ATTESTATION_URL);
 		this.commit = new CommitAPI(this.contracts);
 		this.events = new EventsAPI(this.contracts);
-		this.audit = new AuditAPI(this.contracts);
+		this.audit = new AuditAPI(this.contracts, DEFAULT_ATTESTATION_URL);
 	}
 }

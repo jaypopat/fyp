@@ -17,7 +17,7 @@ import { getArtifactDir, parseCSV, weightsToFields } from "./utils";
 export class ProofAPI {
 	constructor(
 		private contracts: ContractClient,
-		private attestationServiceUrl = "http://localhost:3000",
+		private attestationServiceUrl: string,
 	) {}
 
 	/**

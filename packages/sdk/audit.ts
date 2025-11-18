@@ -9,7 +9,7 @@ import {
 import type { Hash, Hex } from "viem";
 import type { ContractClient } from "./contract";
 import { createMerkleProof, merkleRoot } from "./merkle";
-import { hashBytes, hexToBytes } from "./utils";
+import { hashBytes } from "./utils";
 
 // Initialize WASM modules once (shared with proof.ts)
 let wasmInitialized = false;
@@ -87,7 +87,7 @@ function encodeRecordLeaf(r: AuditRecord): Uint8Array {
 export class AuditAPI {
 	constructor(
 		private contracts: ContractClient,
-		private attestationServiceUrl = "http://localhost:3000",
+		private attestationServiceUrl: string,
 	) {}
 
 	/**
