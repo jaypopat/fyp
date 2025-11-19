@@ -23,6 +23,5 @@ primary_region = "lhr"
   cpus = 1
 
 [[mounts]]
-  source = "data"
-  destination = "/app/data"
-  initial_size = "1gb"
+  source = "zkfair_data"
+  destination = "/data"

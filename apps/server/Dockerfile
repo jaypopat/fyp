@@ -22,7 +22,8 @@ RUN echo '{"type":"module","dependencies":{"onnxruntime-node":"^1.23.0"}}' > pac
 # Install onnxruntime-node fresh
 RUN bun install --production
 
-RUN mkdir -p /app/data
+# Ensure /data directory exists for volume mount
+RUN mkdir -p /data && chmod 755 /data
 
 ENV NODE_ENV=production
 ENV PORT=5000

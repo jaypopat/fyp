@@ -6,7 +6,7 @@ import * as schema from "./schema";
 const DB_PATH =
 	process.env.DATABASE_URL ||
 	(process.env.NODE_ENV === "production"
-		? "/app/data/zkfair.db" // Persistent Fly volume
+		? "/data/zkfair.db" // Persistent Fly volume
 		: new URL("../zkfair.db", import.meta.url).pathname); // Local dev
 
 // Create SQLite connection
