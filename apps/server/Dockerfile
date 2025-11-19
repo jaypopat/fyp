@@ -22,6 +22,7 @@ WORKDIR /app
 
 COPY --from=builder /build/apps/server/dist ./dist
 COPY --from=builder /build/examples ./examples
+COPY --from=builder /build/apps/server/db/migrations ./dist/migrations
 COPY --from=builder /build/apps/server/db/migrations ./db/migrations
 
 # Debug: Verify migrations were copied
