@@ -1,34 +1,41 @@
 {
-	"version": "7",
-	"dialect": "sqlite",
-	"entries": [
-		{
-			"idx": 0,
-			"version": "6",
-			"when": 1762378820271,
-			"tag": "0000_bent_brother_voodoo",
-			"breakpoints": true
-		},
-		{
-			"idx": 1,
-			"version": "6",
-			"when": 1762379123885,
-			"tag": "0001_nosy_jack_flag",
-			"breakpoints": true
-		},
-		{
-			"idx": 2,
-			"version": "6",
-			"when": 1762812088318,
-			"tag": "0002_boring_kinsey_walden",
-			"breakpoints": true
-		},
-		{
-			"idx": 3,
-			"version": "6",
-			"when": 1762834043617,
-			"tag": "0003_acoustic_quasimodo",
-			"breakpoints": true
-		}
-	]
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1762378820271,
+      "tag": "0000_bent_brother_voodoo",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1762379123885,
+      "tag": "0001_nosy_jack_flag",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1762812088318,
+      "tag": "0002_boring_kinsey_walden",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1762834043617,
+      "tag": "0003_acoustic_quasimodo",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1763516984175,
+      "tag": "0004_parallel_wild_child",
+      "breakpoints": true
+    }
+  ]
 }
