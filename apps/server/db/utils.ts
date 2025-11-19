@@ -5,24 +5,28 @@ import { db } from "./client";
  * Initialize database - run migrations
  */
 export function initDatabase() {
-	console.log(" Running database migrations...");
+  console.log("Running database migrations...");
 
-	const migrationsFolder =
-		process.env.NODE_ENV === "production"
-			? "./db/migrations" // Production
-			: new URL("./migrations", import.meta.url).pathname; // Dev
+  const migrationsFolder =
+    process.env.NODE_ENV === "production"
+      ? "/app/db/migrations"
+      : new URL("./migrations", import.meta.url).pathname;
 
-	migrate(db, { migrationsFolder });
+  console.log("Looking for migrations at:", migrationsFolder);
+  console.log("Current working directory:", process.cwd());
 
-	console.log(" Database initialized");
+  migrate(db, { migrationsFolder });
+
+  console.log("Database initialized");
 }
+
 
 /**
  * Execute function within a transaction
  * Automatically handles commit/rollback
  */
 export async function withTransaction<T>(fn: () => Promise<T> | T): Promise<T> {
-	return await db.transaction(async () => {
-		return await fn();
-	});
+  return await db.transaction(async () => {
+    return await fn();
+  });
 }
