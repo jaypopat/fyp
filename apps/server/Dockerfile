@@ -18,12 +18,6 @@ COPY --from=builder /build/examples ./examples
 COPY --from=builder /build/apps/server/db/migrations ./dist/migrations
 COPY --from=builder /build/apps/server/db/migrations ./db/migrations
 
-# Debug: Verify migrations were copied
-RUN echo "=== Final stage - checking migrations ===" && \
-    ls -la /app/db/ && \
-    ls -la /app/db/migrations/ && \
-    ls -la /app/db/migrations/meta/ && \
-    cat /app/db/migrations/meta/_journal.json || echo "ERROR: _journal.json not found"
 
 RUN echo '{"type":"module","dependencies":{"onnxruntime-node":"^1.23.0"}}' > package.json
 RUN bun install --production
