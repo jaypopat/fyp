@@ -24,7 +24,7 @@ contract ZKFair is Ownable, Pausable {
     // CONSTANTS
     // ============================================
 
-    uint256 public constant PROVIDER_STAKE = 10 ether;
+    uint256 public constant PROVIDER_STAKE = 0.0001 ether;
     uint256 public constant AUDIT_RESPONSE_DEADLINE = 24 hours;
     uint256 public constant REQUIRED_SAMPLES = 100;
 
