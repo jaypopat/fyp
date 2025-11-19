@@ -4,7 +4,8 @@
 	"type": "module",
 	"private": true,
 	"scripts": {
-		"dev": "bun run index.ts"
+		"dev": "bun run index.ts",
+		"build": "bun run build.ts"
 	},
 	"dependencies": {
 		"@aztec/bb.js": "^2.1.4",
