@@ -24,4 +24,4 @@ primary_region = "lhr"
 
 [[mounts]]
   source = "zkfair_data"
-  destination = "/data"
+  destination = "/app/data"
