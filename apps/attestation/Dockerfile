@@ -1,14 +1,15 @@
-FROM oven/bun:1.2 AS builder
-WORKDIR /build
+FROM oven/bun:1 as builder
 
+WORKDIR /build
 COPY . .
 
-RUN bun install --frozen-lockfile
+RUN bun install --verbose --frozen-lockfile --ignore-scripts
 
 WORKDIR /build/apps/attestation
+
 RUN bun run build.ts
 
-FROM oven/bun:1.2
+FROM oven/bun:1
 WORKDIR /app
 
 # Copy only the built bundle

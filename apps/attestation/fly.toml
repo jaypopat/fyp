@@ -3,10 +3,6 @@ primary_region = "lhr"
 
 [build]
   dockerfile = "Dockerfile"
-  context = "../.."
-
-[env]
-  PORT = "3000"
 
 [http_service]
   internal_port = 3000
