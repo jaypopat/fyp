@@ -7,13 +7,6 @@ RUN bun install --verbose --frozen-lockfile --ignore-scripts
 
 WORKDIR /build/apps/server
 
-# Debug: Check if migrations exist in builder
-RUN echo "=== Builder stage - checking migrations ===" && \
-    ls -la /build/apps/server/db/ && \
-    ls -la /build/apps/server/db/migrations/ && \
-    ls -la /build/apps/server/db/migrations/meta/ && \
-    cat /build/apps/server/db/migrations/meta/_journal.json
-
 RUN bun run build.ts
 
 FROM oven/bun:1
