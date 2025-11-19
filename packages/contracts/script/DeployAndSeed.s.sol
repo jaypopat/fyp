@@ -16,7 +16,7 @@ contract DeployAndSeed is Script {
         uint256 stake = zkfair.PROVIDER_STAKE();
         console.log("Required stake per model:", stake);
 
-        Seed a demo model with inference URL
+        // Seed a demo model with inference URL
         zkfair.registerModel{value: stake}(
             "Adult Income Prediction Model",
             "Logistic regression model predicting income >50K from census data",
