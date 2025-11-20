@@ -8,9 +8,10 @@
 		"generate-fairness-vk": "bb write_vk -b ./target/fairness_audit.json -o ./target/fairness_audit_vk --oracle_hash keccak",
 		"generate-vks": "bun run generate-training-vk && bun run generate-fairness-vk",
 		"fill-prover": "bun scripts/fill-prover-toml.ts",
-		"build": "bun run compile && bun run generate-vks && bunx noir-codegen",
+		"build": "bunx noir-codegen",
+		"build:full": "bun run compile && bun run generate-vks && bunx noir-codegen",
 		"build:dev": "bun run compile && bunx noir-codegen",
-		"dev": "bun run build && nargo test --workspace"
+		"dev": "bun run build:full && nargo test --workspace"
 	},
 	"files": [
 		"common/src/**/*.nr",
@@ -18,6 +19,7 @@
 		"fairness_audit/src/**/*.nr",
 		"target/**/*.json",
 		"target/**/*-vk",
+		"codegen/**/*",
 		"Nargo.toml"
 	],
 	"exports": {
