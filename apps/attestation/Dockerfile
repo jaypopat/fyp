@@ -1,22 +1,36 @@
-FROM oven/bun:1 as builder
+FROM oven/bun:1 AS base
+WORKDIR /app
+RUN bun install -g turbo
 
-WORKDIR /build
+# Prune the monorepo to only include attestation app and its dependencies
+FROM base AS pruner
 COPY . .
+RUN turbo prune attestation --docker
 
-RUN bun install --verbose --frozen-lockfile --ignore-scripts
-
-WORKDIR /build/apps/attestation
-
-RUN bun run build.ts
-
-FROM oven/bun:1
+# Install dependencies for the pruned workspace
+FROM base AS installer
 WORKDIR /app
 
-# Copy only the built bundle
-COPY --from=builder /build/apps/attestation/dist ./dist
+# Copy lockfile and package.json files from pruned workspace
+COPY --from=pruner /app/out/json/ .
+RUN bun install --frozen-lockfile
+
+# Copy source code from pruned workspace
+COPY --from=pruner /app/out/full/ .
+
+# Build only internal packages (not the attestation app itself)
+RUN turbo run build --filter=attestation^...
+
+# Production stage
+FROM oven/bun:1 AS runner
+WORKDIR /app
+
+# Copy everything from installer
+COPY --from=installer /app .
 
 ENV NODE_ENV=production
 ENV PORT=3000
 EXPOSE 3000
 
-CMD ["bun", "dist/index.js"]
+# Run TypeScript directly - no dist needed!
+CMD ["bun", "apps/attestation/index.ts"]

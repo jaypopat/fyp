@@ -1,21 +1,5 @@
 {
 	"name": "fyp",
-	"private": true,
-	"type": "module",
-	"workspaces": [
-		"apps/*",
-		"packages/*"
-	],
-	"scripts": {
-		"check": "biome check --write .",
-		"lint": "biome check",
-		"dev": "concurrently --kill-others \"anvil\" \"sleep 3 && turbo dev\"",
-		"build": "turbo build",
-		"check-types": "turbo check-types",
-		"dev:native": "turbo -F native dev",
-		"dev:web": "turbo -F web dev",
-		"dev:server": "turbo -F server dev"
-	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.0",
 		"concurrently": "^9.2.1",
@@ -27,5 +11,21 @@
 		"@noir-lang/noir_codegen": "1.0.0-beta.15",
 		"@aztec/bb.js": "2.1.4"
 	},
-	"packageManager": "bun@1.2.21"
+	"packageManager": "bun@1.2.21",
+	"private": true,
+	"scripts": {
+		"check": "biome check --write .",
+		"lint": "biome check",
+		"dev": "concurrently --kill-others \"anvil\" \"sleep 3 && turbo dev\"",
+		"build": "turbo build",
+		"check-types": "turbo check-types",
+		"dev:native": "turbo -F native dev",
+		"dev:web": "turbo -F web dev",
+		"dev:server": "turbo -F server dev"
+	},
+	"type": "module",
+	"workspaces": [
+		"apps/*",
+		"packages/*"
+	]
 }
