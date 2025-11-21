@@ -1,0 +1,27 @@
+FROM oven/bun:1
+
+WORKDIR /app
+
+# Copy workspace config files
+COPY package.json ./
+COPY bun.lock ./
+COPY turbo.json ./
+
+# Explicitly copy the packages directory
+COPY packages ./packages
+
+# Explicitly copy the attestation app
+COPY apps/attestation ./apps/attestation
+
+# Now packages/ exists, so workspace deps can resolve
+RUN bun install
+
+# Build internal packages
+RUN bun install -g turbo
+RUN turbo run build --filter=@zkfair/zk-circuits
+
+ENV NODE_ENV=production
+ENV PORT=3000
+EXPOSE 3000
+
+CMD ["bun", "apps/attestation/index.ts"]

@@ -1,14 +1,14 @@
-app = "zkfair-attestation"
+app = "fyp-lgfefa"
 primary_region = "lhr"
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = "./Dockerfile.attestation"
   build-context = "../.."
 
 [http_service]
   internal_port = 3000
   force_https = true
-  auto_stop_machines = 'stop'
+  auto_stop_machines = "off"
 
 [[vm]]
   memory = '256mb'

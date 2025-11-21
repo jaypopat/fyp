@@ -1,0 +1,34 @@
+FROM oven/bun:1
+
+WORKDIR /app
+
+# Copy workspace config files
+COPY package.json ./
+COPY bun.lock ./
+COPY turbo.json ./
+
+# Copy packages (for workspace dependencies)
+COPY packages ./packages
+
+# Copy server app
+COPY apps/server ./apps/server
+
+# Copy examples and other required directories
+COPY examples ./examples
+
+# Install dependencies
+RUN bun install
+
+# Build internal packages only (not server itself)
+RUN bun install -g turbo
+RUN turbo run build --filter=server^...
+
+# Create data directory for SQLite/persistent storage
+RUN mkdir -p /app/data
+
+ENV NODE_ENV=production
+ENV PORT=5000
+EXPOSE 5000
+
+# Run TypeScript directly - no bundling needed
+CMD ["bun", "apps/server/index.ts"]

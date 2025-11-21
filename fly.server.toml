@@ -1,10 +1,8 @@
-# apps/provider-server/fly.toml
-
 app = "zkfair-provider"
 primary_region = "lhr"
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = "./Dockerfile.server"
 
 [env]
   NODE_ENV = "production"
