@@ -20,7 +20,7 @@
 	"scripts": {
 		"dev": "bun --hot index.ts",
 		"start": "bun index.ts",
-		"build": "bun run build.ts",
+		"build": "bun build index.ts --target=bun",
 		"db:seed": "bun db/seed.ts",
 		"db:studio": "bunx drizzle-kit studio",
 		"db:migrate": "bunx drizzle-kit migrate"

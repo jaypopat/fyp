@@ -181,7 +181,9 @@ export async function generateAndSubmit(options: GenerateProofOpts) {
 
 	const txHash = await withSpinner(
 		"Generating ZK proof and submitting to contract (this may take a while)",
-		async () => zkFairSDK.proof.generateAndSubmitProof(weightsHash),
+		async () => {
+			return await zkFairSDK.proof.generateAndSubmitProof(weightsHash);
+		},
 		"Proof generated and submitted",
 	);
 

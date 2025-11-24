@@ -7,6 +7,7 @@ import {
 	type fairness_auditInputType,
 } from "@zkfair/zk-circuits/codegen";
 import type { Hash, Hex } from "viem";
+import { getDefaultConfig } from "./config";
 import type { ContractClient } from "./contract";
 import { createMerkleProof, merkleRoot } from "./merkle";
 import { hashBytes } from "./utils";
@@ -85,10 +86,13 @@ function encodeRecordLeaf(r: AuditRecord): Uint8Array {
  * Uses standardized Poseidon hash and JSON encoding
  */
 export class AuditAPI {
-	constructor(
-		private contracts: ContractClient,
-		private attestationServiceUrl: string,
-	) {}
+	private readonly attestationUrl: string;
+
+	constructor(private contracts: ContractClient) {
+		// Use provided URL or default from config
+		const config = getDefaultConfig();
+		this.attestationUrl = config.attestationServiceUrl;
+	}
 
 	/**
 	 * Build a batch from records
@@ -159,7 +163,7 @@ export class AuditAPI {
 
 		// Request attestation from service
 		const attestationResponse = await fetch(
-			`${this.attestationServiceUrl}/attest/audit`,
+			`${this.attestationUrl}/attest/audit`,
 			{
 				method: "POST",
 				headers: { "Content-Type": "application/json" },

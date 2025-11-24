@@ -1,27 +1,42 @@
-FROM oven/bun:1
+# Prune
+FROM oven/bun:1 AS pruner
+WORKDIR /app
+RUN bun add -g turbo
+COPY . .
+# Gen's folder with only apps/attestation + its internal deps
+RUN turbo prune --scope=attestation --docker
 
+# Install deps
+FROM oven/bun:1 AS installer
 WORKDIR /app
 
-# Copy workspace config files
-COPY package.json ./
-COPY bun.lock ./
-COPY turbo.json ./
+# Copy package.json
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/bun.lock ./bun.lock
 
-# Explicitly copy the packages directory
-COPY packages ./packages
+# Install deps
+RUN bun install --no-save
 
-# Explicitly copy the attestation app
-COPY apps/attestation ./apps/attestation
+# Copy source code
+COPY --from=pruner /app/out/full/ .
 
-# Now packages/ exists, so workspace deps can resolve
-RUN bun install
+# Build dependencies
+# This builds everything 'attestation' needs, excluding the forge/noir tasks since the codegen is committed to repo
+RUN bun turbo run build --filter=attestation^... \
+    --filter=!@zkfair/zk-circuits
 
-# Build internal packages
-RUN bun install -g turbo
-RUN turbo run build --filter=@zkfair/zk-circuits
+# Run the code
+FROM oven/bun:1 AS runner
+WORKDIR /app
+USER bun
+
+# Copy artifacts
+COPY --from=installer --chown=bun:bun /app .
+
+WORKDIR /app/apps/attestation
 
 ENV NODE_ENV=production
 ENV PORT=3000
 EXPOSE 3000
 
-CMD ["bun", "apps/attestation/index.ts"]
+CMD ["bun", "index.ts"]

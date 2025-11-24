@@ -11,14 +11,17 @@ import {
 	parseFairnessThresholdFile,
 	parsePathsFile,
 } from "./artifacts";
+import { getDefaultConfig } from "./config";
 import type { ContractClient } from "./contract";
 import { getArtifactDir, parseCSV, weightsToFields } from "./utils";
 
 export class ProofAPI {
-	constructor(
-		private contracts: ContractClient,
-		private attestationServiceUrl: string,
-	) {}
+	private readonly ATTESTATION_URL;
+
+	constructor(private contracts: ContractClient) {
+		const config = getDefaultConfig();
+		this.ATTESTATION_URL = config.attestationServiceUrl;
+	}
 
 	/**
 	 * Generate ZK proof (write proof.json to artifact dir) and return the proof record
@@ -106,7 +109,7 @@ export class ProofAPI {
 
 		// Request attestation from training attestation service
 		const attestationResponse = await fetch(
-			`${this.attestationServiceUrl}/attest/training`,
+			`${this.ATTESTATION_URL}/attest/training`,
 			{
 				method: "POST",
 				headers: { "Content-Type": "application/json" },

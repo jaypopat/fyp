@@ -4,12 +4,23 @@
  */
 import type { GetEventArgs, Hash, Hex } from "viem";
 import type { Chain } from "viem/chains";
+import type { Environment } from "./config";
 
+/**
+ * SDK initialization options - minimal by design
+ * SDK manages infrastructure (addresses, RPCs) internally based on environment
+ */
 export type ZkFairOptions = {
-	rpcUrl?: string;
-	contractAddress: Hash;
+	/**
+	 * Private key for signing transactions (optional for read-only operations)
+	 */
 	privateKey?: Hex;
-	chain?: Chain;
+
+	/**
+	 * Environment to use (auto-detected from NODE_ENV/ZKFAIR_ENV if not provided)
+	 * 'local' = anvil localhost, 'sepolia' = testnet
+	 */
+	environment?: Environment;
 };
 export type CommitOptions = {
 	model: {

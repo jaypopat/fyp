@@ -164,7 +164,6 @@ function ModelDetailComponent() {
 			setChallengingBatch(batchId);
 
 			console.log("Challenging batch:", batchId);
-			console.log("Contract address:", config.contractAddress);
 			console.log("Connected account:", address);
 
 			// Use wagmi to write contract with connected wallet
@@ -321,8 +320,7 @@ function ModelDetailComponent() {
 											throw new Error("Provide valid numeric input");
 										}
 										// Use model's configured inference URL instead of static config
-										const providerUrl =
-											model?.inferenceUrl || config.providerUrl;
+										const providerUrl = model?.inferenceUrl;
 										const resultData = await predict({
 											providerUrl,
 											modelId,

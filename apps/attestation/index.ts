@@ -4,7 +4,7 @@ import {
 	training_circuit,
 } from "@zkfair/zk-circuits/codegen";
 import { Hono } from "hono";
-import { encodePacked, type Hex, keccak256 } from "viem";
+import { encodePacked, keccak256 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
 const pk = process.env.ATTESTATION_SERVICE_PRIVATE_KEY as `0x${string}`;
@@ -16,8 +16,12 @@ if (!pk) {
 
 const app = new Hono();
 
-const trainingBackend = new UltraHonkBackend(training_circuit.bytecode);
-const auditBackend = new UltraHonkBackend(fairness_audit_circuit.bytecode);
+const trainingBackend = new UltraHonkBackend(training_circuit.bytecode, {
+	threads: 1,
+});
+const auditBackend = new UltraHonkBackend(fairness_audit_circuit.bytecode, {
+	threads: 1,
+});
 
 app.post("/attest/training", async (c) => {
 	try {
@@ -61,9 +65,9 @@ app.post("/attest/training", async (c) => {
 			),
 		);
 
-		const signature = (await account.signMessage({
+		const signature = await account.signMessage({
 			message: { raw: messageHash },
-		})) as Hex;
+		});
 
 		return c.json({
 			attestationHash,
@@ -114,9 +118,9 @@ app.post("/attest/audit", async (c) => {
 			),
 		);
 
-		const signature = (await account.signMessage({
+		const signature = await account.signMessage({
 			message: { raw: messageHash },
-		})) as Hex;
+		});
 
 		// 4. Create attestation hash from proof
 		const attestationHash = keccak256(proof);

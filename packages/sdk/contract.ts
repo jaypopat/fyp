@@ -8,7 +8,7 @@ import {
 	http,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { anvil, sepolia } from "viem/chains";
+import { getDefaultConfig } from "./config";
 import type {
 	AuditExpiredEvent,
 	AuditProofSubmittedEvent,
@@ -27,13 +27,16 @@ export class ContractClient {
 	private walletClient?;
 	private chain: Chain;
 
-	constructor(options: ZkFairOptions) {
-		this.contractAddress = options?.contractAddress as Address;
-		this.chain = options.rpcUrl?.includes("localhost") ? anvil : sepolia;
+	constructor(options: ZkFairOptions = {}) {
+		const config = getDefaultConfig();
+
+		this.contractAddress = config.contractAddress;
+		this.chain = config.chain;
+		const rpcUrl = config.rpcUrl;
 
 		this.publicClient = createPublicClient({
 			chain: this.chain,
-			transport: http(options.rpcUrl ?? "http://localhost:8545"),
+			transport: http(rpcUrl),
 		});
 
 		if (options?.privateKey) {
@@ -41,7 +44,7 @@ export class ContractClient {
 			this.walletClient = createWalletClient({
 				account,
 				chain: this.chain,
-				transport: http(options.rpcUrl),
+				transport: http(rpcUrl),
 			});
 		}
 	}
@@ -107,6 +110,7 @@ export class ContractClient {
 	) {
 		if (!this.walletClient)
 			throw new Error("Wallet client required for write operations");
+
 		return await this.walletClient.writeContract({
 			address: this.contractAddress,
 			abi: zkFairAbi,
@@ -212,6 +216,7 @@ export class ContractClient {
 	) {
 		if (!this.walletClient)
 			throw new Error("Wallet client required for write operations");
+
 		return await this.walletClient.writeContract({
 			address: this.contractAddress,
 			abi: zkFairAbi,

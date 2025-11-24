@@ -12,10 +12,11 @@ export class BrowserSDK {
 	public readonly events: EventsAPI;
 	private readonly contracts: ContractClient;
 
-	constructor(options: BrowserSDKOptions) {
+	constructor(options: BrowserSDKOptions = {}) {
 		this.contracts = new ContractClient(options);
 		this.model = new ModelAPI(this.contracts);
 		this.batch = new BatchAPI(this.contracts);
 		this.events = new EventsAPI(this.contracts);
 	}
 }
+export { getDefaultConfig } from "./config";

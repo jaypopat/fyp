@@ -15,7 +15,7 @@ app.use("*", logger());
 
 const models = await loadAllModels();
 
-initDatabase();
+await initDatabase();
 
 sdk.events.watchAuditRequested(handleAuditRequest);
 

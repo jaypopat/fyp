@@ -7,7 +7,7 @@
 		"dev": "bun run index.ts"
 	},
 	"dependencies": {
-		"@aztec/bb.js": "^2.1.4",
+		"@aztec/bb.js": "^2.0.3",
 		"@noir-lang/acvm_js": "^1.0.0-beta.15",
 		"@noir-lang/noir_js": "^1.0.0-beta.15",
 		"@noir-lang/noirc_abi": "^1.0.0-beta.15",
@@ -16,6 +16,7 @@
 		"viem": "^2.39.0"
 	},
 	"devDependencies": {
-		"@types/bun": "latest"
+		"@types/bun": "latest",
+		"tsx": "^4.20.6"
 	}
 }

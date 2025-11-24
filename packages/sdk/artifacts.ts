@@ -132,7 +132,6 @@ export function parseCommitmentsFile(data: unknown): CommitmentsFile {
 export function parseProofFile(data: unknown): ProofFile {
 	assert(data && typeof data === "object", "proof.json malformed");
 	const d = data as Record<string, unknown>;
-	assert(typeof d.version === "number", "proof.version missing");
 	assert(typeof d.generatedAt === "number", "proof.generatedAt missing");
 	assert(typeof d.weightsHash === "string", "weightsHash missing");
 	assert(typeof d.proof === "string", "proof missing");

@@ -1,0 +1,32 @@
+# .dockerignore
+
+# Dependency directories
+node_modules
+**/node_modules
+
+# Build outputs
+dist
+out
+build
+.next
+.turbo
+.vercel
+.output
+
+# Version control
+.git
+.gitignore
+
+# Environment variables (Security risk if uploaded!)
+.env*
+!.env.example
+
+# Logs and databases
+*.log
+*.sqlite
+*.db
+data/
+
+# OS junk
+.DS_Store
+Thumbs.db

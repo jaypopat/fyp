@@ -1,34 +1,41 @@
-FROM oven/bun:1
+# Prune
+FROM oven/bun:1 AS pruner
+WORKDIR /app
+RUN bun add -g turbo
+COPY . .
+RUN turbo prune --scope=server --docker
 
+# Install deps
+FROM oven/bun:1 AS installer
 WORKDIR /app
 
-# Copy workspace config files
-COPY package.json ./
-COPY bun.lock ./
-COPY turbo.json ./
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/bun.lock ./bun.lock
 
-# Copy packages (for workspace dependencies)
-COPY packages ./packages
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
+RUN bun install --no-save
 
-# Copy server app
-COPY apps/server ./apps/server
+COPY --from=pruner /app/out/full/ .
 
-# Copy examples and other required directories
-COPY examples ./examples
+# copy it from the 'pruner' stage context (which had everything)
+COPY --from=pruner /app/examples ./examples
+COPY --from=pruner /app/apps/server/db/migrations ./apps/server/db/migrations
 
-# Install dependencies
-RUN bun install
+RUN bun turbo run build --filter=server^... --filter=!@zkfair/contracts --filter=!@zkfair/zk-circuits
 
-# Build internal packages only (not server itself)
-RUN bun install -g turbo
-RUN turbo run build --filter=server^...
+# Run the code
+FROM oven/bun:1 AS runner
+WORKDIR /app
 
-# Create data directory for SQLite/persistent storage
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data && chown bun:bun /app/data
+
+COPY --from=installer --chown=bun:bun /app .
+
+USER bun
+WORKDIR /app/apps/server
 
 ENV NODE_ENV=production
 ENV PORT=5000
 EXPOSE 5000
 
-# Run TypeScript directly - no bundling needed
-CMD ["bun", "apps/server/index.ts"]
+CMD ["bun", "index.ts"]

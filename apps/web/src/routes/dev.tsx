@@ -3,14 +3,13 @@ import { useEffect, useId, useState } from "react";
 import { AdultIncomeForm } from "@/components/adult-income-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { config } from "@/config";
 
 export const Route = createFileRoute("/dev")({
 	component: DevPage,
 });
 
 function DevPage() {
-	const baseUrl = config.providerUrl;
+	const baseUrl = "http://localhost:5000";
 	const modelIdInputId = useId();
 	const predictInputId = useId();
 	type Health =
