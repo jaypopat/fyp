@@ -1,6 +1,6 @@
 {
 	"name": "@zkfair/sdk",
-	"version": "0.0.11",
+	"version": "0.0.13",
 	"type": "module",
 	"main": "./dist/index.js",
 	"module": "./dist/index.js",
@@ -29,6 +29,10 @@
 			"types": "./dist/merkle.d.ts",
 			"import": "./dist/merkle.js"
 		},
+		"./hash": {
+			"types": "./dist/hash.d.ts",
+			"import": "./dist/hash.js"
+		},
 		"./utils": {
 			"types": "./dist/utils.d.ts",
 			"import": "./dist/utils.js"
@@ -37,7 +41,12 @@
 
 	"scripts": {
 		"build": "tsup",
-		"dev": "tsup --watch"
+		"dev": "tsup --watch",
+		"publish": "bun run build && bun publish"
+	},
+
+	"publishConfig": {
+		"access": "public"
 	},
 	"peerDependencies": {
 		"typescript": "^5"

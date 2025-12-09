@@ -10,9 +10,10 @@ export { db } from "./client";
 
 export {
 	assignQueriesToBatch,
+	getOldestUnbatchedTimestamp,
 	getQueries,
 	getQueriesBySequence,
-	getQueryById,
+	getQueryBySeqNum,
 	getQueryCount,
 	getUnbatchedCount,
 	getUnbatchedQueries,

@@ -14,10 +14,8 @@ export const queryLogs = sqliteTable(
 	"query_logs",
 	{
 		// Auto-incrementing sequence number - prevents selective omission
+		// primary identifier for query
 		seq: integer("seq").primaryKey({ autoIncrement: true }),
-
-		// Query identification
-		queryId: text("query_id").notNull().unique(),
 
 		// Model and inference data
 		modelId: integer("model_id").notNull(),

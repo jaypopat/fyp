@@ -20,7 +20,7 @@ contract DeployAndSeed is Script {
         zkfair.registerModel{value: stake}(
             "Adult Income Prediction Model",
             "Logistic regression model predicting income >50K from census data",
-            "https://provider-api.fyp.jaypopat.me", // Inference URL
+            "http://localhost:5000", // Inference URL
             0x1371d09ac9cd9cea9637e46bead0cda0e0c804c133876b2cf7aa6c28a549f8cb, // weightsHash
             0x0eceed11cf3d5b91da339bbddde4b538053b7cbe446b93b1b77780bd89ba0e62, // datasetMerkleRoot
             10 // fairnessThreshold (10%)

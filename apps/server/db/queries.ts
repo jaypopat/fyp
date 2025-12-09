@@ -5,11 +5,8 @@ import { type QueryLog, queryLogs } from "./schema";
 /**
  * Insert a new query log
  * Returns the assigned sequence number
- *
- * @throws Error if queryId already exists (UNIQUE constraint)
  */
 export async function insertQuery(data: {
-	queryId: string;
 	modelId: number;
 	features: number[];
 	sensitiveAttr: number;
@@ -113,15 +110,15 @@ export async function getQueriesBySequence(
 }
 
 /**
- * Get single query by queryId
+ * Get single query by sequence number
  */
-export async function getQueryById(
-	queryId: string,
+export async function getQueryBySeqNum(
+	seqNum: number,
 ): Promise<QueryLog | undefined> {
 	const result = await db
 		.select()
 		.from(queryLogs)
-		.where(eq(queryLogs.queryId, queryId))
+		.where(eq(queryLogs.seq, seqNum))
 		.limit(1);
 
 	return result[0];
@@ -141,4 +138,19 @@ export async function assignQueriesToBatch(
 		.update(queryLogs)
 		.set({ batchId })
 		.where(sql`${queryLogs.seq} IN ${sequences}`);
+}
+
+/**
+ * Get the oldest unbatched query's timestamp
+ * Used to determine if we should batch based on time
+ */
+export async function getOldestUnbatchedTimestamp(): Promise<number | null> {
+	const result = await db
+		.select({ timestamp: queryLogs.timestamp })
+		.from(queryLogs)
+		.where(isNull(queryLogs.batchId))
+		.orderBy(asc(queryLogs.timestamp))
+		.limit(1);
+
+	return result[0]?.timestamp ?? null;
 }

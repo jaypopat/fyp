@@ -4,6 +4,8 @@ import {
 	AlertCircle,
 	ArrowLeft,
 	Check,
+	ChevronDown,
+	ChevronUp,
 	Copy,
 	Loader2,
 	Shield,
@@ -15,6 +17,7 @@ import {
 	useWaitForTransactionReceipt,
 	useWriteContract,
 } from "wagmi";
+import { AdultIncomeForm } from "@/components/adult-income-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,8 +61,16 @@ function ModelDetailComponent() {
 	const [loading, setLoading] = useState(false);
 	const [result, setResult] = useState<{
 		prediction: number;
-		queryId: string;
+		seqNum: number;
 	} | null>(null);
+
+	// Guided form expansion state
+	const [showGuidedForm, setShowGuidedForm] = useState(true);
+
+	// Check if this is a model with a guided form (by name)
+	const hasGuidedForm =
+		model?.name?.toLowerCase().includes("adult") ||
+		model?.name?.toLowerCase().includes("income");
 
 	// Wallet connection
 	const { address } = useAccount();
@@ -277,58 +288,48 @@ function ModelDetailComponent() {
 
 				<Card className="flex flex-col">
 					<CardHeader className="pb-3">
-						<CardTitle className="font-semibold text-base">
-							Try Inference{" "}
-						</CardTitle>
+						<div className="flex items-center justify-between">
+							<CardTitle className="font-semibold text-base">
+								Try Inference
+							</CardTitle>
+							{hasGuidedForm && (
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() => setShowGuidedForm(!showGuidedForm)}
+									className="h-8 gap-1 text-xs"
+								>
+									{showGuidedForm ? (
+										<>
+											<ChevronUp className="h-3 w-3" />
+											Simple
+										</>
+									) : (
+										<>
+											<ChevronDown className="h-3 w-3" />
+											Guided
+										</>
+									)}
+								</Button>
+							)}
+						</div>
 					</CardHeader>
-					<CardContent className="flex flex-1 flex-col space-y-2">
-						<input
-							className="w-full rounded border px-3 py-2 text-sm"
-							placeholder="e.g. 39, 7, 77516, 9, ..."
-							value={inputCSV}
-							onChange={(e) => setInputCSV(e.target.value)}
-						/>
-						{result && (
-							<div className="rounded bg-muted p-3 text-xs">
-								<p>
-									<span className="font-medium">Prediction:</span>{" "}
-									<b>{result.prediction}</b>
-								</p>
-								<p className="truncate" title={result.queryId}>
-									<span className="font-medium">Query:</span>{" "}
-									<code className="text-xs">
-										{result.queryId.slice(0, 16)}...
-									</code>
-								</p>
-							</div>
-						)}
-						<div className="mt-auto">
-							<Button
-								disabled={loading}
-								className="w-full"
-								size="sm"
-								onClick={async () => {
+					<CardContent className="flex flex-1 flex-col space-y-3">
+						{hasGuidedForm && showGuidedForm ? (
+							<AdultIncomeForm
+								onSubmit={async (vector) => {
 									setLoading(true);
 									setResult(null);
 									try {
-										const values = inputCSV
-											.split(",")
-											.map((v) => v.trim())
-											.filter((v) => v.length > 0)
-											.map((v) => Number(v));
-										if (!values.length || values.some((x) => Number.isNaN(x))) {
-											throw new Error("Provide valid numeric input");
-										}
-										// Use model's configured inference URL instead of static config
-										const providerUrl = model?.inferenceUrl;
+										const providerUrl = model.inferenceUrl;
 										const resultData = await predict({
 											providerUrl,
-											modelId,
-											input: values,
+											modelHash: modelId, // URL param is the weightsHash
+											input: vector,
 										});
 										setResult({
 											prediction: resultData.prediction,
-											queryId: resultData.queryId,
+											seqNum: resultData.receipt.seqNum,
 										});
 									} catch (err) {
 										console.error(err);
@@ -337,10 +338,72 @@ function ModelDetailComponent() {
 										setLoading(false);
 									}
 								}}
-							>
-								{loading ? "Predicting…" : "Predict"}
-							</Button>
-						</div>
+								loading={loading}
+								result={result}
+							/>
+						) : (
+							<>
+								<input
+									className="w-full rounded border px-3 py-2 text-sm"
+									placeholder="e.g. 39, 7, 77516, 9, ..."
+									value={inputCSV}
+									onChange={(e) => setInputCSV(e.target.value)}
+								/>
+								{result && (
+									<div className="rounded bg-muted p-3 text-xs">
+										<p>
+											<span className="font-medium">Prediction:</span>{" "}
+											<b>{result.prediction === 1 ? ">50K" : "≤50K"}</b>
+										</p>
+										<p>
+											<span className="font-medium">Receipt:</span>{" "}
+											<code className="text-xs">#{result.seqNum}</code>
+										</p>
+									</div>
+								)}
+								<div className="mt-auto">
+									<Button
+										disabled={loading}
+										className="w-full"
+										size="sm"
+										onClick={async () => {
+											setLoading(true);
+											setResult(null);
+											try {
+												const values = inputCSV
+													.split(",")
+													.map((v) => v.trim())
+													.filter((v) => v.length > 0)
+													.map((v) => Number(v));
+												if (
+													!values.length ||
+													values.some((x) => Number.isNaN(x))
+												) {
+													throw new Error("Provide valid numeric input");
+												}
+												const providerUrl = model.inferenceUrl;
+												const resultData = await predict({
+													providerUrl,
+													modelHash: modelId, // URL param is the weightsHash
+													input: values,
+												});
+												setResult({
+													prediction: resultData.prediction,
+													seqNum: resultData.receipt.seqNum,
+												});
+											} catch (err) {
+												console.error(err);
+												setResult(null);
+											} finally {
+												setLoading(false);
+											}
+										}}
+									>
+										{loading ? "Predicting…" : "Predict"}
+									</Button>
+								</div>
+							</>
+						)}
 					</CardContent>
 				</Card>
 			</div>

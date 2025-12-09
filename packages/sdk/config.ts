@@ -24,7 +24,7 @@ type SdkConfig = {
 
 const SDK_CONFIG: SdkConfig = {
 	local: {
-		contractAddress: "0x5fbdb2315678afecb367f032d93f642f64180aa3",
+		contractAddress: "0x9fe46736679d2d9a65f0992f2272de9f3c7fa6e0",
 		rpcUrl: "http://localhost:8545",
 		attestationServiceUrl: "http://localhost:3000",
 		chain: anvil,

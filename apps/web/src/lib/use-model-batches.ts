@@ -14,8 +14,8 @@ export type BatchData = {
 	modelId: string;
 	merkleRoot: Hash;
 	queryCount: string;
-	timestampStart: string;
-	timestampEnd: string;
+	seqNumStart: string;
+	seqNumEnd: string;
 	committedAt: string;
 	audited: boolean;
 	auditStatus: number;
@@ -51,8 +51,8 @@ export function useModelBatches(weightsHash: Hash, initialModelId?: bigint) {
 					modelId: batch.modelId.toString(),
 					merkleRoot: batch.merkleRoot,
 					queryCount: batch.queryCount.toString(),
-					timestampStart: batch.timestampStart.toString(),
-					timestampEnd: batch.timestampEnd.toString(),
+					seqNumStart: batch.seqNumStart.toString(),
+					seqNumEnd: batch.seqNumEnd.toString(),
 					committedAt: batch.committedAt.toString(),
 					audited: batch.audited,
 					auditStatus: batch.auditStatus,
@@ -88,8 +88,8 @@ export function useModelBatches(weightsHash: Hash, initialModelId?: bigint) {
 						modelId: event.modelId.toString(),
 						merkleRoot: event.merkleRoot,
 						queryCount: event.queryCount.toString(),
-						timestampStart: batchData.timestampStart.toString(),
-						timestampEnd: batchData.timestampEnd.toString(),
+						seqNumStart: batchData.seqNumStart.toString(),
+						seqNumEnd: batchData.seqNumEnd.toString(),
 						committedAt: batchData.committedAt.toString(),
 						audited: batchData.audited,
 						auditStatus: batchData.auditStatus,
