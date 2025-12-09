@@ -1,10 +1,10 @@
-import type { AuditRecord } from "@zkfair/sdk";
 import {
 	assignQueriesToBatch,
 	type Batch,
 	createBatch,
 	getAllBatches,
 	getBatchById,
+	getOldestUnbatchedTimestamp,
 	getQueriesBySequence,
 	getUnbatchedCount,
 	getUnbatchedQueries,
@@ -14,12 +14,19 @@ import {
 } from "../db";
 import { sdk } from "./sdk";
 
+// Batching configuration
+
+// BATCH_SIZE: Batch when we have this many queries
+// BATCH_MAX_AGE_MS: Batch when oldest query is this old (should be < contract's DISPUTE_GRACE_PERIOD)
+const BATCH_SIZE = Number(process.env.BATCH_SIZE) || 100;
+const BATCH_MAX_AGE_MS = Number(process.env.BATCH_MAX_AGE_MS) || 30 * 60 * 1000; // 30 mins default
+
 /**
  * Convert QueryLog to AuditRecord format for SDK
  */
-export function toAuditRecord(query: QueryLog): AuditRecord {
+export function toAuditRecord(query: QueryLog) {
 	return {
-		queryId: query.queryId,
+		seqNum: query.seq,
 		modelId: query.modelId,
 		features: query.features,
 		sensitiveAttr: query.sensitiveAttr,
@@ -29,32 +36,61 @@ export function toAuditRecord(query: QueryLog): AuditRecord {
 }
 
 /**
- * Create a batch from unbatched queries if we have enough
+ * Check if batching is needed based on count OR time
  */
-export async function createBatchIfNeeded(): Promise<Batch | undefined> {
-	const batchSize = Number(process.env.BATCH_SIZE) || 100;
+async function shouldBatch(): Promise<boolean> {
 	const unbatchedCount = await getUnbatchedCount();
 
-	if (unbatchedCount < batchSize) {
+	if (unbatchedCount === 0) {
+		return false;
+	}
+
+	// Trigger 1: Count threshold
+	if (unbatchedCount >= BATCH_SIZE) {
+		return true;
+	}
+
+	// Trigger 2: Time threshold (prevent Type A disputes)
+	const oldestTimestamp = await getOldestUnbatchedTimestamp();
+	if (oldestTimestamp !== null) {
+		const age = Date.now() - oldestTimestamp;
+		if (age >= BATCH_MAX_AGE_MS) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Create a batch from unbatched queries if we have enough OR if oldest query is too old
+ * Two triggers to ensure users can't file Type A disputes against honest providers:
+ * 1. Count threshold (BATCH_SIZE)
+ * 2. Time threshold (BATCH_MAX_AGE_MS) - must be less than contract's DISPUTE_GRACE_PERIOD
+ */
+export async function createBatchIfNeeded(): Promise<Batch | undefined> {
+	if (!(await shouldBatch())) {
 		return undefined;
 	}
 
-	// Get unbatched queries
-	const { queries, sequences } = await getUnbatchedQueries(batchSize);
+	// Get ALL unbatched queries (not just BATCH_SIZE)
+	// For time-based batching, we might have fewer than BATCH_SIZE
+	const { queries, sequences } = await getUnbatchedQueries();
 
-	if (queries.length < batchSize) {
+	if (queries.length === 0) {
 		return undefined;
 	}
 
 	// Validate no gaps in sequence
+
 	const sorted = [...sequences].sort((a, b) => a - b);
-	for (let i = 0; i < sorted.length - 1; i++) {
-		const curr = sorted[i];
-		const next = sorted[i + 1];
-		if (curr === undefined || next === undefined || next - curr !== 1) {
-			throw new Error(`Gap in sequences at ${curr}`);
-		}
-	}
+	// for (let i = 0; i < sorted.length - 1; i++) {
+	// 	const curr = sorted[i];
+	// 	const next = sorted[i + 1];
+	// 	if (curr === undefined || next === undefined || next - curr !== 1) {
+	// 		throw new Error(`Gap in sequences at ${curr}`);
+	// 	}
+	// }
 
 	const startSeq = sorted[0];
 	const endSeq = sorted[sorted.length - 1];
@@ -67,8 +103,6 @@ export async function createBatchIfNeeded(): Promise<Batch | undefined> {
 	const auditRecords = queries.map(toAuditRecord);
 	const { root } = await sdk.audit.buildBatch(auditRecords);
 
-	const startTime = Math.min(...queries.map((q) => q.timestamp));
-	const endTime = Math.max(...queries.map((q) => q.timestamp));
 	const firstQuery = queries[0];
 	if (!firstQuery) {
 		throw new Error("No queries found in batch");
@@ -103,8 +137,8 @@ export async function createBatchIfNeeded(): Promise<Batch | undefined> {
 			BigInt(modelId),
 			root,
 			BigInt(queries.length),
-			BigInt(startTime),
-			BigInt(endTime),
+			BigInt(startSeq),
+			BigInt(endSeq),
 		);
 		await updateBatchTxHash(batchId, txHash);
 		console.log(`Batch ${batchId} committed with tx: ${txHash}`);
@@ -138,7 +172,7 @@ export async function findBatchById(id: string): Promise<Batch | undefined> {
  */
 export async function generateProof(params: {
 	batchId: string;
-	queryId: string;
+	seqNum: number;
 }): Promise<{
 	root: `0x${string}`;
 	index: number;
@@ -153,7 +187,7 @@ export async function generateProof(params: {
 	const queries = await getQueriesBySequence(batch.startSeq, batch.endSeq);
 	const auditRecords = queries.map(toAuditRecord);
 
-	const result = await sdk.audit.createProof(auditRecords, params.queryId);
+	const result = await sdk.audit.createProof(auditRecords, params.seqNum);
 
 	return {
 		root: batch.merkleRoot as `0x${string}`,

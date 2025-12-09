@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 export type AdultIncomeRaw = {
 	age: number;
@@ -20,9 +21,12 @@ export type AdultIncomeRaw = {
 export function AdultIncomeForm(props: {
 	value?: AdultIncomeRaw;
 	onChange?: (vector: number[], raw: AdultIncomeRaw) => void;
+	onSubmit?: (vector: number[], raw: AdultIncomeRaw) => void | Promise<void>;
+	loading?: boolean;
+	result?: { prediction: number; seqNum: number } | null;
 	className?: string;
 }) {
-	const { value, onChange, className } = props;
+	const { value, onChange, onSubmit, loading, result, className } = props;
 	const [raw, setRaw] = useState<AdultIncomeRaw>(
 		value ?? {
 			age: 39,
@@ -456,6 +460,32 @@ export function AdultIncomeForm(props: {
 					</select>
 				</div>
 			</div>
+
+			{/* Result display */}
+			{result && (
+				<div className="mt-4 rounded bg-muted p-3 text-xs">
+					<p>
+						<span className="font-medium">Prediction:</span>{" "}
+						<b>{result.prediction === 1 ? ">50K" : "≤50K"}</b>
+					</p>
+					<p>
+						<span className="font-medium">Receipt:</span>{" "}
+						<code className="text-xs">#{result.seqNum}</code>
+					</p>
+				</div>
+			)}
+
+			{/* Submit button */}
+			{onSubmit && (
+				<Button
+					disabled={loading}
+					className="mt-4 w-full"
+					size="default"
+					onClick={() => onSubmit(toVector(raw), raw)}
+				>
+					{loading ? "Predicting…" : "Predict"}
+				</Button>
+			)}
 		</div>
 	);
 }

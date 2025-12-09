@@ -1,14 +1,16 @@
 {
-	"name": "cli",
-	"version": "1.0.0",
+	"name": "@zkfair/cli",
+	"version": "0.0.2",
 	"type": "module",
-	"private": true,
 	"bin": {
-		"zkfair": "./index.ts"
+		"zkfair": "./dist/index.js"
 	},
+	"files": [
+		"dist"
+	],
 	"scripts": {
 		"dev": "bun run index.ts",
-		"build": "bun build index.ts --target bun --outdir=dist"
+		"build": "tsc -p ."
 	},
 	"dependencies": {
 		"@aztec/bb.js": "workspace:*",

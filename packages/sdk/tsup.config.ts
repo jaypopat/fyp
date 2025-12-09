@@ -12,6 +12,7 @@ export default defineConfig({
 		"model.ts",
 		"client.ts",
 		"merkle.ts",
+		"hash.ts",
 		"utils.ts",
 	],
 	format: ["esm"],

@@ -8,10 +8,20 @@ export const Route = createFileRoute("/dev")({
 	component: DevPage,
 });
 
+type Env = "local" | "prod";
+
+const BASE_URLS: Record<Env, string> = {
+	local: "http://localhost:5000",
+	prod: "https://provider-api.fyp.jaypopat.me",
+};
+
 function DevPage() {
-	const baseUrl = "http://localhost:5000";
+	const [env, setEnv] = useState<Env>("prod");
+	const baseUrl = BASE_URLS[env];
+
 	const modelIdInputId = useId();
 	const predictInputId = useId();
+
 	type Health =
 		| { status: string; loadedModels: string[]; timestamp: number }
 		| { error: string };
@@ -39,24 +49,11 @@ function DevPage() {
 	const [error, setError] = useState<string | null>(null);
 	const [useGuidedForm, setUseGuidedForm] = useState<boolean>(true);
 	const guidedToggleId = useId();
-
-	// Adult-income guided form state (only used when model is adult-income)
-	// adult-income vector from form
 	const [aiVector, setAiVector] = useState<number[] | null>(null);
-
-	// Options approximated from UCI Adult dataset; sorted to mimic LabelEncoder
-
-	// no-op helper removed; mappings handled inside AdultIncomeForm
 
 	function buildAdultIncomeVector(): number[] {
 		return aiVector ?? [];
 	}
-
-	// Load models and health on mount
-	useEffect(() => {
-		void doGet<Models>("/models", setModels);
-		void doGet<Health>("/health", setHealth);
-	}, []);
 
 	const doGet = async <T,>(path: string, setter: (v: T) => void) => {
 		setError(null);
@@ -68,6 +65,12 @@ function DevPage() {
 			setError(e instanceof Error ? e.message : "Request failed");
 		}
 	};
+
+	useEffect(() => {
+		void doGet<Models>("/models", setModels);
+		void doGet<Health>("/health", setHealth);
+	}, [baseUrl]);
+
 	const doPredict = async () => {
 		setLoading(true);
 		setError(null);
@@ -87,6 +90,7 @@ function DevPage() {
 							.map((v) => v.trim())
 							.filter(Boolean)
 							.map((v) => Number(v));
+
 			const res = await fetch(`${baseUrl}/predict`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
@@ -105,7 +109,6 @@ function DevPage() {
 		<div className="container mx-auto space-y-6 px-4 py-8">
 			<div className="flex items-center justify-between">
 				<h1 className="font-semibold text-2xl">Provider Dev Tools</h1>
-				{/* <Button variant="ghost" asChild><Link to="/">Back to models</Link></Button> */}
 			</div>
 
 			<Card>
@@ -113,10 +116,22 @@ function DevPage() {
 					<CardTitle>Config</CardTitle>
 				</CardHeader>
 				<CardContent className="space-y-2 text-sm">
-					<div>
-						<span className="text-muted-foreground">Base URL:</span>{" "}
-						{/* biome-ignore lint/nursery/useSortedClasses: Tailwind arbitrary tokens */}
-						<code className="bg-muted px-2 py-1 rounded">{baseUrl}</code>
+					<div className="flex flex-wrap items-center gap-3">
+						<div className="flex items-center gap-2">
+							<span className="text-muted-foreground">Environment:</span>
+							<select
+								className="rounded border px-2 py-1 text-xs"
+								value={env}
+								onChange={(e) => setEnv(e.target.value as Env)}
+							>
+								<option value="local">Local</option>
+								<option value="prod">Production</option>
+							</select>
+						</div>
+						<div>
+							<span className="text-muted-foreground">Base URL:</span>{" "}
+							<code className="rounded bg-muted px-2 py-1">{baseUrl}</code>
+						</div>
 					</div>
 				</CardContent>
 			</Card>
@@ -139,8 +154,7 @@ function DevPage() {
 						{health && (
 							<div className="text-xs">
 								<p className="font-medium">/health</p>
-								{/* biome-ignore lint/nursery/useSortedClasses: Tailwind arbitrary tokens */}
-								<pre className="bg-muted overflow-auto p-3 rounded">
+								<pre className="overflow-auto rounded bg-muted p-3">
 									{JSON.stringify(health, null, 2)}
 								</pre>
 							</div>
@@ -148,8 +162,7 @@ function DevPage() {
 						{models && (
 							<div className="text-xs">
 								<p className="font-medium">/models</p>
-								{/* biome-ignore lint/nursery/useSortedClasses: Tailwind arbitrary tokens */}
-								<pre className="bg-muted overflow-auto p-3 rounded">
+								<pre className="overflow-auto rounded bg-muted p-3">
 									{JSON.stringify(models, null, 2)}
 								</pre>
 							</div>
@@ -157,7 +170,7 @@ function DevPage() {
 					</CardContent>
 				</Card>
 
-				{/* POST /predict with guided Adult Income form */}
+				{/* POST /predict */}
 				<Card>
 					<CardHeader>
 						<CardTitle>POST /predict</CardTitle>
@@ -225,8 +238,7 @@ function DevPage() {
 						{predictResult && (
 							<div className="text-xs">
 								<p className="font-medium">Response</p>
-								{/* biome-ignore lint/nursery/useSortedClasses: Tailwind arbitrary tokens */}
-								<pre className="bg-muted overflow-auto p-3 rounded">
+								<pre className="overflow-auto rounded bg-muted p-3">
 									{JSON.stringify(predictResult, null, 2)}
 								</pre>
 							</div>

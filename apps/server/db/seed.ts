@@ -1,5 +1,5 @@
+import type { Hex } from "viem";
 import { createBatchIfNeeded } from "../lib/batch.service";
-import type { Hex } from "../lib/types";
 import { db } from "./client";
 import { queryLogs } from "./schema";
 
@@ -7,7 +7,7 @@ const count = Number(process.env.SEED_COUNT) || 100;
 
 console.log(`Seeding ${count} queries...`);
 
-const modelId = 1; // Using the adult-income model
+const modelId = 1; // adult-income model
 const startTime = Date.now();
 
 // Prepare query data

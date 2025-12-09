@@ -8,6 +8,10 @@ export class ModelAPI {
 		return await this.contracts.getModelByHash(weightHash);
 	}
 
+	async getById(modelId: bigint) {
+		return await this.contracts.getModel(modelId);
+	}
+
 	async list() {
 		return await this.contracts.getModels();
 	}

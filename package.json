@@ -1,9 +1,9 @@
 {
 	"name": "fyp",
 	"devDependencies": {
-		"@biomejs/biome": "^2.2.0",
+		"@biomejs/biome": "^2.3.8",
 		"concurrently": "^9.2.1",
-		"turbo": "^2.5.4"
+		"turbo": "^2.6.1"
 	},
 	"overrides": {
 		"@noir-lang/noir_js": "1.0.0-beta.15",
