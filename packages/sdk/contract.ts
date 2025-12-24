@@ -148,16 +148,16 @@ export class ContractClient {
 	 * @param modelId Model ID used for queries
 	 * @param merkleRoot Merkle root of query-output pairs
 	 * @param queryCount Number of queries in batch
-	 * @param timestampStart Start timestamp
-	 * @param timestampEnd End timestamp
+	 * @param seqNumStart Start sequence number
+	 * @param seqNumEnd End sequence number
 	 * @returns Transaction hash
 	 */
 	async commitBatch(
 		modelId: bigint,
 		merkleRoot: Hash,
 		queryCount: bigint,
-		timestampStart: bigint,
-		timestampEnd: bigint,
+		seqNumStart: bigint,
+		seqNumEnd: bigint,
 	) {
 		if (!this.walletClient)
 			throw new Error("Wallet client required for write operations");
@@ -167,7 +167,7 @@ export class ContractClient {
 			abi: zkFairAbi,
 			functionName: "commitBatch",
 			account: this.walletClient.account,
-			args: [modelId, merkleRoot, queryCount, timestampStart, timestampEnd],
+			args: [modelId, merkleRoot, queryCount, seqNumStart, seqNumEnd],
 		});
 	}
 
@@ -184,12 +184,20 @@ export class ContractClient {
 		if (!this.walletClient)
 			throw new Error("Wallet client required for write operations");
 
+		// Get required audit stake from contract
+		const auditStake = await this.publicClient.readContract({
+			address: this.contractAddress,
+			abi: zkFairAbi,
+			functionName: "AUDIT_STAKE",
+		});
+
 		return await this.walletClient.writeContract({
 			address: this.contractAddress,
 			abi: zkFairAbi,
 			functionName: "requestAudit",
 			account: this.walletClient.account,
 			args: [batchId],
+			value: auditStake as bigint,
 		});
 	}
 

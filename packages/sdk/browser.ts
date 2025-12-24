@@ -19,4 +19,7 @@ export class BrowserSDK {
 		this.events = new EventsAPI(this.contracts);
 	}
 }
+
 export { getDefaultConfig } from "./config";
+export { hashRecordLeaf } from "./audit";
+export type { AuditRecord } from "./audit";

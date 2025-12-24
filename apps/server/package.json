@@ -15,7 +15,8 @@
 		"@zkfair/sdk": "workspace:*",
 		"drizzle-orm": "^0.44.7",
 		"hono": "^4.9.11",
-		"onnxruntime-node": "^1.23.0"
+		"onnxruntime-node": "^1.23.0",
+		"viem": "^2.40.3"
 	},
 	"scripts": {
 		"dev": "bun --hot index.ts",
@@ -23,6 +24,8 @@
 		"build": "bun build index.ts --target=bun",
 		"db:seed": "bun db/seed.ts",
 		"db:studio": "bunx drizzle-kit studio",
-		"db:migrate": "bunx drizzle-kit migrate"
+		"db:migrate": "bunx drizzle-kit migrate",
+		"demo:wrong-prediction": "bun scripts/malicious-wrong-prediction.ts",
+		"demo:missing-queries": "bun scripts/malicious-missing-queries.ts"
 	}
 }

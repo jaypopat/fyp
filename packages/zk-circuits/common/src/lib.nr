@@ -1,26 +1,46 @@
-// merkle logic
-use dep::poseidon::poseidon2;
-pub fn compute_merkle_root(
-    leaf: Field,
-    merkle_proof: [Field; 20],
-    is_even: [bool; 20],
+use dep::poseidon::poseidon;
+
+global NUM_WEIGHTS: u32 = 15;
+global NUM_FEATURES: u32 = 14;
+global MAX_DATASET_SIZE: u32 = 10;
+global MAX_TREE_HEIGHT: u32 = 15;
+global THRESHOLD_SCALE: u32 = 10000;
+
+// Logistic regression prediction
+pub fn predict_logistic_regression(
+    weights: [Field; NUM_WEIGHTS],
+    features: [Field; NUM_FEATURES],
 ) -> Field {
-    // temporary variable to store the hash for the current level we are working on
-    let mut hash: Field = leaf;
-    // increment through the levels
-    for i in 0..20 {
-        let (left, right) = if is_even[i] {
-            (hash, merkle_proof[i])
-        } else {
-            (merkle_proof[i], hash)
-        };
-        // compute the hash for the current level
-        hash = poseidon2::Poseidon2::hash([left, right], 2);
+    let mut logit = weights[0];
+
+    for i in 0..NUM_FEATURES {
+        logit = logit + weights[i + 1] * features[i];
     }
-    // return the root of the Merkle tree
-    hash
+
+    if (logit as i64) > 0 {
+        1
+    } else {
+        0
+    }
 }
 
-// fairness metric calculation
+pub fn compute_merkle_root(
+    leaf: Field,
+    merkle_proof: [Field; MAX_TREE_HEIGHT],
+    is_even: [bool; MAX_TREE_HEIGHT],
+) -> Field {
+    let mut hash: Field = leaf;
 
-// data selection from csv dataset
+    for i in 0..MAX_TREE_HEIGHT {
+        if merkle_proof[i] != 0 {
+            let (left, right) = if is_even[i] {
+                (hash, merkle_proof[i])
+            } else {
+                (merkle_proof[i], hash)
+            };
+            hash = poseidon::bn254::hash_2([left, right]);
+        }
+    }
+
+    hash
+}
