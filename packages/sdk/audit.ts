@@ -4,11 +4,14 @@ import {
 	fairness_audit_circuit,
 	type fairness_auditInputType,
 } from "@zkfair/zk-circuits/codegen";
+import { and, asc, sql } from "drizzle-orm";
 import { poseidon2, poseidon8 } from "poseidon-lite";
 import type { Hash, Hex } from "viem";
+import { type DrizzleDB, type QueryLog, zkfairQueryLogs } from "./schema";
 import { parseFairnessThresholdFile, parsePathsFile } from "./artifacts";
 import { getDefaultConfig } from "./config";
 import type { ContractClient } from "./contract";
+import type { AuditRequestedEvent } from "./events";
 import { createMerkleProof, merkleRoot } from "./merkle";
 import { getArtifactDir, weightsToFields } from "./utils";
 
@@ -54,7 +57,7 @@ export type AuditProof = {
  *
  * @returns 64-character hex string (no 0x prefix)
  */
-function hashRecordLeaf(r: AuditRecord): string {
+export function hashRecordLeaf(r: AuditRecord): string {
 	// Build leaf_data array matching circuit: [features[0..13], prediction, sensitiveAttr]
 	const leafData: bigint[] = [];
 
@@ -240,7 +243,7 @@ export class AuditAPI {
 		// 7. Build circuit input with sample count and validity mask
 		const input: fairness_auditInputType = {
 			_model_weights: modelWeightsFields.map(String),
-			_sample_count: actualSampleCount,
+			_sample_count: String(actualSampleCount),
 			_sample_valid: sampleValid,
 			_sample_features: sampleFeatures,
 			_sample_predictions: samplePredictions,
@@ -342,6 +345,130 @@ export class AuditAPI {
 		const { root, proof } = await createMerkleProof(leaves, index);
 
 		return { root, index, proof };
+	}
+
+	// ============================================
+	// AUDIT REQUEST HANDLING (PROVIDER)
+	// ============================================
+
+	/**
+	 * Handle an audit request event by generating proofs and submitting attestation
+	 *
+	 * This is the high-level handler that providers call when they receive an
+	 * AuditRequested event. It orchestrates the full audit response flow:
+	 * 1. Fetches batch info from contract
+	 * 2. Loads records from provider's storage
+	 * 3. Builds Merkle tree and proofs
+	 * 4. Generates ZK proof via attestation service
+	 * 5. Submits signed attestation to contract
+	 *
+	 * @param event - The AuditRequested event from contract
+	 * @param db - Provider's drizzle database instance
+	 * @returns Transaction hash of the attestation submission
+	 *
+	 * @example
+	 * ```typescript
+	 * sdk.events.watchAuditRequested(async (event) => {
+	 *   const txHash = await sdk.audit.handleAuditRequest(event, db);
+	 *   console.log(`Audit response submitted: ${txHash}`);
+	 * });
+	 * ```
+	 */
+	async handleAuditRequest(
+		event: AuditRequestedEvent,
+		db: DrizzleDB,
+	): Promise<{
+		txHash: Hash;
+		passed: boolean;
+	}> {
+		console.log("Handling audit request:", {
+			auditId: event.auditId.toString(),
+			batchId: event.batchId.toString(),
+		});
+
+		// 1. Get batch info from contract
+		const batch = await this.contracts.getBatch(event.batchId);
+		const startSeq = Number(batch.seqNumStart);
+		const endSeq = Number(batch.seqNumEnd);
+		const modelId = batch.modelId;
+
+		console.log(`Batch covers seqNum ${startSeq} to ${endSeq}, modelId: ${modelId}`);
+
+		// 2. Get model's weightsHash (needed to find artifacts)
+		const model = await this.contracts.getModel(modelId);
+		const weightsHash = model.weightsHash as Hash;
+		console.log(`Model weightsHash: ${weightsHash}`);
+
+		// 3. Load records from storage by sequence range
+		const records = await db
+			.select()
+			.from(zkfairQueryLogs)
+			.where(
+				and(
+					sql`${zkfairQueryLogs.seq} >= ${startSeq}`,
+					sql`${zkfairQueryLogs.seq} <= ${endSeq}`,
+				),
+			)
+			.orderBy(asc(zkfairQueryLogs.seq));
+
+		if (records.length === 0) {
+			throw new Error(`No records found for seq range ${startSeq}-${endSeq}`);
+		}
+
+		console.log(`Loaded ${records.length} records from storage`);
+
+		// 4. Convert to AuditRecord format
+		const auditRecords: AuditRecord[] = records.map((r: QueryLog) => ({
+			seqNum: r.seq,
+			modelId: r.modelId,
+			features: r.features,
+			sensitiveAttr: r.sensitiveAttr,
+			prediction: r.prediction,
+			timestamp: r.timestamp,
+		}));
+
+		// 5. Build Merkle tree for the batch
+		const { root } = await this.buildBatch(auditRecords);
+		console.log(`Built Merkle tree with root ${root}`);
+
+		// 6. Convert sample indices and generate merkle proofs
+		const sampleIndices = event.sampleIndices.map((idx: bigint) => Number(idx));
+		const merkleProofs = await Promise.all(
+			sampleIndices.map(async (index: number) => {
+				const record = auditRecords[index];
+				if (!record) {
+					throw new Error(`No record found at index ${index}`);
+				}
+				return this.createProof(auditRecords, record.seqNum);
+			}),
+		);
+		console.log(`Generated ${merkleProofs.length} Merkle proofs`);
+
+		// 7. Generate ZK proof and get attestation
+		console.log("Generating ZK proof and requesting attestation...");
+		const { attestationHash, signature, passed } =
+			await this.generateFairnessZKProof(
+				root,
+				sampleIndices,
+				auditRecords,
+				merkleProofs,
+				weightsHash,
+				event.auditId,
+			);
+
+		console.log(`Attestation received: passed=${passed}`);
+
+		// 8. Submit signed attestation to contract
+		console.log("Submitting attestation to contract...");
+		const txHash = await this.submitAuditProof(
+			event.auditId,
+			attestationHash,
+			signature,
+			passed,
+		);
+
+		console.log(`Audit response submitted: ${txHash}`);
+		return { txHash, passed };
 	}
 
 	// ============================================
