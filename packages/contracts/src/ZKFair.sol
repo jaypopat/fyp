@@ -402,7 +402,7 @@ contract ZKFair is Ownable, Pausable {
         uint256 batchId
     ) external payable validBatch(batchId) whenNotPaused returns (uint256 auditId) {
         if (msg.value != AUDIT_STAKE) revert InsufficientStake();
-        
+
         Batch storage batch = batches[batchId];
 
         if (batch.audited) revert AlreadyAudited();
@@ -501,12 +501,12 @@ contract ZKFair is Ownable, Pausable {
             audit.status = AuditStatus.PASSED;
             batch.auditStatus = AuditStatus.PASSED;
             // Provider wins - gets challenger's stake as reward
-            _safeTransfer(model.provider, audit.challengerStake);
+            _safeTransfer(model.provider, AUDIT_STAKE);
         } else {
             audit.status = AuditStatus.FAILED;
             batch.auditStatus = AuditStatus.FAILED;
             // Challenger wins - gets their stake back + provider's stake
-            _safeTransfer(audit.challenger, audit.challengerStake);
+            _safeTransfer(audit.challenger, AUDIT_STAKE);
             _slashProvider(
                 batch.modelId,
                 audit.challenger,
@@ -535,8 +535,8 @@ contract ZKFair is Ownable, Pausable {
         batch.auditStatus = AuditStatus.EXPIRED;
 
         // Return challenger's stake first
-        _safeTransfer(audit.challenger, audit.challengerStake);
-        
+        _safeTransfer(audit.challenger, AUDIT_STAKE);
+
         // Slash provider and reward challenger
         _slashProvider(
             batch.modelId,
@@ -571,14 +571,14 @@ contract ZKFair is Ownable, Pausable {
         bytes calldata providerSignature
     ) external payable validModel(modelId) whenNotPaused {
         if (msg.value != DISPUTE_STAKE) revert InsufficientStake();
-        
+
         Model storage model = models[modelId];
-        
+
         // 1. Verify grace period has passed (give provider time to batch)
         if (block.timestamp < timestamp + DISPUTE_GRACE_PERIOD) {
             revert DisputeGracePeriodNotPassed();
         }
-        
+
         // 2. Verify provider signature matches the receipt data
         bytes32 dataHash = keccak256(
             abi.encodePacked(
@@ -592,9 +592,9 @@ contract ZKFair is Ownable, Pausable {
         );
         bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(dataHash);
         address recoveredSigner = ECDSA.recover(ethSignedMessageHash, providerSignature);
-        
+
         if (recoveredSigner != model.provider) revert InvalidSignature();
-        
+
         // 3. Check that no batch contains this seqNum
         uint256[] memory modelBatches = batchesByModel[modelId];
         for (uint256 i = 0; i < modelBatches.length; i++) {
@@ -607,7 +607,7 @@ contract ZKFair is Ownable, Pausable {
                 revert SeqNumAlreadyBatched();
             }
         }
-        
+
         // 4. Provider failed to batch this query - return stake and slash provider
         _safeTransfer(msg.sender, msg.value); // Return disputer's stake
         emit DisputeRaised(modelId, msg.sender, seqNum, "Query never batched");
@@ -632,17 +632,17 @@ contract ZKFair is Ownable, Pausable {
         uint8[] calldata proofPositions
     ) external payable validBatch(batchId) whenNotPaused {
         if (msg.value != DISPUTE_STAKE) revert InsufficientStake();
-        
+
         Batch storage batch = batches[batchId];
         uint256 modelId = batch.modelId;
         Model storage model = models[modelId];
-        
+
         // 1. Verify seqNum is in this batch's claimed range
         //    Provider committed on-chain that this batch contains seqNumStart to seqNumEnd
         if (seqNum < batch.seqNumStart || seqNum > batch.seqNumEnd) {
             revert SeqNumNotInBatchRange();
         }
-        
+
         // 2. Verify Merkle proof FAILS against on-chain root
         //    If proof succeeds, the data WAS included correctly (no fraud)
         if (_computeMerkleRoot(leafHash, merkleProof, proofPositions) == batch.merkleRoot) {
@@ -651,7 +651,7 @@ contract ZKFair is Ownable, Pausable {
             _safeTransfer(model.provider, msg.value);
             revert InvalidMerkleProof();
         }
-        
+
         // 3. Merkle proof failed - provider's on-chain commitment is false
         //    They claimed to include seqNum but didn't, or included wrong data
         _safeTransfer(msg.sender, msg.value); // Return disputer's stake
@@ -666,7 +666,7 @@ contract ZKFair is Ownable, Pausable {
         uint8[] calldata positions
     ) internal pure returns (bytes32) {
         bytes32 computedHash = leaf;
-        
+
         for (uint256 i = 0; i < proof.length; i++) {
             if (positions[i] == 0) {
                 // Sibling is on the left
@@ -676,7 +676,7 @@ contract ZKFair is Ownable, Pausable {
                 computedHash = keccak256(abi.encodePacked(computedHash, proof[i]));
             }
         }
-        
+
         return computedHash;
     }
 

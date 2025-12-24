@@ -21,3 +21,5 @@ export class BrowserSDK {
 }
 
 export { getDefaultConfig } from "./config";
+export { hashRecordLeaf } from "./audit";
+export type { AuditRecord } from "./audit";

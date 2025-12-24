@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { History, Wrench } from "lucide-react";
+import { History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { config } from "@/config";
 import { ModeToggle } from "./mode-toggle";
@@ -13,7 +13,6 @@ export default function Header() {
 		select: (state) => state.location?.pathname ?? "/",
 	});
 	const isHome = pathname === "/";
-	const isDevPage = pathname === "/dev";
 	const isReceipts = pathname === "/receipts";
 
 	return (
@@ -46,13 +45,6 @@ export default function Header() {
 						<Button variant="ghost" size="icon" className="h-8 w-8" asChild>
 							<Link to="/receipts" title="My Receipts">
 								<History className="h-4 w-4" />
-							</Link>
-						</Button>
-					)}
-					{!isDevPage && (
-						<Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-							<Link to="/dev" title="Developer tools">
-								<Wrench className="h-4 w-4" />
 							</Link>
 						</Button>
 					)}

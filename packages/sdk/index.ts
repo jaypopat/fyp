@@ -7,6 +7,14 @@ export {
 	getNetworkConfig,
 	type NetworkConfig,
 } from "./config";
+export {
+	type Batch,
+	type DrizzleDB,
+	type NewBatch,
+	type NewQueryLog,
+	type QueryLog,
+	zkfairSchema,
+} from "./schema";
 export type {
 	AuditExpiredEvent,
 	AuditProofSubmittedEvent,
@@ -17,4 +25,18 @@ export type {
 	ProviderSlashedEvent,
 	StakeWithdrawnEvent,
 } from "./events";
+export {
+	ProviderSDK,
+	type ProviderSDKOptions,
+} from "./provider";
+export {
+	createReceiptHashes,
+	createSignedReceipt,
+	type ReceiptData,
+	type ReceiptHashes,
+	type SignedReceipt,
+	signReceiptHash,
+	signReceiptHashWithAccount,
+	verifyReceipt,
+} from "./receipt";
 export { SDK } from "./sdk";

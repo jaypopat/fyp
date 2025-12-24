@@ -1,7 +1,6 @@
-import type { Hex } from "viem";
-import { createBatchIfNeeded } from "../lib/batch.service";
+import { zkfairQueryLogs } from "./schema";
 import { db } from "./client";
-import { queryLogs } from "./schema";
+import { provider } from "../lib/sdk";
 
 const count = Number(process.env.SEED_COUNT) || 100;
 
@@ -10,41 +9,28 @@ console.log(`Seeding ${count} queries...`);
 const modelId = 1; // adult-income model
 const startTime = Date.now();
 
-// Prepare query data
+// Prepare query data matching the SDK schema
 const queries = [];
 for (let i = 0; i < count; i++) {
-	// Generate random input that looks like the adult-income features
-	const randomInput = Array.from({ length: 14 }, () => Math.random() * 100);
-
-	// Hash the input (using JSON encoding, standardized)
-	const asF32 = Array.from(new Float32Array(randomInput));
-	const inputHashBytes = Bun.sha(
-		new TextEncoder().encode(JSON.stringify(asF32)),
-	) as Uint8Array;
-	const inputHash = `0x${[...inputHashBytes]
-		.map((b) => b.toString(16).padStart(2, "0"))
-		.join("")}` as Hex;
+	// Generate random features (14 features for adult-income model)
+	const features = Array.from({ length: 14 }, () =>
+		Math.round(Math.random() * 100),
+	);
 
 	// Generate random prediction (0 or 1 for binary classification)
 	const prediction = Math.random() > 0.5 ? 1 : 0;
 
-	// Generate unique query ID
-	const queryId =
-		globalThis.crypto?.randomUUID?.() ?? `query-${i}-${Date.now()}`;
-
 	queries.push({
-		queryId,
 		modelId,
-		inputHash,
-		features: [1, 2, 3],
-		sensitiveAttr: Math.random() > 0.5 ? 1 : 0, // Random sensitive attribute
+		features,
+		sensitiveAttr: Math.random() > 0.5 ? 1 : 0,
 		prediction,
-		timestamp: Date.now() + i, // Slightly increment timestamp
+		timestamp: Date.now() + i,
 	});
 }
 
 // Insert all queries
-await db.insert(queryLogs).values(queries);
+await db.insert(zkfairQueryLogs).values(queries);
 
 const duration = Date.now() - startTime;
 console.log(`Successfully seeded ${count} queries in ${duration}ms`);
@@ -54,12 +40,12 @@ console.log(`Average: ${(duration / count).toFixed(2)}ms per query`);
 console.log("\nChecking for batch creation...");
 let batchCount = 0;
 while (true) {
-	const batch = await createBatchIfNeeded();
+	const batch = await provider.createBatchIfNeeded();
 	if (!batch) {
 		break;
 	}
 	batchCount++;
-	console.log(`  Created batch ${batch.id}`);
+	console.log(`  Created batch ${batch.batch.id}`);
 }
 
 if (batchCount > 0) {

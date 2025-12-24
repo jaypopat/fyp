@@ -1,6 +1,6 @@
 {
 	"name": "@zkfair/sdk",
-	"version": "0.0.13",
+	"version": "0.0.17",
 	"type": "module",
 	"main": "./dist/index.js",
 	"module": "./dist/index.js",
@@ -12,6 +12,10 @@
 		".": {
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js"
+		},
+		"./schema": {
+			"types": "./dist/schema/index.d.ts",
+			"import": "./dist/schema/index.js"
 		},
 		"./browser": {
 			"types": "./dist/browser.d.ts",
@@ -42,14 +46,20 @@
 	"scripts": {
 		"build": "tsup",
 		"dev": "tsup --watch",
-		"publish": "bun run build && bun publish"
+		"pub": "bun run build && bun publish"
 	},
 
 	"publishConfig": {
 		"access": "public"
 	},
 	"peerDependencies": {
+		"drizzle-orm": "^0.38.0",
 		"typescript": "^5"
+	},
+	"peerDependenciesMeta": {
+		"drizzle-orm": {
+			"optional": true
+		}
 	},
 	"dependencies": {
 		"@aztec/bb.js": "^2.0.3",
@@ -64,6 +74,7 @@
 		"@types/bun": "^1.3.0",
 		"@types/circomlibjs": "^0.1.6",
 		"@types/papaparse": "^5.3.16",
+		"drizzle-orm": "^0.38.0",
 		"@zkfair/contracts": "workspace:*",
 		"@zkfair/zk-circuits": "workspace:*",
 		"tsup": "^8.5.1"

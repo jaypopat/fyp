@@ -1,6 +1,6 @@
 {
 	"name": "@zkfair/cli",
-	"version": "0.0.2",
+	"version": "0.0.4",
 	"type": "module",
 	"bin": {
 		"zkfair": "./dist/index.js"
@@ -10,18 +10,19 @@
 	],
 	"scripts": {
 		"dev": "bun run index.ts",
-		"build": "tsc -p ."
+		"build": "tsup"
 	},
 	"dependencies": {
-		"@aztec/bb.js": "workspace:*",
 		"@drizzle-team/brocli": "^0.11.0",
 		"@inquirer/prompts": "^7.9.0",
-		"@noir-lang/noir_js": "workspace:*",
 		"@zkfair/sdk": "workspace:*",
 		"ora": "^9.0.0",
 		"viem": "^2.38.3"
 	},
 	"devDependencies": {
 		"@types/bun": "latest"
+	},
+	"publishConfig": {
+		"access": "public"
 	}
 }

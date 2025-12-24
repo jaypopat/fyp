@@ -10,7 +10,6 @@ export function WalletConnect() {
 	const chainId = useChainId();
 	const isAnvil = chainId === anvil.id;
 
-	// For production, use RainbowKit with full wallet UI
 	if (!isDevelopment) {
 		return (
 			<ConnectButton.Custom>

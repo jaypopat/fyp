@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-table";
 import { ArrowUpDown, ExternalLink, Loader2, Search } from "lucide-react";
 import { useMemo, useState } from "react";
+import { ProviderInfoBanner } from "@/components/provider-info-banner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -201,6 +202,9 @@ function HomeComponent() {
 						Explore verified AI models and their fairness compliance status
 					</p>
 				</div>
+
+				{/* Provider Info Banner */}
+				<ProviderInfoBanner />
 
 				{/* Search Bar */}
 				<Card className="mb-6 p-4">

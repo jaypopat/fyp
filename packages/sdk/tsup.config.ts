@@ -14,6 +14,7 @@ export default defineConfig({
 		"merkle.ts",
 		"hash.ts",
 		"utils.ts",
+		"schema/index.ts",
 	],
 	format: ["esm"],
 	dts: true,

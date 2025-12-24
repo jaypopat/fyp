@@ -83,7 +83,7 @@ export function useModelBatches(weightsHash: Hash, initialModelId?: bigint) {
 				try {
 					const batchData = await sdk.batch.get(event.batchId);
 
-					const newBatch: BatchData = {
+					const newBatch = {
 						batchId: event.batchId.toString(),
 						modelId: event.modelId.toString(),
 						merkleRoot: event.merkleRoot,
