@@ -43,8 +43,8 @@
 		}
 	},
 	"scripts": {
-		"build": "tsup",
-		"dev": "tsup --watch",
+		"build": "tsdown",
+		"dev": "tsdown --watch",
 		"pub": "bun run build && bun publish"
 	},
 	"publishConfig": {
@@ -75,6 +75,6 @@
 		"drizzle-orm": "^0.38.4",
 		"@zkfair/contracts": "workspace:*",
 		"@zkfair/zk-circuits": "workspace:*",
-		"tsup": "^8.5.1"
+		"tsdown": "^0.18.3"
 	}
 }

@@ -1,4 +1,4 @@
-import { defineConfig } from "tsup";
+import { defineConfig } from "tsdown";
 
 console.log("Building SDK with Env:", process.env.ZKFAIR_ENV);
 
@@ -20,4 +20,5 @@ export default defineConfig({
 	dts: true,
 	clean: true,
 	noExternal: ["@zkfair/contracts", "@zkfair/zk-circuits"],
+  target: false,
 });
