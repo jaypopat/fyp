@@ -22,7 +22,7 @@
  */
 
 import type { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
-import { zkfairSchema } from "./tables";
+import type { zkfairSchema } from "./tables";
 
 /**
  * Drizzle database instance type for ZKFair SDK
@@ -30,11 +30,11 @@ import { zkfairSchema } from "./tables";
 export type DrizzleDB = BunSQLiteDatabase<typeof zkfairSchema>;
 
 export {
-	zkfairBatches,
-	zkfairQueryLogs,
-	zkfairSchema,
 	type Batch,
 	type NewBatch,
 	type NewQueryLog,
 	type QueryLog,
+	zkfairBatches,
+	zkfairQueryLogs,
+	zkfairSchema,
 } from "./tables";

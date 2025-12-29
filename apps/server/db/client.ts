@@ -1,6 +1,6 @@
-import * as schema from "./schema";
 import { Database } from "bun:sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
+import * as schema from "./schema";
 
 // Database file path - use persistent volume in production
 const DB_PATH =

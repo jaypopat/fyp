@@ -1,22 +1,195 @@
 ---
-title: OpenAuth with Next.js
-description: Use OpenAuth to add authentication to your Next.js app.
+title: Quick Start
+description: Get started with ZKFair in 5 minutes.
 ---
 
-import { Image } from "astro:assets"
+import { Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
-import nextAppDark from "./nextjs-dark.png"
-import nextAppLight from "./nextjs-light.png"
-
-We are going to create a new Next.js app and add authentication to it with OpenAuth.
-
-:::tip[View source]
-You can [view the source](https://github.com/openauthjs/openauth/tree/master/examples/quickstart/standalone) of this example in our repo.
-:::
-
-We are going to authenticate users by sending them a code to verify their email address.
+This guide walks you through the complete ZKFair workflow.
 
 ---
+
+## For Model Providers
+
+<Steps>
+
+1. **Prepare Model Artifacts**
+   
+   Create a directory with your model files:
+   
+   ```
+   my-model/
+   ├── weights.bin              # Serialized weights (Float32)
+   ├── dataset_encoded.csv      # Label-encoded training data
+   ├── fairness_threshold.json  # { "threshold": 10 }
+   ├── model.json              # { "name": "My Model" }
+   └── model.onnx              # ONNX model for inference
+   ```
+
+2. **Register Model On-Chain**
+   
+   ```bash
+   cd apps/cli
+   bun run dev -- commit --dir ./my-model --private-key $PRIVATE_KEY
+   ```
+   
+   This will:
+   - Hash weights with Poseidon
+   - Build Merkle tree of dataset
+   - Call `registerModel()` with 0.0001 ETH stake
+
+3. **Certify Model**
+   
+   ```bash
+   bun run dev -- proof generate-and-submit --weights-hash 0x...
+   ```
+   
+   This generates a ZK proof of training fairness and submits it on-chain.
+
+4. **Run Inference Server**
+   
+   ```bash
+   cd apps/server
+   export PRIVATE_KEY=0x...
+   bun run dev
+   ```
+   
+   The server will:
+   - Accept inference requests at `POST /predict`
+   - Auto-batch queries (100 queries or 30 min)
+   - Handle audit requests automatically
+
+</Steps>
+
+---
+
+## For Users (Web App)
+
+<Steps>
+
+1. **Run Inference**
+   
+   ```typescript
+   const response = await fetch("http://provider:5000/predict", {
+     method: "POST",
+     headers: { "Content-Type": "application/json" },
+     body: JSON.stringify({
+       modelHash: "0x...",
+       input: [0.5, 1.2, 0.8, ...]  // 14 features
+     })
+   });
+   
+   const { prediction, receipt } = await response.json();
+   ```
+
+2. **Store Receipt Locally**
+   
+   ```typescript
+   // Using Dexie (IndexedDB)
+   await db.receipts.add({
+     seqNum: receipt.seqNum,
+     modelId: receipt.modelId,
+     features: input,
+     prediction,
+     dataHash: receipt.dataHash,
+     providerSignature: receipt.signature,
+     providerUrl: "http://provider:5000",
+     timestamp: Date.now(),
+     status: "PENDING"
+   });
+   ```
+
+3. **Verify Receipt**
+   
+   The Sentinel automatically verifies receipts against the blockchain:
+   
+   ```typescript
+   import { verifyAndUpdateReceipt } from "@/lib/sentinel";
+   
+   const result = await verifyAndUpdateReceipt(receipt);
+   
+   switch (result.status) {
+     case "VERIFIED":
+       console.log("✓ Query included in batch");
+       break;
+     case "FRAUD_NON_INCLUSION":
+       console.log("⚠ Provider never batched your query!");
+       break;
+     case "FRAUD_INVALID_PROOF":
+       console.log("⚠ Provider tampered with data!");
+       break;
+   }
+   ```
+
+4. **File Dispute (if fraud detected)**
+   
+   ```typescript
+   // Type A: Non-inclusion
+   writeContract({
+     functionName: "disputeNonInclusion",
+     args: [modelId, seqNum, timestamp, featuresHash, sensitiveAttr, prediction, signature]
+   });
+   
+   // Type B: Fraudulent inclusion  
+   writeContract({
+     functionName: "disputeFraudulentInclusion",
+     args: [batchId, seqNum, leafHash, proof, positions]
+   });
+   ```
+
+</Steps>
+
+---
+
+## For Challengers
+
+Anyone can audit provider batches:
+
+```typescript
+import { BrowserSDK } from "@zkfair/sdk/browser";
+
+const sdk = new BrowserSDK();
+
+// Find batches to audit
+const batchIds = await sdk.batch.getIdsByModel(modelId);
+
+// Request audit (requires 0.00005 ETH stake)
+writeContract({
+  functionName: "requestAudit",
+  args: [batchId],
+  value: parseEther("0.00005")
+});
+
+// If provider doesn't respond in 24h:
+writeContract({
+  functionName: "slashExpiredAudit",
+  args: [auditId]
+});
+```
+
+---
+
+## Development
+
+```bash
+# Install dependencies
+bun install
+
+# Build SDK
+cd packages/sdk && bun run build
+
+# Run server
+cd apps/server && bun run dev
+
+# Run CLI
+cd apps/cli && bun run dev -- model list
+
+# Run frontend
+cd apps/web && bun run dev
+
+# Deploy contracts
+cd packages/contracts && forge script script/Deploy.s.sol --broadcast
+```
 
 ## 1. Create a project
 

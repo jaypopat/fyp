@@ -22,7 +22,9 @@ const registry = await loadAllModels();
 initDatabase();
 
 provider.watchAuditRequests((result) => {
-	console.log(`Audit ${result.auditId}: ${result.passed ? "PASSED" : "FAILED"} (${result.txHash})`);
+	console.log(
+		`Audit ${result.auditId}: ${result.passed ? "PASSED" : "FAILED"} (${result.txHash})`,
+	);
 });
 
 // Start periodic batch check - ensures time-based batching works even without new queries

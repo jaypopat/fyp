@@ -4,6 +4,24 @@ import type { ContractClient } from "./contract";
 export class ModelAPI {
 	constructor(private contracts: ContractClient) {}
 
+	async register(
+		name: string,
+		description: string,
+		inferenceUrl: string,
+		weightsHash: Hash,
+		datasetMerkleRoot: Hash,
+		fairnessThreshold: number,
+	) {
+		return this.contracts.registerModel(
+			name,
+			description,
+			inferenceUrl,
+			weightsHash,
+			datasetMerkleRoot,
+			fairnessThreshold,
+		);
+	}
+
 	async get(weightHash: Hash) {
 		return await this.contracts.getModelByHash(weightHash);
 	}

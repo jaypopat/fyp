@@ -1,5 +1,207 @@
 ---
 title: SDK Reference
+description: TypeScript SDK for ZKFair protocol integration.
 ---
 
-Placeholder: sdk
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+The ZKFair SDK provides two variants for different use cases:
+
+| SDK | Environment | Use Case |
+|-----|-------------|----------|
+| `ProviderSDK` | Server (Node/Bun) | Model inference providers |
+| `BrowserSDK` | Browser | Web applications, fraud detection |
+
+## Installation
+
+```bash
+bun add @zkfair/sdk
+```
+
+## ProviderSDK
+
+Server-side SDK for model inference providers.
+
+### Setup
+
+```typescript
+import { ProviderSDK } from "@zkfair/sdk";
+import { zkfairSchema } from "@zkfair/sdk/schema";
+import { drizzle } from "drizzle-orm/bun-sqlite";
+import { Database } from "bun:sqlite";
+
+// Initialize database with ZKFair schema
+const sqlite = new Database("provider.db");
+const db = drizzle(sqlite, { schema: zkfairSchema });
+
+// Create provider SDK
+const provider = new ProviderSDK({
+  privateKey: process.env.PRIVATE_KEY as `0x${string}`,
+  db,
+  batchConfig: {
+    batchSize: 100,           // Queries per batch
+    maxBatchAgeMs: 30 * 60 * 1000  // 30 minutes
+  }
+});
+```
+
+### Query Operations
+
+```typescript
+// Store inference query
+const seqNum = await provider.insertQuery({
+  modelId: 1,
+  features: [0.5, 1.2, 0.8, ...],  // 14 features
+  sensitiveAttr: 0,                 // Protected attribute
+  prediction: 0.73,
+  timestamp: Date.now()
+});
+
+// Retrieve query
+const query = await provider.getQuery(seqNum);
+```
+
+### Receipt Operations
+
+```typescript
+// Create signed receipt for user
+const receipt = await provider.createSignedReceipt({
+  seqNum,
+  modelId: 1,
+  features: [0.5, 1.2, 0.8, ...],
+  sensitiveAttr: 0,
+  prediction: 0.73,
+  timestamp: Date.now()
+});
+
+// Verify a receipt
+const isValid = await provider.verifyReceipt(receipt, signerAddress);
+```
+
+### Batch Operations
+
+```typescript
+// Check if batching needed
+const shouldBatch = await provider.shouldBatch();
+
+// Create and commit batch if thresholds met
+const result = await provider.createBatchIfNeeded();
+if (result) {
+  console.log(`Batch ${result.batchId} committed: ${result.txHash}`);
+}
+
+// Generate Merkle proof for a query
+const proof = await provider.generateProof(seqNum);
+```
+
+### Audit Handling
+
+```typescript
+// Auto-handle audit requests
+provider.watchAuditRequests((result) => {
+  console.log(`Audit ${result.auditId}: ${result.passed ? "PASSED" : "FAILED"}`);
+});
+
+// Start periodic batch checking
+provider.startPeriodicBatchCheck(5 * 60 * 1000); // 5 minutes
+```
+
+---
+
+## BrowserSDK
+
+Client-side SDK for web applications.
+
+### Setup
+
+```typescript
+import { BrowserSDK } from "@zkfair/sdk/browser";
+
+const sdk = new BrowserSDK();
+```
+
+### Model API
+
+```typescript
+// List all registered models
+const models = await sdk.model.list();
+
+// Get model by weights hash
+const model = await sdk.model.get("0x...");
+
+// Get model by numeric ID
+const model = await sdk.model.getById(1n);
+```
+
+### Batch API
+
+```typescript
+// Get batch IDs for a model
+const batchIds = await sdk.batch.getIdsByModel(1n);
+
+// Get batch details
+const batch = await sdk.batch.get(batchIds[0]);
+// { modelId, merkleRoot, queryCount, seqNumStart, seqNumEnd, ... }
+```
+
+### Events API
+
+```typescript
+// Watch for new models
+sdk.events.watchModelRegistered((event) => {
+  console.log("New model:", event.modelId, event.weightsHash);
+});
+
+// Watch for batch commits
+sdk.events.watchBatchCommitted((event) => {
+  console.log("Batch committed:", event.batchId, event.merkleRoot);
+});
+
+// Watch for audit requests
+sdk.events.watchAuditRequested((event) => {
+  console.log("Audit requested:", event.auditId, event.sampleIndices);
+});
+```
+
+---
+
+## Utility Exports
+
+### Leaf Hashing (Poseidon)
+
+```typescript
+import { hashRecordLeaf } from "@zkfair/sdk/browser";
+
+// Compute leaf hash matching ZK circuit
+const leafHash = hashRecordLeaf({
+  seqNum: 42,
+  modelId: 1,
+  features: [0.5, 1.2, ...],
+  sensitiveAttr: 0,
+  prediction: 0.73,
+  timestamp: 1703260800000
+});
+```
+
+### Merkle Operations
+
+```typescript
+import { merkleRoot, verifyMerkleProof } from "@zkfair/sdk/merkle";
+
+// Build Merkle root
+const root = await merkleRoot(leaves);
+
+// Verify proof
+const isValid = await verifyMerkleProof(leafHash, root, proof.siblings);
+```
+
+### Schema (for Drizzle)
+
+```typescript
+import { zkfairSchema, zkfairQueryLogs, zkfairBatches } from "@zkfair/sdk/schema";
+
+// Merge with your own tables
+const db = drizzle(sqlite, { 
+  schema: { ...zkfairSchema, ...myTables } 
+});
+```

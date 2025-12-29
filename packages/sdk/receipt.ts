@@ -4,7 +4,7 @@ import {
 	type Hash,
 	type Hex,
 	keccak256,
-    recoverMessageAddress,
+	recoverMessageAddress,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
@@ -130,7 +130,6 @@ export async function verifyReceipt(
 	receipt: SignedReceipt,
 	expectedSigner: Hex,
 ): Promise<boolean> {
-
 	// Recompute the data hash to ensure it matches
 	const { dataHash } = createReceiptHashes(receipt);
 

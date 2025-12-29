@@ -7,19 +7,12 @@ export {
 	getNetworkConfig,
 	type NetworkConfig,
 } from "./config";
-export {
-	type Batch,
-	type DrizzleDB,
-	type NewBatch,
-	type NewQueryLog,
-	type QueryLog,
-	zkfairSchema,
-} from "./schema";
 export type {
 	AuditExpiredEvent,
 	AuditProofSubmittedEvent,
 	AuditRequestedEvent,
 	BatchCommittedEvent,
+	DisputeRaisedEvent,
 	ModelCertifiedEvent,
 	ModelRegisteredEvent,
 	ProviderSlashedEvent,
@@ -39,4 +32,12 @@ export {
 	signReceiptHashWithAccount,
 	verifyReceipt,
 } from "./receipt";
+export {
+	type Batch,
+	type DrizzleDB,
+	type NewBatch,
+	type NewQueryLog,
+	type QueryLog,
+	zkfairSchema,
+} from "./schema";
 export { SDK } from "./sdk";

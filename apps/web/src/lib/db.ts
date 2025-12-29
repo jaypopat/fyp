@@ -20,7 +20,13 @@ export interface SentinelReceipt {
 	providerSignature: string;
 
 	// Status tracking
-	status: "PENDING" | "BATCHED" | "COMMITTED" | "VERIFIED" | "FRAUD_DETECTED";
+	status:
+		| "PENDING"
+		| "BATCHED"
+		| "COMMITTED"
+		| "VERIFIED"
+		| "FRAUD_DETECTED"
+		| "DISPUTED";
 	batchId?: string;
 	batchMerkleRoot?: string;
 	batchTxHash?: string;
@@ -29,6 +35,7 @@ export interface SentinelReceipt {
 	// Fraud info - only set when status is FRAUD_DETECTED
 	fraudType?: "NON_INCLUSION" | "FRAUDULENT_INCLUSION";
 	fraudBatchId?: string; // bigint as string
+	disputeTxHash?: string; // Tx hash of the submitted dispute
 }
 
 export class SentinelDatabase extends Dexie {

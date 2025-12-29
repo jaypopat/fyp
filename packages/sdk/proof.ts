@@ -21,8 +21,6 @@ export class ProofAPI {
 	constructor(private contracts: ContractClient) {
 		// Use provided URL or default from config
 		const config = getDefaultConfig();
-		console.log(config.attestationServiceUrl);
-
 		this.attestationUrl = config.attestationServiceUrl;
 	}
 

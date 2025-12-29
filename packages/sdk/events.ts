@@ -33,6 +33,10 @@ export type StakeWithdrawnEvent = ExtractAllEventArgs<
 	ZkFairAbi,
 	"StakeWithdrawn"
 >;
+export type DisputeRaisedEvent = ExtractAllEventArgs<
+	ZkFairAbi,
+	"DisputeRaised"
+>;
 
 /**
  * High-level events API

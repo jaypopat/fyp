@@ -1,6 +1,6 @@
-import { zkfairQueryLogs } from "./schema";
-import { db } from "./client";
 import { provider } from "../lib/sdk";
+import { db } from "./client";
+import { zkfairQueryLogs } from "./schema";
 
 const count = Number(process.env.SEED_COUNT) || 100;
 

@@ -1,15 +1,15 @@
-import type { Hex } from "viem";
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import {
-	type QueryLog,
-	type NewQueryLog,
-	type Batch,
-	type NewBatch,
-	type DrizzleDB,
-	zkfairSchema,
-	zkfairQueryLogs,
-	zkfairBatches,
-} from "./schema";
+	and,
+	asc,
+	between,
+	eq,
+	gte,
+	inArray,
+	isNull,
+	lte,
+	sql,
+} from "drizzle-orm";
+import type { Hex } from "viem";
 import {
 	createReceiptHashes,
 	createSignedReceipt,
@@ -19,6 +19,16 @@ import {
 	signReceiptHash,
 	verifyReceipt,
 } from "./receipt";
+import {
+	type Batch,
+	type DrizzleDB,
+	type NewBatch,
+	type NewQueryLog,
+	type QueryLog,
+	zkfairBatches,
+	zkfairQueryLogs,
+	zkfairSchema,
+} from "./schema";
 import { SDK } from "./sdk";
 import type { ZkFairOptions } from "./types";
 
@@ -177,7 +187,10 @@ export class ProviderSDK {
 	/**
 	 * Verify a receipt signature
 	 */
-	async verifyReceipt(receipt: SignedReceipt, expectedSigner: Hex): Promise<boolean> {
+	async verifyReceipt(
+		receipt: SignedReceipt,
+		expectedSigner: Hex,
+	): Promise<boolean> {
 		return verifyReceipt(receipt, expectedSigner);
 	}
 
@@ -251,7 +264,10 @@ export class ProviderSDK {
 			committedAt: null,
 		};
 
-		const [batch] = await this.db.insert(zkfairBatches).values(batchData).returning();
+		const [batch] = await this.db
+			.insert(zkfairBatches)
+			.values(batchData)
+			.returning();
 		if (!batch) throw new Error("Failed to create batch");
 
 		// Assign queries to batch
@@ -259,7 +275,7 @@ export class ProviderSDK {
 			await this.db
 				.update(zkfairQueryLogs)
 				.set({ batchId })
-				.where(sql`${zkfairQueryLogs.seq} IN ${sequences}`);
+				.where(inArray(zkfairQueryLogs.seq, sequences));
 		}
 
 		// Commit to blockchain
@@ -300,7 +316,10 @@ export class ProviderSDK {
 			.select()
 			.from(zkfairBatches)
 			.where(
-				sql`${zkfairBatches.startSeq} <= ${seqNum} AND ${zkfairBatches.endSeq} >= ${seqNum}`,
+				and(
+					lte(zkfairBatches.startSeq, seqNum),
+					gte(zkfairBatches.endSeq, seqNum),
+				),
 			)
 			.limit(1);
 
@@ -309,12 +328,7 @@ export class ProviderSDK {
 		const batchRecords = await this.db
 			.select()
 			.from(zkfairQueryLogs)
-			.where(
-				and(
-					sql`${zkfairQueryLogs.seq} >= ${batch.startSeq}`,
-					sql`${zkfairQueryLogs.seq} <= ${batch.endSeq}`,
-				),
-			)
+			.where(between(zkfairQueryLogs.seq, batch.startSeq, batch.endSeq))
 			.orderBy(asc(zkfairQueryLogs.seq));
 
 		const auditRecords = batchRecords.map((q) => this.toAuditRecord(q));
@@ -346,7 +360,11 @@ export class ProviderSDK {
 	 * Watch for audit requests and handle them automatically
 	 */
 	watchAuditRequests(
-		handler?: (event: { auditId: bigint; txHash: Hex; passed: boolean }) => void,
+		handler?: (event: {
+			auditId: bigint;
+			txHash: Hex;
+			passed: boolean;
+		}) => void,
 	): void {
 		this.sdk.events.watchAuditRequested(async (event) => {
 			const result = await this.sdk.audit.handleAuditRequest(event, this.db);
@@ -386,10 +404,10 @@ export class ProviderSDK {
 	}
 }
 
-// Re-export types
-export type { NewQueryLog, QueryLog, Batch } from "./schema";
-export {
-	type ReceiptData,
-	type ReceiptHashes,
-	type SignedReceipt,
+export type {
+	ReceiptData,
+	ReceiptHashes,
+	SignedReceipt,
 } from "./receipt";
+// Re-export types
+export type { Batch, NewQueryLog, QueryLog } from "./schema";

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { zkFairAbi } from "@zkfair/contracts/abi";
+import { hashRecordLeaf } from "@zkfair/sdk/browser";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
 	AlertCircle,
@@ -10,11 +11,12 @@ import {
 	History,
 	Loader2,
 	RefreshCw,
+	Scale,
 	Shield,
 	XCircle,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { Hex } from "viem";
+import { type Hex, parseEther } from "viem";
 import { useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,9 +81,11 @@ function DisputeDialog({
 
 	const handleDispute = async () => {
 		const { receipt, type, batchId } = dispute;
+		// DISPUTE_STAKE = 0.0001 ETH (matches contract constant)
+		const disputeStake = parseEther("0.0001");
 
 		if (type === "NON_INCLUSION") {
-			// Type A: Provider never batched
+			// Type A: Non-inclusion fraud
 			writeContract({
 				address: config.contractAddress as Hex,
 				abi: zkFairAbi,
@@ -95,11 +99,21 @@ function DisputeDialog({
 					BigInt(Math.round(receipt.prediction * 1e6)),
 					receipt.providerSignature as Hex,
 				],
+				value: disputeStake,
 			});
 		} else if (type === "FRAUDULENT_INCLUSION" && batchId !== undefined) {
-			// Type B: In batch range but proof fails
-			// For now, we pass empty proof - contract will verify it fails
-			// In production, you'd fetch the bad proof from provider
+			// Type B: Fraudulent inclusion (invalid proof)
+			// Compute the leaf hash from receipt data
+			const leafHashHex = hashRecordLeaf({
+				seqNum: receipt.seqNum,
+				modelId: receipt.modelId,
+				features: receipt.features,
+				sensitiveAttr: receipt.sensitiveAttr,
+				prediction: receipt.prediction,
+				timestamp: receipt.timestamp,
+			});
+			const leafHash = `0x${leafHashHex}` as Hex;
+
 			writeContract({
 				address: config.contractAddress as Hex,
 				abi: zkFairAbi,
@@ -107,13 +121,24 @@ function DisputeDialog({
 				args: [
 					batchId,
 					BigInt(receipt.seqNum),
-					"0x0000000000000000000000000000000000000000000000000000000000000000" as Hex, // leafHash - compute from receipt
-					[], // empty proof
+					leafHash,
+					[], // empty proof = invalid proof = fraud
 					[], // empty positions
 				],
+				value: disputeStake,
 			});
 		}
 	};
+
+	// Update DB when dispute succeeds
+	useEffect(() => {
+		if (isSuccess && hash && dispute) {
+			db.receipts.update(dispute.receipt.id!, {
+				status: "DISPUTED",
+				disputeTxHash: hash,
+			});
+		}
+	}, [isSuccess, hash, dispute]);
 
 	return (
 		<Dialog open={!!dispute} onOpenChange={() => onClose()}>
@@ -339,6 +364,13 @@ function ReceiptsPage() {
 						Fraud Detected
 					</Badge>
 				);
+			case "DISPUTED":
+				return (
+					<Badge className="gap-1 bg-purple-500/20 text-purple-600">
+						<Scale className="h-3 w-3" />
+						Disputed
+					</Badge>
+				);
 		}
 	};
 
@@ -505,6 +537,18 @@ function ReceiptsPage() {
 																<Gavel className="h-3 w-3" />
 																Dispute
 															</Button>
+														)}
+													{receipt.status === "DISPUTED" &&
+														receipt.disputeTxHash && (
+															<a
+																href={`${config.explorerBase}/tx/${receipt.disputeTxHash}`}
+																target="_blank"
+																rel="noreferrer"
+																className="flex items-center gap-1 text-purple-600 text-xs hover:underline"
+															>
+																<Scale className="h-3 w-3" />
+																Dispute Tx ↗
+															</a>
 														)}
 													{receipt.batchTxHash && (
 														<a

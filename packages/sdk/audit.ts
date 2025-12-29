@@ -4,15 +4,15 @@ import {
 	fairness_audit_circuit,
 	type fairness_auditInputType,
 } from "@zkfair/zk-circuits/codegen";
-import { and, asc, sql } from "drizzle-orm";
+import { and, asc, between, sql } from "drizzle-orm";
 import { poseidon2, poseidon8 } from "poseidon-lite";
 import type { Hash, Hex } from "viem";
-import { type DrizzleDB, type QueryLog, zkfairQueryLogs } from "./schema";
 import { parseFairnessThresholdFile, parsePathsFile } from "./artifacts";
 import { getDefaultConfig } from "./config";
 import type { ContractClient } from "./contract";
 import type { AuditRequestedEvent } from "./events";
 import { createMerkleProof, merkleRoot } from "./merkle";
+import { type DrizzleDB, type QueryLog, zkfairQueryLogs } from "./schema";
 import { getArtifactDir, weightsToFields } from "./utils";
 
 /**
@@ -392,7 +392,9 @@ export class AuditAPI {
 		const endSeq = Number(batch.seqNumEnd);
 		const modelId = batch.modelId;
 
-		console.log(`Batch covers seqNum ${startSeq} to ${endSeq}, modelId: ${modelId}`);
+		console.log(
+			`Batch covers seqNum ${startSeq} to ${endSeq}, modelId: ${modelId}`,
+		);
 
 		// 2. Get model's weightsHash (needed to find artifacts)
 		const model = await this.contracts.getModel(modelId);
@@ -400,15 +402,11 @@ export class AuditAPI {
 		console.log(`Model weightsHash: ${weightsHash}`);
 
 		// 3. Load records from storage by sequence range
+
 		const records = await db
 			.select()
 			.from(zkfairQueryLogs)
-			.where(
-				and(
-					sql`${zkfairQueryLogs.seq} >= ${startSeq}`,
-					sql`${zkfairQueryLogs.seq} <= ${endSeq}`,
-				),
-			)
+			.where(between(zkfairQueryLogs.seq, startSeq, endSeq))
 			.orderBy(asc(zkfairQueryLogs.seq));
 
 		if (records.length === 0) {

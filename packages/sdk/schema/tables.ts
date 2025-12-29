@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { isNull, sql } from "drizzle-orm";
 import {
 	index,
 	integer,
@@ -40,7 +40,7 @@ export const zkfairQueryLogs = sqliteTable(
 		timestampIdx: index("zkfair_idx_timestamp").on(table.timestamp),
 		unbatchedIdx: index("zkfair_idx_unbatched")
 			.on(table.seq)
-			.where(sql`${table.batchId} IS NULL`),
+			.where(isNull(table.batchId)),
 	}),
 );
 
