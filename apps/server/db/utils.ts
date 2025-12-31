@@ -15,8 +15,6 @@ export function initDatabase() {
 	migrate(db, { migrationsFolder });
 
 	console.log(" Database initialized");
-
-	console.log(" Database initialized");
 }
 
 /**

@@ -13,9 +13,7 @@ import {
 } from "../artifacts";
 import { getArtifactDir, parseCSV, weightsToFields } from "../utils";
 
-async function generateAndSubmitProof(
-	weightsHash: Hash,
-): Promise<{ proofHex: `0x${string}`; publicInputs: `0x${string}`[] }> {
+async function generateAndSubmitProof(weightsHash: Hash) {
 	const dir = getArtifactDir(weightsHash);
 	const rawPaths = await Bun.file(`${dir}/paths.json`).json();
 	const paths = parsePathsFile(rawPaths);

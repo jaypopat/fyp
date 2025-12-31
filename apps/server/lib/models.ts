@@ -2,16 +2,21 @@ import { join } from "node:path";
 import * as ort from "onnxruntime-node";
 import registryData from "../registry.json";
 
-// model id is the contract identifier for the registered model
+// Models keyed by numeric ID, with hash lookup
+export type ModelRegistry = {
+	sessions: Map<number, ort.InferenceSession>;
+	hashToId: Map<string, number>;
+};
 
-export async function loadAllModels() {
-	const models = new Map<number, ort.InferenceSession>();
+export async function loadAllModels(): Promise<ModelRegistry> {
+	const sessions = new Map<number, ort.InferenceSession>();
+	const hashToId = new Map<string, number>();
 
 	async function loadModel(modelId: number, modelPath: string) {
 		const modelFile = Bun.file(modelPath);
 		const modelBuffer = await modelFile.arrayBuffer();
 		const session = await ort.InferenceSession.create(modelBuffer);
-		models.set(modelId, session);
+		sessions.set(modelId, session);
 		console.log(`Loaded model ${modelId} from ${modelPath}`);
 	}
 
@@ -32,21 +37,22 @@ export async function loadAllModels() {
 	console.log(` Working directory: ${process.cwd()}`);
 
 	for (const modelMetadata of registryData.models) {
-		const modelId = modelMetadata.id;
+		const { id, hash, path } = modelMetadata;
+
+		// Build hash -> id lookup
+		hashToId.set(hash.toLowerCase(), id);
+
 		try {
 			// Strip the ../../examples/ prefix from registry path
-			const relativePath = modelMetadata.path.replace(
-				/^\.\.\/\.\.\/examples\//,
-				"",
-			);
+			const relativePath = path.replace(/^\.\.\/\.\.\/examples\//, "");
 			const fullPath = join(examplesPath, relativePath);
 
-			await loadModel(modelId, fullPath);
+			await loadModel(id, fullPath);
 		} catch (err) {
-			console.error(`Failed to load model ${modelId}:`, err);
+			console.error(`Failed to load model ${id}:`, err);
 			throw err;
 		}
 	}
 
-	return models;
+	return { sessions, hashToId };
 }

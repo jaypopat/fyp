@@ -3,7 +3,6 @@
  * External consumers should use "@zkfair/sdk/types" instead
  */
 import type { GetEventArgs, Hash, Hex } from "viem";
-import type { Chain } from "viem/chains";
 import type { Environment } from "./config";
 
 /**

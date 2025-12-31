@@ -36,6 +36,20 @@
 			"when": 1763516984175,
 			"tag": "0004_parallel_wild_child",
 			"breakpoints": true
+		},
+		{
+			"idx": 5,
+			"version": "6",
+			"when": 1767142350785,
+			"tag": "0005_known_fat_cobra",
+			"breakpoints": true
+		},
+		{
+			"idx": 6,
+			"version": "6",
+			"when": 1767142398207,
+			"tag": "0006_colossal_catseye",
+			"breakpoints": true
 		}
 	]
 }

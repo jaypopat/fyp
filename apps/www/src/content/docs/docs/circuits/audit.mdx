@@ -1,7 +1,126 @@
 ---
 title: "Circuit 2: Fairness Audit"
-description: "ZK circuit for fairness audits."
+description: "ZK circuit for runtime fairness audits."
 ---
 
+The fairness audit circuit proves that a batch of inference queries satisfies the fairness threshold.
 
-Placeholder: Circuit details and examples.
+## Purpose
+
+When an audit is requested, the provider must prove:
+
+1. **Weights match certified hash** - Same model as registered
+2. **Samples are in batch** - Each sampled query exists in the committed Merkle tree
+3. **Samples are fair** - Sampled predictions satisfy demographic parity
+
+## Constants
+
+```rust
+global NUM_FEATURES: u32 = 14;      // Input features per query
+global SAMPLE_SIZE: u32 = 10;       // Random samples per audit
+global TREE_DEPTH: u32 = 7;         // Merkle tree depth (128 leaves max)
+```
+
+## Public Inputs
+
+| Input | Type | Description |
+|-------|------|-------------|
+| `weights_hash` | `Field` | Certified model weights hash |
+| `batch_merkle_root` | `Field` | Committed batch root |
+| `fairness_threshold` | `u32` | Max allowed disparity |
+| `sample_indices` | `[u32; 10]` | Random sample indices from contract |
+
+## Private Inputs
+
+| Input | Type | Description |
+|-------|------|-------------|
+| `weights` | `[Field; N]` | Model weights |
+| `samples` | `[Query; 10]` | Sampled query records |
+| `merkle_proofs` | `[MerkleProof; 10]` | Proofs for each sample |
+
+## Leaf Hash Format
+
+Queries are hashed using Poseidon to create Merkle leaves:
+
+```rust
+// Build leaf data: [features[0..13], prediction, sensitiveAttr]
+let mut leaf_data: [Field; 16] = [0; 16];
+for i in 0..14 {
+    leaf_data[i] = query.features[i];
+}
+leaf_data[14] = query.prediction;  // Binary: 0 or 1
+leaf_data[15] = query.sensitive_attr;
+
+// Hash in two chunks
+let hash1 = poseidon8(leaf_data[0..8]);
+let hash2 = poseidon8(leaf_data[8..16]);
+let leaf_hash = poseidon2([hash1, hash2]);
+```
+
+## Verification Logic
+
+```rust
+fn main(
+    weights_hash: pub Field,
+    batch_merkle_root: pub Field,
+    fairness_threshold: pub u32,
+    sample_indices: pub [u32; SAMPLE_SIZE],
+    weights: [Field; WEIGHT_COUNT],
+    samples: [Query; SAMPLE_SIZE],
+    merkle_proofs: [MerkleProof; SAMPLE_SIZE]
+) {
+    // 1. Verify weights match certified hash
+    assert(poseidon_hash(weights) == weights_hash);
+
+    // 2. Verify each sample is in batch
+    for i in 0..SAMPLE_SIZE {
+        let leaf = compute_leaf_hash(samples[i]);
+        let proof = merkle_proofs[i];
+        assert(verify_merkle_proof(leaf, proof, batch_merkle_root));
+    }
+
+    // 3. Compute fairness on samples
+    let mut group_0_pos = 0;
+    let mut group_0_total = 0;
+    let mut group_1_pos = 0;
+    let mut group_1_total = 0;
+
+    for i in 0..SAMPLE_SIZE {
+        if samples[i].sensitive_attr == 0 {
+            group_0_total += 1;
+            if samples[i].prediction == 1 { group_0_pos += 1; }
+        } else {
+            group_1_total += 1;
+            if samples[i].prediction == 1 { group_1_pos += 1; }
+        }
+    }
+
+    // 4. Check threshold
+    let rate_0 = group_0_pos * 100 / group_0_total;
+    let rate_1 = group_1_pos * 100 / group_1_total;
+    let disparity = if rate_0 > rate_1 { rate_0 - rate_1 } else { rate_1 - rate_0 };
+    
+    assert(disparity <= fairness_threshold);
+}
+```
+
+## Audit Flow
+
+1. Challenger calls `requestAudit(batchId)` with stake
+2. Contract generates random `sampleIndices` using block hash
+3. Provider SDK detects `AuditRequested` event
+4. Provider generates ZK proof with sampled queries
+5. Proof sent to attestation service (TEE)
+6. Attestation service verifies and signs
+7. Provider submits attestation via `submitAuditProof()`
+8. Contract verifies signature and records result
+
+## SDK Integration
+
+```typescript
+// Auto-handle audits in ProviderSDK
+provider.watchAuditRequests(async (result) => {
+  console.log(`Audit ${result.auditId}: ${result.passed ? 'PASSED' : 'FAILED'}`);
+  console.log(`TX: ${result.txHash}`);
+});
+```
