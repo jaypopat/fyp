@@ -52,13 +52,13 @@
 		}
 	},
 	"scripts": {
-    "build": "tsdown",
-    "dev": "tsdown --watch",
-    "prepublishOnly": "bun run build",
-    "release:patch": "bun version patch && bun publish",
-    "release:minor": "bun version minor && bun publish",
-    "release:major": "bun version major && bun publish"
-}
+		"build": "tsdown",
+		"dev": "tsdown --watch",
+		"prepublishOnly": "bun run build",
+		"release:patch": "bun version patch && bun publish",
+		"release:minor": "bun version minor && bun publish",
+		"release:major": "bun version major && bun publish"
+	},
 
 	"publishConfig": {
 		"access": "public",

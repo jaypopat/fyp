@@ -44,19 +44,6 @@ async function main() {
 		"../../../packages/sdk/config.ts",
 	);
 	updateConfigFile(sdkConfigPath, network, contractAddress);
-
-	// // Update CLI .env
-	// const cliEnvPath = join(import.meta.dir, "../../../apps/cli/.env");
-	// const cliKey =
-	// 	network === "sepolia" ? "ONCHAIN_CONTRACT_ADDRESS" : "CONTRACT_ADDRESS";
-	// updateEnvFile(cliEnvPath, cliKey, contractAddress);
-
-	// // Update server .env
-	// const serverEnvPath = join(import.meta.dir, "../../../apps/server/.env");
-	// updateEnvFile(serverEnvPath, "CONTRACT_ADDRESS", contractAddress);
-
-	// console.log(`\n ${network} contract address synced successfully!`);
-	// console.log(`   Contract: ${contractAddress}`);
 }
 
 async function updateConfigFile(
@@ -90,32 +77,6 @@ async function updateConfigFile(
 	await Bun.write(filePath, content);
 	console.log(` Updated ${filePath} (${configKey}.contractAddress)`);
 }
-
-// async function updateEnvFile(
-// 	filePath: string,
-// 	key: string,
-// 	value: string,
-// ): Promise<void> {
-// 	let envContent = "";
-// 	if (await Bun.file(filePath).exists()) {
-// 		envContent = await Bun.file(filePath).text();
-// 	}
-
-// 	const envLine = `${key}=${value}`;
-// 	const regex = new RegExp(`^${key}=.*`, "m");
-
-// 	if (regex.test(envContent)) {
-// 		// Update existing line
-// 		envContent = envContent.replace(regex, envLine);
-// 	} else {
-// 		// Append new line
-// 		envContent += envContent.endsWith("\n") ? "" : "\n";
-// 		envContent += `${envLine}\n`;
-// 	}
-
-// 	await Bun.write(filePath, envContent);
-// 	console.log(` Updated ${filePath} (${key})`);
-// }
 
 main().catch((err) => {
 	console.error(" Error during sync:", err);

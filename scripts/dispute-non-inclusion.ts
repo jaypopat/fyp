@@ -158,7 +158,7 @@ async function main() {
 		console.log("Launching Dispute...");
 
 		console.log("Checking existing stake...");
-		const providerStakeBefore = await getProviderStake(sdk, realModelId!);
+		const providerStakeBefore = await getProviderStake(realModelId!);
 		console.log(`Provider Stake: ${providerStakeBefore}`);
 
 		const disputePromise = new Promise((resolve) => {
@@ -184,7 +184,7 @@ async function main() {
 
 		console.log("Verifying Justice...");
 
-		const providerStakeAfter = await getProviderStake(sdk, realModelId!);
+		const providerStakeAfter = await getProviderStake(realModelId!);
 		console.log(`Provider Stake after: ${providerStakeAfter}`);
 
 		if (providerStakeAfter < providerStakeBefore) {
@@ -199,7 +199,7 @@ async function main() {
 	}
 }
 
-async function getProviderStake(sdk: SDK, modelId: bigint) {
+async function getProviderStake(modelId: bigint) {
 	const model = await sdk.model.getById(modelId);
 	return model.stake;
 }
