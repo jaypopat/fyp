@@ -9,6 +9,7 @@ import {
 	lte,
 	sql,
 } from "drizzle-orm";
+import type { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
 import type { Hex } from "viem";
 import {
 	createReceiptHashes,

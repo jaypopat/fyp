@@ -1,3 +1,11 @@
-// this would include the provider tables such as users,api keys,models,etc.
+import { zkfairSchema } from "@zkfair/sdk/schema";
+import { sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-export { zkfairBatches, zkfairQueryLogs } from "@zkfair/sdk/schema";
+export const users = sqliteTable("users", {
+	id: text("id").primaryKey(),
+});
+
+export const schema = {
+	...zkfairSchema,
+	users,
+};

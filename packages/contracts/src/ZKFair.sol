@@ -28,7 +28,7 @@ contract ZKFair is Ownable, Pausable {
     uint256 public constant AUDIT_STAKE = 0.00005 ether; // Stake required to request audit
     uint256 public constant DISPUTE_STAKE = 0.0001 ether; // Stake required to file dispute
     uint256 public constant AUDIT_RESPONSE_DEADLINE = 24 hours;
-    uint256 public constant REQUIRED_SAMPLES = 100;
+    uint256 public constant REQUIRED_SAMPLES = 10;
     uint256 public constant DISPUTE_GRACE_PERIOD = 1 hours; // Time provider has to batch before dispute allowed
 
     // ============================================

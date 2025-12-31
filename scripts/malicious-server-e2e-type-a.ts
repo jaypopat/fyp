@@ -44,12 +44,6 @@ const client = createPublicClient({
 	transport: http(RPC_URL),
 });
 
-const wallet = createWalletClient({
-	account,
-	chain: localhost,
-	transport: http(RPC_URL),
-});
-
 async function main() {
 	console.log("Starting Malicious Provider E2E Demo");
 
@@ -80,7 +74,7 @@ async function main() {
 
 		console.log("Serving Queries (Creating Trap)...");
 
-		const timestamp = BigInt(Math.floor(Date.now() / 1000));
+		const timestamp = BigInt(Math.floor(Date.now() / 1000)) - 3601n; // Mock 1 hour in the past to bypass grace period
 
 		// Query A: Included in batch
 		const queryA = {
@@ -148,15 +142,15 @@ async function main() {
 		// Merkle root is just leaf A (simplified tree for demo)
 		const merkleRoot = leafA;
 
-		// Commit batch claiming to cover seqNum 100-101 (Both A and B)
-		// BUT merkle root only contains A
+		// Commit batch claiming to cover ONLY seqNum 100
+		// Sequence 101 is completely omitted (Type A Fraud)
 
 		const txBatch = await sdk.batch.commit(
 			realModelId!,
 			merkleRoot,
-			BigInt(2), // claiming 2 queries
+			BigInt(1), // claiming 1 query
 			BigInt(100), // start
-			BigInt(101), // end
+			BigInt(100), // end
 		);
 		console.log(`Fraudulent batch committed (tx: ${txBatch})`);
 		await client.waitForTransactionReceipt({ hash: txBatch });

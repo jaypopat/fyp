@@ -24,8 +24,6 @@
 		"build": "bun build index.ts --target=bun",
 		"db:seed": "bun db/seed.ts",
 		"db:studio": "bunx drizzle-kit studio",
-		"db:migrate": "bunx drizzle-kit migrate",
-		"demo:wrong-prediction": "bun scripts/malicious-wrong-prediction.ts",
-		"demo:missing-queries": "bun scripts/malicious-missing-queries.ts"
+		"db:migrate": "bunx drizzle-kit migrate"
 	}
 }

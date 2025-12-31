@@ -4,6 +4,8 @@ import type { ContractClient } from "./contract";
 export class ModelAPI {
 	constructor(private contracts: ContractClient) {}
 
+	// use if you know what youre doing, else use the commit api with your files and we process (hash + publish onchain) your files
+	// im using this method in some scripts for internal use
 	async register(
 		name: string,
 		description: string,

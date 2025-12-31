@@ -1,18 +1,16 @@
 import { provider } from "../lib/sdk";
 import { db } from "./client";
-import { zkfairQueryLogs } from "./schema";
+import { schema } from "./schema";
 
-const count = Number(process.env.SEED_COUNT) || 100;
+const count = Number(process.env.SEED_COUNT) || 200;
 
 console.log(`Seeding ${count} queries...`);
 
 const modelId = 1; // adult-income model
 const startTime = Date.now();
 
-// Prepare query data matching the SDK schema
 const queries = [];
 for (let i = 0; i < count; i++) {
-	// Generate random features (14 features for adult-income model)
 	const features = Array.from({ length: 14 }, () =>
 		Math.round(Math.random() * 100),
 	);
@@ -29,14 +27,12 @@ for (let i = 0; i < count; i++) {
 	});
 }
 
-// Insert all queries
-await db.insert(zkfairQueryLogs).values(queries);
+await db.insert(schema.zkfairQueryLogs).values(queries);
 
 const duration = Date.now() - startTime;
 console.log(`Successfully seeded ${count} queries in ${duration}ms`);
 console.log(`Average: ${(duration / count).toFixed(2)}ms per query`);
 
-// Now trigger batch creation for any unbatched queries
 console.log("\nChecking for batch creation...");
 let batchCount = 0;
 while (true) {
