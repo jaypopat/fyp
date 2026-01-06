@@ -2,7 +2,7 @@ import Dexie, { type Table } from "dexie";
 
 export interface SentinelReceipt {
 	id?: number;
-	seqNum: number; // Primary identifier from provider
+	seqNum: number;
 	modelId: number;
 	timestamp: number;
 
@@ -44,10 +44,6 @@ export class SentinelDatabase extends Dexie {
 	constructor() {
 		super("ZKFairSentinel");
 		this.version(4).stores({
-			// Index by seqNum for fast lookups
-			// Index by status to find what needs checking
-			// Index by timestamp for ordering
-			// Compound index for model+time queries
 			receipts:
 				"++id, seqNum, status, timestamp, [modelId+timestamp], [providerUrl+seqNum]",
 		});

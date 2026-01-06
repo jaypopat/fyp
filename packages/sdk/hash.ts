@@ -162,3 +162,54 @@ export function hashPoseidonFields(
 
 	return hex;
 }
+
+// ============================================
+// AUDIT RECORD HASHING (Browser-safe)
+// ============================================
+
+/**
+ * Canonical query record for audit trail
+ */
+export type AuditRecord = {
+	seqNum: number;
+	modelId: number;
+	features: number[];
+	sensitiveAttr: number;
+	prediction: number;
+	timestamp: number;
+};
+
+/**
+ * Hash a query record into a Merkle leaf using Poseidon.
+ * Must match circuit's hash_record_to_leaf exactly:
+ *
+ * leaf_data = [features[0..13], prediction, sensitiveAttr]  (16 fields)
+ * hash1 = poseidon8(leaf_data[0..7])
+ * hash2 = poseidon8(leaf_data[8..15])
+ * leaf_hash = poseidon2([hash1, hash2])
+ *
+ * @returns 64-character hex string (no 0x prefix)
+ */
+export function hashRecordLeaf(r: AuditRecord): string {
+	// Build leaf_data array matching circuit: [features[0..13], prediction, sensitiveAttr]
+	const leafData: bigint[] = [];
+
+	// Add 14 features (pad with 0 if needed)
+	for (let i = 0; i < 14; i++) {
+		leafData.push(BigInt(r.features[i] ?? 0));
+	}
+
+	// Add binary prediction (circuit expects 0 or 1)
+	leafData.push(r.prediction >= 0.5 ? 1n : 0n);
+
+	// Add sensitive attribute
+	leafData.push(BigInt(r.sensitiveAttr));
+
+	// Hash exactly as circuit does
+	const hash1 = poseidon8(leafData.slice(0, 8));
+	const hash2 = poseidon8(leafData.slice(8, 16));
+	const leafHash = poseidon2([hash1, hash2]);
+
+	// Convert to 64-char hex (no 0x prefix)
+	return leafHash.toString(16).padStart(64, "0");
+}

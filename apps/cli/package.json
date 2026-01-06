@@ -10,7 +10,8 @@
 	],
 	"scripts": {
 		"dev": "bun run index.ts",
-		"build": "tsdown"
+		"build": "tsdown && bun run bin",
+		"bin": "bun build ./index.ts --compile --outfile zkfair"
 	},
 	"dependencies": {
 		"@drizzle-team/brocli": "^0.11.0",

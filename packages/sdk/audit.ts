@@ -347,33 +347,6 @@ export class AuditAPI {
 		return { root, index, proof };
 	}
 
-	// ============================================
-	// AUDIT REQUEST HANDLING (PROVIDER)
-	// ============================================
-
-	/**
-	 * Handle an audit request event by generating proofs and submitting attestation
-	 *
-	 * This is the high-level handler that providers call when they receive an
-	 * AuditRequested event. It orchestrates the full audit response flow:
-	 * 1. Fetches batch info from contract
-	 * 2. Loads records from provider's storage
-	 * 3. Builds Merkle tree and proofs
-	 * 4. Generates ZK proof via attestation service
-	 * 5. Submits signed attestation to contract
-	 *
-	 * @param event - The AuditRequested event from contract
-	 * @param db - Provider's drizzle database instance
-	 * @returns Transaction hash of the attestation submission
-	 *
-	 * @example
-	 * ```typescript
-	 * sdk.events.watchAuditRequested(async (event) => {
-	 *   const txHash = await sdk.audit.handleAuditRequest(event, db);
-	 *   console.log(`Audit response submitted: ${txHash}`);
-	 * });
-	 * ```
-	 */
 	async handleAuditRequest(
 		event: AuditRequestedEvent,
 		db: DrizzleDB,
@@ -385,6 +358,13 @@ export class AuditAPI {
 			auditId: event.auditId.toString(),
 			batchId: event.batchId.toString(),
 		});
+
+		// Check if we've already responded to this audit
+		const audit = await this.contracts.getAudit(event.auditId);
+		if (audit.responded) {
+			console.log(`Audit ${event.auditId} already has a response, skipping.`);
+			return { txHash: "0x" as Hash, passed: audit.status === 1 }; // AuditStatus.PASSED = 1
+		}
 
 		// 1. Get batch info from contract
 		const batch = await this.contracts.getBatch(event.batchId);
@@ -468,10 +448,6 @@ export class AuditAPI {
 		console.log(`Audit response submitted: ${txHash}`);
 		return { txHash, passed };
 	}
-
-	// ============================================
-	// CONTRACT INTERACTIONS
-	// ============================================
 
 	/**
 	 * Commit a batch of queries on-chain

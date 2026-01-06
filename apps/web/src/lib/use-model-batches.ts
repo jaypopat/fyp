@@ -3,7 +3,7 @@ import type {
 	AuditRequestedEvent,
 	BatchCommittedEvent,
 	ModelCertifiedEvent,
-} from "@zkfair/sdk";
+} from "@zkfair/sdk/browser";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Hash } from "viem";
@@ -20,6 +20,7 @@ export type BatchData = {
 	audited: boolean;
 	auditStatus: number;
 	activeAuditId: string;
+	auditDeadline?: string;
 };
 
 export function useModelBatches(weightsHash: Hash, initialModelId?: bigint) {
@@ -87,7 +88,7 @@ export function useModelBatches(weightsHash: Hash, initialModelId?: bigint) {
 						batchId: event.batchId.toString(),
 						modelId: event.modelId.toString(),
 						merkleRoot: event.merkleRoot,
-						queryCount: event.queryCount.toString(),
+						queryCount: batchData.queryCount.toString(),
 						seqNumStart: batchData.seqNumStart.toString(),
 						seqNumEnd: batchData.seqNumEnd.toString(),
 						committedAt: batchData.committedAt.toString(),
@@ -104,7 +105,7 @@ export function useModelBatches(weightsHash: Hash, initialModelId?: bigint) {
 					});
 
 					toast.success(`New batch #${event.batchId} committed`, {
-						description: `${event.queryCount} queries included`,
+						description: `${batchData.queryCount} queries included`,
 					});
 				} catch (error) {
 					console.error("Failed to fetch new batch data:", error);
@@ -132,7 +133,11 @@ export function useModelBatches(weightsHash: Hash, initialModelId?: bigint) {
 
 					return prev.map((b) =>
 						b.batchId === event.batchId.toString()
-							? { ...b, activeAuditId: event.auditId.toString() }
+							? {
+									...b,
+									activeAuditId: event.auditId.toString(),
+									auditDeadline: event.deadline.toString(),
+								}
 							: b,
 					);
 				});

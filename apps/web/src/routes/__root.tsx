@@ -8,6 +8,7 @@ import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import Loader from "@/components/loader";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { useProtocolEvents } from "@/lib/use-protocol-events";
 import "../index.css";
 import Header from "@/components/header";
 
@@ -39,6 +40,8 @@ function RootComponent() {
 	const isFetching = useRouterState({
 		select: (s) => s.isLoading,
 	});
+
+	useProtocolEvents();
 
 	return (
 		<>

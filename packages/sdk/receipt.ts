@@ -55,7 +55,7 @@ export function createReceiptHashes(data: ReceiptData): ReceiptHashes {
 				featuresHash,
 				BigInt(data.sensitiveAttr),
 				BigInt(Math.round(data.prediction * 1e6)), // Scale prediction to int
-				BigInt(data.timestamp),
+				BigInt(Math.floor(data.timestamp / 1000)), // Convert to Unix timestamp (seconds)
 			],
 		),
 	);

@@ -25,6 +25,7 @@ export type SDKModel = {
 	fairnessThreshold: string;
 	weightsHash: Hash;
 	status: number;
+	stake: bigint;
 	registrationTimestamp: number;
 	verificationTimestamp: number | null;
 	proofHash: Hash;
@@ -46,7 +47,8 @@ export function normalizeModel(model: SDKModelRaw): SDKModel {
 		fairnessThreshold: model.fairnessThreshold.toString(),
 		weightsHash: model.weightsHash,
 		status: model.status,
-		proofHash: model.certificationProofHash, // Map `certificationProofHash` to `proofHash`
+		stake: model.stake,
+		proofHash: model.certificationProofHash,
 		registrationTimestamp,
 		verificationTimestamp:
 			verificationTimestampNumeric === 0 ? null : verificationTimestampNumeric,

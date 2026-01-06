@@ -1,4 +1,7 @@
-import type { ModelRegisteredEvent } from "@zkfair/sdk";
+import type {
+	ModelRegisteredEvent,
+	ProviderSlashedEvent,
+} from "@zkfair/sdk/browser";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { sdk } from "./sdk";
@@ -68,6 +71,32 @@ export function useModels() {
 				description: "Training verification completed ",
 			});
 		});
+
+		return () => unwatch();
+	}, []);
+
+	useEffect(() => {
+		const unwatch = sdk.events.watchProviderSlashed(
+			async (event: ProviderSlashedEvent) => {
+				try {
+					const model = await sdk.model.getById(event.modelId);
+
+					setModels((prev) =>
+						prev.map((m) =>
+							m.weightsHash === model.weightsHash
+								? { ...m, stake: 0n, status: 2 }
+								: m,
+						),
+					);
+
+					toast.error("Provider slashed!", {
+						description: `Provider ${event.provider.slice(0, 6)}...${event.provider.slice(-4)} has been slashed`,
+					});
+				} catch (error) {
+					console.error("Failed to handle provider slashed event:", error);
+				}
+			},
+		);
 
 		return () => unwatch();
 	}, []);

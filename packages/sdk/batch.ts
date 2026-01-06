@@ -1,9 +1,6 @@
 import type { Hash } from "viem";
 import type { ContractClient } from "./contract";
 
-/**
- * Batch API - Query batch commitments from blockchain
- */
 export class BatchAPI {
 	constructor(private contracts: ContractClient) {}
 

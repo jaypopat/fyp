@@ -15,12 +15,10 @@
 import { SDK } from "@zkfair/sdk";
 import {
 	createPublicClient,
-	createWalletClient,
 	encodePacked,
 	type Hex,
 	http,
 	keccak256,
-	parseEther,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { localhost } from "viem/chains";

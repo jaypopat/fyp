@@ -1,7 +1,7 @@
-import { hashRecordLeaf } from "@zkfair/sdk/browser";
 import { verifyMerkleProof } from "@zkfair/sdk/merkle";
 import type { Hex } from "viem";
 import { db, type SentinelReceipt } from "./db";
+import { hashRecordLeaf } from "./hash";
 import { sdk } from "./sdk";
 
 type BatchInfo = {
@@ -90,10 +90,6 @@ async function verifyProof(
 ): Promise<boolean> {
 	return verifyMerkleProof(leafHash, merkleRoot, proof.siblings);
 }
-
-// ============================================
-// MAIN API
-// ============================================
 
 /**
  * Verify a receipt against the blockchain

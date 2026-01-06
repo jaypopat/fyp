@@ -29,7 +29,7 @@ contract ZKFair is Ownable, Pausable {
     uint256 public constant DISPUTE_STAKE = 0.0001 ether; // Stake required to file dispute
     uint256 public constant AUDIT_RESPONSE_DEADLINE = 24 hours;
     uint256 public constant REQUIRED_SAMPLES = 10;
-    uint256 public constant DISPUTE_GRACE_PERIOD = 1 hours; // Time provider has to batch before dispute allowed
+    uint256 public constant DISPUTE_GRACE_PERIOD = 10 seconds; // Time provider has to batch before dispute allowed (short for demo)
 
     // ============================================
     // ENUMS
@@ -182,6 +182,7 @@ contract ZKFair is Ownable, Pausable {
     error SeqNumAlreadyBatched();
     error SeqNumNotInBatchRange();
     error InvalidMerkleProof();
+    error ProofValid();
 
     // ============================================
     // CONSTRUCTOR
@@ -458,9 +459,7 @@ contract ZKFair is Ownable, Pausable {
         emit AuditRequested(auditId, batchId, sampleIndices, deadline);
     }
 
-    /// @notice Provider submits ZK proof responding to audit
-    /// @param auditId ID of the audit request
-    /// @notice Submit attestation that audit proof was verified off-chain by attestation service
+    /// @notice Provider submits attestation that audit proof was verified off-chain by attestation service
     /// @param auditId ID of the audit request
     /// @param attestationHash Hash of the attestation (keccak256(proof || "AUDIT"))
     /// @param signature Signature from attestation service
@@ -649,7 +648,7 @@ contract ZKFair is Ownable, Pausable {
             // Proof is valid - data was included correctly, no fraud
             // Forfeit dispute stake to provider for invalid dispute
             _safeTransfer(model.provider, msg.value);
-            revert InvalidMerkleProof();
+            revert ProofValid();
         }
 
         // 3. Merkle proof failed - provider's on-chain commitment is false

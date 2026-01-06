@@ -1,4 +1,7 @@
-import type { ModelCertifiedEvent } from "@zkfair/sdk";
+import type {
+	ModelCertifiedEvent,
+	ProviderSlashedEvent,
+} from "@zkfair/sdk/browser";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Hash } from "viem";
@@ -54,6 +57,34 @@ export function useModelDetail(weightsHash: Hash) {
 					}
 				} catch (error) {
 					console.error("Failed to check model certification:", error);
+				}
+			},
+		);
+
+		return () => unwatch();
+	}, [model, weightsHash]);
+
+	useEffect(() => {
+		if (!model) return;
+
+		const unwatch = sdk.events.watchProviderSlashed(
+			async (event: ProviderSlashedEvent) => {
+				try {
+					const modelId = await sdk.model.getIdFromHash(weightsHash);
+
+					if (event.modelId === modelId) {
+						setModel((prev) => {
+							if (!prev) return prev;
+
+							toast.error("Provider slashed!", {
+								description: `This model's provider has been slashed for fraudulent behavior`,
+							});
+
+							return { ...prev, stake: 0n, status: 2 };
+						});
+					}
+				} catch (error) {
+					console.error("Failed to handle provider slashed event:", error);
 				}
 			},
 		);

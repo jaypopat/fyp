@@ -6,6 +6,6 @@ export const users = sqliteTable("users", {
 });
 
 export const schema = {
-	...zkfairSchema,
+	...zkfairSchema, // tables required by zkfair
 	users,
 };

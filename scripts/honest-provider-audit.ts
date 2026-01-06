@@ -187,7 +187,7 @@ async function main() {
 		timestamp: Number(timestamp),
 	}));
 
-	const { root, count, indices } = await sdk.audit.buildBatch(auditRecords);
+	const { root, count } = await sdk.audit.buildBatch(auditRecords);
 	console.log(`Batch Root: ${root}`);
 
 	const txBatch = await sdk.batch.commit(

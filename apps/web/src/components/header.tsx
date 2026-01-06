@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { History } from "lucide-react";
+import { Activity, History, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { config } from "@/config";
 import { ModeToggle } from "./mode-toggle";
@@ -14,6 +14,8 @@ export default function Header() {
 	});
 	const isHome = pathname === "/";
 	const isReceipts = pathname === "/receipts";
+	const isActivity = pathname === "/activity";
+	const isDemo = pathname === "/demo";
 
 	return (
 		<header className={HEADER_CLASSES}>
@@ -41,6 +43,20 @@ export default function Header() {
 				</div>
 
 				<div className="flex items-center gap-2">
+					{!isDemo && (
+						<Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+							<Link to="/demo" title="Demo Mode">
+								<Play className="h-4 w-4" />
+							</Link>
+						</Button>
+					)}
+					{!isActivity && (
+						<Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+							<Link to="/activity" title="Activity Feed">
+								<Activity className="h-4 w-4" />
+							</Link>
+						</Button>
+					)}
 					{!isReceipts && (
 						<Button variant="ghost" size="icon" className="h-8 w-8" asChild>
 							<Link to="/receipts" title="My Receipts">
@@ -50,7 +66,7 @@ export default function Header() {
 					)}
 					{!isHome && (
 						<Button variant="outline" size="sm" asChild>
-							<Link to="/">Dashboard</Link>
+							<Link to="/">Models</Link>
 						</Button>
 					)}
 					<WalletConnect />

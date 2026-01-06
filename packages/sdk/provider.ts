@@ -9,7 +9,6 @@ import {
 	lte,
 	sql,
 } from "drizzle-orm";
-import type { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
 import type { Hex } from "viem";
 import {
 	createReceiptHashes,
@@ -228,9 +227,10 @@ export class ProviderSDK {
 
 	/**
 	 * Create a batch if thresholds are met
+	 * @param force - Force batch creation regardless of thresholds
 	 */
-	async createBatchIfNeeded(): Promise<BatchResult | undefined> {
-		if (!(await this.shouldBatch())) return undefined;
+	async createBatchIfNeeded(force = false): Promise<BatchResult | undefined> {
+		if (!force && !(await this.shouldBatch())) return undefined;
 
 		const queries = await this.db
 			.select()

@@ -1290,6 +1290,7 @@ export const zkFairAbi = [
 		inputs: [{ name: "account", internalType: "address", type: "address" }],
 		name: "OwnableUnauthorizedAccount",
 	},
+	{ type: "error", inputs: [], name: "ProofValid" },
 	{ type: "error", inputs: [], name: "SeqNumAlreadyBatched" },
 	{ type: "error", inputs: [], name: "SeqNumNotInBatchRange" },
 	{ type: "error", inputs: [], name: "TransferFailed" },

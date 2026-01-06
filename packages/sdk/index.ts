@@ -19,6 +19,8 @@ export type {
 	StakeWithdrawnEvent,
 } from "./events";
 export {
+	type AuditRecord as ProviderAuditRecord,
+	type BatchResult,
 	ProviderSDK,
 	type ProviderSDKOptions,
 } from "./provider";

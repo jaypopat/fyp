@@ -393,7 +393,7 @@ export class CommitAPI {
 		const { hashPoseidonFields } = await import("./utils");
 		const saltBigInt = BigInt(salt);
 		const rowWithSalt = [...row, saltBigInt];
-		const hash = await hashPoseidonFields(rowWithSalt);
+		const hash = hashPoseidonFields(rowWithSalt);
 		if (hash.length !== 64)
 			throw new Error("row hash length invalid post hashing");
 		return hash;

@@ -10,12 +10,24 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ReceiptsRouteImport } from './routes/receipts'
+import { Route as DemoRouteImport } from './routes/demo'
+import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ModelModelIdRouteImport } from './routes/model/$modelId'
 
 const ReceiptsRoute = ReceiptsRouteImport.update({
   id: '/receipts',
   path: '/receipts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoRoute = DemoRouteImport.update({
+  id: '/demo',
+  path: '/demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ActivityRoute = ActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -31,30 +43,38 @@ const ModelModelIdRoute = ModelModelIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/activity': typeof ActivityRoute
+  '/demo': typeof DemoRoute
   '/receipts': typeof ReceiptsRoute
   '/model/$modelId': typeof ModelModelIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/activity': typeof ActivityRoute
+  '/demo': typeof DemoRoute
   '/receipts': typeof ReceiptsRoute
   '/model/$modelId': typeof ModelModelIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/activity': typeof ActivityRoute
+  '/demo': typeof DemoRoute
   '/receipts': typeof ReceiptsRoute
   '/model/$modelId': typeof ModelModelIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/receipts' | '/model/$modelId'
+  fullPaths: '/' | '/activity' | '/demo' | '/receipts' | '/model/$modelId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/receipts' | '/model/$modelId'
-  id: '__root__' | '/' | '/receipts' | '/model/$modelId'
+  to: '/' | '/activity' | '/demo' | '/receipts' | '/model/$modelId'
+  id: '__root__' | '/' | '/activity' | '/demo' | '/receipts' | '/model/$modelId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ActivityRoute: typeof ActivityRoute
+  DemoRoute: typeof DemoRoute
   ReceiptsRoute: typeof ReceiptsRoute
   ModelModelIdRoute: typeof ModelModelIdRoute
 }
@@ -66,6 +86,20 @@ declare module '@tanstack/react-router' {
       path: '/receipts'
       fullPath: '/receipts'
       preLoaderRoute: typeof ReceiptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo': {
+      id: '/demo'
+      path: '/demo'
+      fullPath: '/demo'
+      preLoaderRoute: typeof DemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/activity': {
+      id: '/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof ActivityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -87,6 +121,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ActivityRoute: ActivityRoute,
+  DemoRoute: DemoRoute,
   ReceiptsRoute: ReceiptsRoute,
   ModelModelIdRoute: ModelModelIdRoute,
 }
