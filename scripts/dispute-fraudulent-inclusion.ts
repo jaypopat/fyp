@@ -136,7 +136,6 @@ async function main() {
 		console.log(`Provider signed receipt for data: ${receiptDataHash}`);
 		console.log(`Provider planted different data: ${leafFake}`);
 
-
 		console.log(`Provider signed receipt for data: ${receiptDataHash}`);
 		console.log(`Provider planted different data: ${leafFake}`);
 
