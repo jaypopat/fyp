@@ -1,7 +1,7 @@
+import { hashRecordLeaf } from "@zkfair/sdk/hash";
 import { verifyMerkleProof } from "@zkfair/sdk/merkle";
 import type { Hex } from "viem";
 import { db, type SentinelReceipt } from "./db";
-import { hashRecordLeaf } from "./hash";
 import { sdk } from "./sdk";
 
 type BatchInfo = {
