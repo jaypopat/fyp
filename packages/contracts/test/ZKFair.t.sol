@@ -388,7 +388,11 @@ contract ZKFairTest is Test {
         zkFair.disputeFraudulentInclusion{value: 0}(
             batchId,
             1,
-            keccak256("leaf"),
+            uint256(block.timestamp),
+            keccak256("features"),
+            0,
+            0,
+            new bytes(65),
             new bytes32[](0),
             new uint8[](0)
         );

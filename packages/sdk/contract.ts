@@ -642,11 +642,15 @@ export class ContractClient {
 
 	/**
 	 * Dispute when provider batched wrong/tampered data (Type B fraud)
-	 * The batch commitment itself is the provider's on-chain attestation.
-	 * If seqNum is in range but Merkle proof fails, it's fraud.
+	 * User must have a signed receipt from provider proving the query data
+	 * Contract computes leafHash from verified receipt data to prevent manipulation
 	 * @param batchId The batch that claims to contain this query
-	 * @param seqNum Sequence number that should be in the batch
-	 * @param leafHash The leaf hash computed from user's local receipt data
+	 * @param seqNum Sequence number from receipt
+	 * @param timestamp Timestamp from receipt
+	 * @param featuresHash Hash of features (for privacy, user doesn't reveal actual features)
+	 * @param sensitiveAttr Sensitive attribute from receipt
+	 * @param prediction Prediction from receipt (scaled by 1e6)
+	 * @param providerSignature Provider's signature on the receipt data
 	 * @param merkleProof Array of sibling hashes for Merkle proof
 	 * @param proofPositions Array of positions (0=left, 1=right) for each sibling
 	 * @returns Transaction hash
@@ -654,7 +658,11 @@ export class ContractClient {
 	async disputeFraudulentInclusion(
 		batchId: bigint,
 		seqNum: bigint,
-		leafHash: Hash,
+		timestamp: bigint,
+		featuresHash: Hash,
+		sensitiveAttr: bigint,
+		prediction: bigint,
+		providerSignature: `0x${string}`,
 		merkleProof: Hash[],
 		proofPositions: number[],
 	) {
@@ -669,7 +677,17 @@ export class ContractClient {
 			abi: zkFairAbi,
 			functionName: "disputeFraudulentInclusion",
 			account: this.walletClient.account,
-			args: [batchId, seqNum, leafHash, merkleProof, proofPositions],
+			args: [
+				batchId,
+				seqNum,
+				timestamp,
+				featuresHash,
+				sensitiveAttr,
+				prediction,
+				providerSignature,
+				merkleProof,
+				proofPositions,
+			],
 			value: disputeStake,
 		});
 	}

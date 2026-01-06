@@ -8,15 +8,15 @@
  * 2. Provider serves a query and gives a signed receipt for RESULT A
  * 3. Provider commits a batch but includes RESULT B (Type B Fraud / Validity Fraud)
  * 4. User detects that the committed proof does not match their receipt
- * 5. User submits a disputeFraudulentInclusion
- * 6. Provider gets slashed
+ * 5. User submits a disputeFraudulentInclusion with signed receipt
+ * 6. Contract verifies provider signature and computes leafHash
+ * 7. Provider gets slashed for lying about committed data
  */
 
 import { SDK } from "@zkfair/sdk";
 import { createMerkleProof } from "@zkfair/sdk/merkle";
 import {
 	createPublicClient,
-	createWalletClient,
 	encodePacked,
 	type Hex,
 	http,
@@ -74,58 +74,76 @@ async function main() {
 		const realModelId = myLog.modelId;
 		console.log(`Model ID: ${realModelId}`);
 
-		console.log("Serving Queries (Creating Trap)...");
+		console.log("Creating Signed Receipt...");
 
 		const timestamp = BigInt(Math.floor(Date.now() / 1000)) - 3601n; // Mock 1 hour in the past to bypass grace period
 
-		// Query User (What the user receives)
+		// Query User (What the user receives in signed receipt)
 		const queryUser = {
 			seqNum: BigInt(100),
 			modelId: realModelId,
 			features: [1, 2, 3],
 			sensitiveAttr: BigInt(0),
-			prediction: BigInt(1), // Truth is 1
+			prediction: BigInt(1000000), // Truth is 1.0 (scaled by 1e6)
 			timestamp,
 		};
 
-		// Query Fake (What the provider commits to chain to cheat stats)
-		const queryFake = {
-			...queryUser,
-			prediction: BigInt(0), // Lie: result is 0
-		};
-
+		// Provider signs the receipt for query User
 		const featuresHash = keccak256(
 			encodePacked(["string"], [JSON.stringify(queryUser.features)]),
 		);
 
-		// leaf = keccak256(encodePacked(seqNum, modelId, featuresHash, sensitiveAttr, prediction, timestamp))
+		const receiptDataHash = keccak256(
+			encodePacked(
+				["uint256", "uint256", "bytes32", "uint256", "int256", "uint256"],
+				[
+					queryUser.seqNum,
+					realModelId!,
+					featuresHash,
+					queryUser.sensitiveAttr,
+					queryUser.prediction,
+					queryUser.timestamp,
+				],
+			),
+		);
 
-		const getLeaf = (q: typeof queryUser) =>
-			keccak256(
-				encodePacked(
-					["uint256", "uint256", "bytes32", "uint256", "int256", "uint256"],
-					[
-						q.seqNum,
-						q.modelId!,
-						featuresHash,
-						q.sensitiveAttr,
-						q.prediction,
-						q.timestamp,
-					],
-				),
-			);
+		// Provider signs the receipt (user now has proof)
+		const providerSignature = await account.signMessage({
+			message: { raw: receiptDataHash },
+		});
+		console.log(`Provider signed receipt: ${receiptDataHash}`);
 
-		const leafUser = getLeaf(queryUser); // user received this
-		const leafFake = getLeaf(queryFake); // provider committed this (fabricated)
+		// Query Fake (What the provider commits to chain to cheat stats)
+		const queryFake = {
+			...queryUser,
+			prediction: BigInt(0), // Lie: result is 0 (different from signed receipt)
+		};
 
-		console.log(`User holds receipt for Leaf: ${leafUser}`);
-		console.log(`Provider planting Leaf: ${leafFake}`);
+		const leafFake = keccak256(
+			encodePacked(
+				["uint256", "uint256", "bytes32", "uint256", "int256", "uint256"],
+				[
+					queryFake.seqNum,
+					realModelId!,
+					featuresHash,
+					queryFake.sensitiveAttr,
+					queryFake.prediction,
+					queryFake.timestamp,
+				],
+			),
+		);
+
+		console.log(`Provider signed receipt for data: ${receiptDataHash}`);
+		console.log(`Provider planted different data: ${leafFake}`);
+
+
+		console.log(`Provider signed receipt for data: ${receiptDataHash}`);
+		console.log(`Provider planted different data: ${leafFake}`);
 
 		// Committing the batch with the FAKE leaf
 		// For simplicity, batch size 1
 		const leaves = [leafFake.replace("0x", "")];
 		const { root, proof } = await createMerkleProof(leaves, 0);
-		// root is Hex
 
 		console.log("Committing Fraudulent Batch...");
 
@@ -145,7 +163,7 @@ async function main() {
 		if (!myBatch) throw new Error("Batch not found");
 		console.log(`Batch ID: ${myBatch.batchId}`);
 
-		console.log("Launching Dispute...");
+		console.log("Launching Dispute with Signed Receipt...");
 
 		console.log("Checking existing stake...");
 		const providerStakeBefore = await getProviderStake(realModelId!);
@@ -158,12 +176,12 @@ async function main() {
 			});
 		});
 
-		// We act as the User. We see the batch root. We request the proof for position 0 from Provider (or data availability layer).
-		// The provider (or DA) gives us the proof for the FAKE leaf because that's what is in the tree.
-		// So we have the proof that proves `leafFake` is at index 0.
-		// We submit OUR leaf (`leafUser`) and the proof for `leafFake`.
-		// The contract computes root(leafUser, proof) != batchRoot.
-		// Thus, slashing.
+		// User submits dispute with their signed receipt data
+		// The contract will:
+		// 1. Verify provider signed this receipt
+		// 2. Compute leafHash from the signed data
+		// 3. Check if Merkle proof fails (proving provider lied)
+		// 4. Slash provider if proof fails
 
 		const merkleProof = proof.map((p) => ("0x" + p.sibling) as Hex);
 		const proofPositions = proof.map((p) => (p.position === "left" ? 0 : 1));
@@ -171,7 +189,11 @@ async function main() {
 		const txDispute = await sdk.dispute.disputeFraudulentInclusion(
 			myBatch.batchId!,
 			queryUser.seqNum,
-			leafUser,
+			queryUser.timestamp,
+			featuresHash,
+			queryUser.sensitiveAttr,
+			queryUser.prediction,
+			providerSignature,
 			merkleProof,
 			proofPositions,
 		);
@@ -187,6 +209,9 @@ async function main() {
 
 		if (providerStakeAfter < providerStakeBefore) {
 			console.log("SUCCESS: Provider was slashed!");
+			console.log(
+				"Provider signed receipt for one result but committed different data.",
+			);
 		} else {
 			console.error("FAILURE: Provider stake did not decrease.");
 			process.exit(1);

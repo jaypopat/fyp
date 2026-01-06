@@ -579,20 +579,16 @@ contract ZKFair is Ownable, Pausable {
         }
 
         // 2. Verify provider signature matches the receipt data
-        bytes32 dataHash = keccak256(
-            abi.encodePacked(
-                seqNum,
-                modelId,
-                featuresHash, // User provides hash of features for privacy
-                sensitiveAttr,
-                prediction,
-                timestamp
-            )
+        _verifyReceiptAndComputeLeaf(
+            seqNum,
+            modelId,
+            featuresHash,
+            sensitiveAttr,
+            prediction,
+            timestamp,
+            providerSignature,
+            model.provider
         );
-        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(dataHash);
-        address recoveredSigner = ECDSA.recover(ethSignedMessageHash, providerSignature);
-
-        if (recoveredSigner != model.provider) revert InvalidSignature();
 
         // 3. Check that no batch contains this seqNum
         uint256[] memory modelBatches = batchesByModel[modelId];
@@ -614,19 +610,26 @@ contract ZKFair is Ownable, Pausable {
     }
 
     /// @notice Dispute when provider batched wrong/tampered data (Type B fraud)
-    /// @dev The batch commitment itself (seqNumStart to seqNumEnd) is the provider's
-    ///      on-chain attestation. If seqNum is in range but Merkle proof fails, it's fraud.
-    ///      No separate signature needed - the on-chain batch IS the commitment.
+    /// @dev User must have a signed receipt from provider proving the query data
+    /// @dev Contract computes leafHash from verified receipt data to prevent user manipulation
     /// @dev Requires DISPUTE_STAKE which is returned + provider stake if valid, or forfeited if invalid
     /// @param batchId The batch that claims to contain this query
-    /// @param seqNum Sequence number that should be in the batch
-    /// @param leafHash The leaf hash computed from user's local receipt data
+    /// @param seqNum Sequence number from receipt
+    /// @param timestamp Timestamp from receipt
+    /// @param featuresHash Hash of features (for privacy, user doesn't reveal actual features)
+    /// @param sensitiveAttr Sensitive attribute from receipt
+    /// @param prediction Prediction from receipt (scaled by 1e6)
+    /// @param providerSignature Provider's signature on the receipt data
     /// @param merkleProof Array of sibling hashes for Merkle proof
     /// @param proofPositions Array of positions (0=left, 1=right) for each sibling
     function disputeFraudulentInclusion(
         uint256 batchId,
         uint256 seqNum,
-        bytes32 leafHash,
+        uint256 timestamp,
+        bytes32 featuresHash,
+        uint256 sensitiveAttr,
+        int256 prediction,
+        bytes calldata providerSignature,
         bytes32[] calldata merkleProof,
         uint8[] calldata proofPositions
     ) external payable validBatch(batchId) whenNotPaused {
@@ -637,25 +640,66 @@ contract ZKFair is Ownable, Pausable {
         Model storage model = models[modelId];
 
         // 1. Verify seqNum is in this batch's claimed range
-        //    Provider committed on-chain that this batch contains seqNumStart to seqNumEnd
         if (seqNum < batch.seqNumStart || seqNum > batch.seqNumEnd) {
             revert SeqNumNotInBatchRange();
         }
 
-        // 2. Verify Merkle proof FAILS against on-chain root
-        //    If proof succeeds, the data WAS included correctly (no fraud)
+        // 2. Verify provider signature and compute leafHash
+        bytes32 leafHash = _verifyReceiptAndComputeLeaf(
+            seqNum,
+            modelId,
+            featuresHash,
+            sensitiveAttr,
+            prediction,
+            timestamp,
+            providerSignature,
+            model.provider
+        );
+
+        // 3. Verify Merkle proof FAILS against on-chain root
         if (_computeMerkleRoot(leafHash, merkleProof, proofPositions) == batch.merkleRoot) {
-            // Proof is valid - data was included correctly, no fraud
-            // Forfeit dispute stake to provider for invalid dispute
+            // Proof is valid - provider included the data they signed
             _safeTransfer(model.provider, msg.value);
             revert ProofValid();
         }
 
-        // 3. Merkle proof failed - provider's on-chain commitment is false
-        //    They claimed to include seqNum but didn't, or included wrong data
+        // 4. Merkle proof failed - provider provably lied
         _safeTransfer(msg.sender, msg.value); // Return disputer's stake
         emit DisputeRaised(modelId, msg.sender, seqNum, "Fraudulent batch inclusion");
         _slashProvider(modelId, msg.sender, "Committed tampered batch data");
+    }
+
+    /// @dev Verify provider signature on receipt data and compute leaf hash
+    function _verifyReceiptAndComputeLeaf(
+        uint256 seqNum,
+        uint256 modelId,
+        bytes32 featuresHash,
+        uint256 sensitiveAttr,
+        int256 prediction,
+        uint256 timestamp,
+        bytes calldata providerSignature,
+        address expectedProvider
+    ) internal pure returns (bytes32) {
+        // Compute data hash (same as receipt encoding)
+        bytes32 dataHash = keccak256(
+            abi.encodePacked(
+                seqNum,
+                modelId,
+                featuresHash,
+                sensitiveAttr,
+                prediction,
+                timestamp
+            )
+        );
+
+        // Verify provider signed this data
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(dataHash);
+        address recoveredSigner = ECDSA.recover(ethSignedMessageHash, providerSignature);
+
+        if (recoveredSigner != expectedProvider) revert InvalidSignature();
+
+        // Return the leaf hash
+        return dataHash;
     }
 
     /// @dev Compute Merkle root from leaf and proof

@@ -18,7 +18,6 @@ import {
 import { config } from "@/config";
 import { DISPUTE_STAKE } from "@/lib/constants";
 import { db, type SentinelReceipt } from "@/lib/db";
-import { hashRecordLeaf } from "@/lib/hash";
 import type { VerificationResult } from "@/lib/sentinel";
 
 export type DisputeState = {
@@ -127,23 +126,23 @@ export function DisputeDialog({ dispute, onClose }: DisputeDialogProps) {
 					p.position === "left" ? 0 : 1,
 				);
 
-				// Compute our leaf hash (what we have locally)
-				const leafHashHex = hashRecordLeaf({
-					seqNum: receipt.seqNum,
-					modelId: receipt.modelId,
-					features: receipt.features,
-					sensitiveAttr: receipt.sensitiveAttr,
-					prediction: receipt.prediction,
-					timestamp: receipt.timestamp,
-				});
-				const leafHash = `0x${leafHashHex}` as Hex;
-
+				// Receipt data that provider signed - contract will verify and compute leafHash
 				console.log("[Dispute] Submitting fraudulent inclusion dispute", {
 					batchId,
 					seqNum: receipt.seqNum,
-					leafHash,
+					hasSignature: !!receipt.providerSignature,
 					proofLength: merkleProof.length,
 				});
+
+				if (!receipt.providerSignature) {
+					toast.error("Missing provider signature on receipt");
+					return;
+				}
+
+				if (!receipt.featuresHash) {
+					toast.error("Missing features hash in receipt");
+					return;
+				}
 
 				writeContract(
 					{
@@ -153,7 +152,11 @@ export function DisputeDialog({ dispute, onClose }: DisputeDialogProps) {
 						args: [
 							batchId,
 							BigInt(receipt.seqNum),
-							leafHash,
+							BigInt(Math.floor(receipt.timestamp / 1000)),
+							(receipt.featuresHash || "0x") as Hex,
+							BigInt(receipt.sensitiveAttr),
+							BigInt(Math.round(receipt.prediction * 1e6)),
+							receipt.providerSignature as Hex,
 							merkleProof,
 							proofPositions,
 						],
