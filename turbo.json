@@ -16,11 +16,6 @@
 			"outputs": ["dist/**"],
 			"cache": true
 		},
-		"docs#build": {
-			"dependsOn": ["^build"],
-			"outputs": [".output/**"],
-			"cache": true
-		},
 		"@zkfair/zk-circuits#build": {
 			"inputs": ["src/**/*.nr", "Nargo.toml"],
 			"outputs": ["target/**"],

@@ -3,7 +3,7 @@ import type {
 	AuditRequestedEvent,
 	BatchCommittedEvent,
 	ModelCertifiedEvent,
-} from "@zkfair/sdk";
+} from "@zkfair/sdk/browser";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Hash } from "viem";
@@ -14,12 +14,13 @@ export type BatchData = {
 	modelId: string;
 	merkleRoot: Hash;
 	queryCount: string;
-	timestampStart: string;
-	timestampEnd: string;
+	seqNumStart: string;
+	seqNumEnd: string;
 	committedAt: string;
 	audited: boolean;
 	auditStatus: number;
 	activeAuditId: string;
+	auditDeadline?: string;
 };
 
 export function useModelBatches(weightsHash: Hash, initialModelId?: bigint) {
@@ -51,8 +52,8 @@ export function useModelBatches(weightsHash: Hash, initialModelId?: bigint) {
 					modelId: batch.modelId.toString(),
 					merkleRoot: batch.merkleRoot,
 					queryCount: batch.queryCount.toString(),
-					timestampStart: batch.timestampStart.toString(),
-					timestampEnd: batch.timestampEnd.toString(),
+					seqNumStart: batch.seqNumStart.toString(),
+					seqNumEnd: batch.seqNumEnd.toString(),
 					committedAt: batch.committedAt.toString(),
 					audited: batch.audited,
 					auditStatus: batch.auditStatus,
@@ -83,13 +84,13 @@ export function useModelBatches(weightsHash: Hash, initialModelId?: bigint) {
 				try {
 					const batchData = await sdk.batch.get(event.batchId);
 
-					const newBatch: BatchData = {
+					const newBatch = {
 						batchId: event.batchId.toString(),
 						modelId: event.modelId.toString(),
 						merkleRoot: event.merkleRoot,
-						queryCount: event.queryCount.toString(),
-						timestampStart: batchData.timestampStart.toString(),
-						timestampEnd: batchData.timestampEnd.toString(),
+						queryCount: batchData.queryCount.toString(),
+						seqNumStart: batchData.seqNumStart.toString(),
+						seqNumEnd: batchData.seqNumEnd.toString(),
 						committedAt: batchData.committedAt.toString(),
 						audited: batchData.audited,
 						auditStatus: batchData.auditStatus,
@@ -104,7 +105,7 @@ export function useModelBatches(weightsHash: Hash, initialModelId?: bigint) {
 					});
 
 					toast.success(`New batch #${event.batchId} committed`, {
-						description: `${event.queryCount} queries included`,
+						description: `${batchData.queryCount} queries included`,
 					});
 				} catch (error) {
 					console.error("Failed to fetch new batch data:", error);
@@ -132,7 +133,11 @@ export function useModelBatches(weightsHash: Hash, initialModelId?: bigint) {
 
 					return prev.map((b) =>
 						b.batchId === event.batchId.toString()
-							? { ...b, activeAuditId: event.auditId.toString() }
+							? {
+									...b,
+									activeAuditId: event.auditId.toString(),
+									auditDeadline: event.deadline.toString(),
+								}
 							: b,
 					);
 				});

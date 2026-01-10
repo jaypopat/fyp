@@ -3,6 +3,7 @@ import { BatchAPI } from "./batch";
 import { CommitAPI } from "./commit";
 import { setGlobalConfig } from "./config";
 import { ContractClient } from "./contract";
+import { DisputeAPI } from "./dispute";
 import { EventsAPI } from "./events";
 import { ModelAPI } from "./model";
 import { ProofAPI } from "./proof";
@@ -18,6 +19,7 @@ export class SDK {
 	public commit: CommitAPI;
 	public events: EventsAPI;
 	public audit: AuditAPI;
+	public dispute: DisputeAPI;
 
 	constructor(options: ZkFairOptions = {}) {
 		if (options.environment) {
@@ -32,5 +34,6 @@ export class SDK {
 		this.commit = new CommitAPI(this.contracts);
 		this.events = new EventsAPI(this.contracts);
 		this.audit = new AuditAPI(this.contracts);
+		this.dispute = new DisputeAPI(this.contracts);
 	}
 }

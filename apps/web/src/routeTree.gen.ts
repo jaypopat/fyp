@@ -9,13 +9,25 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as DevRouteImport } from './routes/dev'
+import { Route as ReceiptsRouteImport } from './routes/receipts'
+import { Route as DemoRouteImport } from './routes/demo'
+import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ModelModelIdRouteImport } from './routes/model/$modelId'
 
-const DevRoute = DevRouteImport.update({
-  id: '/dev',
-  path: '/dev',
+const ReceiptsRoute = ReceiptsRouteImport.update({
+  id: '/receipts',
+  path: '/receipts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoRoute = DemoRouteImport.update({
+  id: '/demo',
+  path: '/demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ActivityRoute = ActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -31,41 +43,63 @@ const ModelModelIdRoute = ModelModelIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/dev': typeof DevRoute
+  '/activity': typeof ActivityRoute
+  '/demo': typeof DemoRoute
+  '/receipts': typeof ReceiptsRoute
   '/model/$modelId': typeof ModelModelIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/dev': typeof DevRoute
+  '/activity': typeof ActivityRoute
+  '/demo': typeof DemoRoute
+  '/receipts': typeof ReceiptsRoute
   '/model/$modelId': typeof ModelModelIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/dev': typeof DevRoute
+  '/activity': typeof ActivityRoute
+  '/demo': typeof DemoRoute
+  '/receipts': typeof ReceiptsRoute
   '/model/$modelId': typeof ModelModelIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dev' | '/model/$modelId'
+  fullPaths: '/' | '/activity' | '/demo' | '/receipts' | '/model/$modelId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dev' | '/model/$modelId'
-  id: '__root__' | '/' | '/dev' | '/model/$modelId'
+  to: '/' | '/activity' | '/demo' | '/receipts' | '/model/$modelId'
+  id: '__root__' | '/' | '/activity' | '/demo' | '/receipts' | '/model/$modelId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  DevRoute: typeof DevRoute
+  ActivityRoute: typeof ActivityRoute
+  DemoRoute: typeof DemoRoute
+  ReceiptsRoute: typeof ReceiptsRoute
   ModelModelIdRoute: typeof ModelModelIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/dev': {
-      id: '/dev'
-      path: '/dev'
-      fullPath: '/dev'
-      preLoaderRoute: typeof DevRouteImport
+    '/receipts': {
+      id: '/receipts'
+      path: '/receipts'
+      fullPath: '/receipts'
+      preLoaderRoute: typeof ReceiptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo': {
+      id: '/demo'
+      path: '/demo'
+      fullPath: '/demo'
+      preLoaderRoute: typeof DemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/activity': {
+      id: '/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof ActivityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -87,7 +121,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  DevRoute: DevRoute,
+  ActivityRoute: ActivityRoute,
+  DemoRoute: DemoRoute,
+  ReceiptsRoute: ReceiptsRoute,
   ModelModelIdRoute: ModelModelIdRoute,
 }
 export const routeTree = rootRouteImport

@@ -1,5 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import type { ColumnDef } from "@tanstack/react-table";
+import { createFileRoute } from "@tanstack/react-router";
 import {
 	flexRender,
 	getCoreRowModel,
@@ -8,8 +7,9 @@ import {
 	getSortedRowModel,
 	useReactTable,
 } from "@tanstack/react-table";
-import { ArrowUpDown, ExternalLink, Loader2, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ExternalLink, Loader2, Search } from "lucide-react";
+import { useState } from "react";
+import { ProviderInfoBanner } from "@/components/provider-info-banner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,11 +21,8 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { config } from "@/config";
-import { getModelStatusBadge } from "@/lib/model-status";
-import type { SDKModel } from "@/lib/sdk-types";
+import { modelTableColumns } from "@/lib/model-table-columns";
 import { useModels } from "@/lib/use-models";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
 	component: HomeComponent,
@@ -35,139 +32,9 @@ function HomeComponent() {
 	const { models, isLoading } = useModels();
 	const [globalFilter, setGlobalFilter] = useState("");
 
-	const columns: ColumnDef<SDKModel>[] = useMemo(
-		() => [
-			{
-				accessorKey: "name",
-				header: ({ column }) => (
-					<Button
-						variant="ghost"
-						onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-						className="h-auto items-center p-0"
-					>
-						Model Details
-						<ArrowUpDown className="ml-2 h-4 w-4" />
-					</Button>
-				),
-				cell: ({ row }) => (
-					<div className="min-w-[280px] space-y-2">
-						<Link
-							to="/model/$modelId"
-							params={{ modelId: row.original.weightsHash }}
-							className="font-semibold text-foreground transition-colors hover:text-main"
-						>
-							{row.original.name}
-						</Link>
-						<p className="text-foreground/70 text-sm leading-relaxed">
-							{row.original.description}
-						</p>
-						<div className="flex items-center gap-1.5 text-xs">
-							<span className="text-foreground/70">Author:</span>
-							<a
-								href={`${config.explorerBase}/address/${row.original.author as string}`}
-								target="_blank"
-								rel="noreferrer"
-								className="underline-offset-4 hover:underline"
-								title="View author on explorer"
-							>
-								<code className="rounded-[var(--radius-base)] border-2 border-border bg-secondary-background px-1.5 py-0.5 font-mono shadow-[var(--shadow)]">
-									{(row.original.author as string).slice(0, 6)}...
-									{(row.original.author as string).slice(-4)}
-								</code>
-							</a>
-						</div>
-					</div>
-				),
-			},
-			{
-				accessorKey: "status",
-				header: ({ column }) => (
-					<Button
-						variant="ghost"
-						onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-						className="h-auto items-center p-0"
-					>
-						Status
-						<ArrowUpDown className="ml-2 h-4 w-4" />
-					</Button>
-				),
-				cell: ({ row }) => (
-					<div className="flex items-center">
-						{getModelStatusBadge(row.original.status)}
-					</div>
-				),
-			},
-			{
-				accessorKey: "weightsHash",
-				header: "Weights Hash",
-				cell: ({ row }) => {
-					const hash = row.getValue("weightsHash") as string;
-					return (
-						<code className="block rounded-[var(--radius-base)] border-2 border-border bg-secondary-background px-2 py-1 font-mono text-xs shadow-[var(--shadow)]">
-							{hash.slice(0, 10)}...{hash.slice(-8)}
-						</code>
-					);
-				},
-			},
-			{
-				accessorKey: "datasetMerkleRoot",
-				header: "Dataset Root",
-				cell: ({ row }) => {
-					const root = row.getValue("datasetMerkleRoot") as string;
-					return (
-						<code className="block rounded-[var(--radius-base)] border-2 border-border bg-secondary-background px-2 py-1 font-mono text-xs shadow-[var(--shadow)]">
-							{root.slice(0, 10)}...{root.slice(-8)}
-						</code>
-					);
-				},
-			},
-			{
-				accessorKey: "registrationTimestamp",
-				header: ({ column }) => (
-					<Button
-						variant="ghost"
-						onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-						className="h-auto items-center p-0"
-					>
-						Registered
-						<ArrowUpDown className="ml-2 h-4 w-4" />
-					</Button>
-				),
-				cell: ({ row }) => {
-					const timestamp = row.getValue("registrationTimestamp") as number;
-					const date = new Date(timestamp * 1000);
-					return (
-						<div className={cn("text-sm", LABEL_EMPHASIS)}>
-							{date.toLocaleDateString("en-US", {
-								month: "short",
-								day: "numeric",
-								year: "numeric",
-							})}
-						</div>
-					);
-				},
-			},
-			{
-				id: "actions",
-				header: "",
-				cell: ({ row }) => (
-					<Link
-						to="/model/$modelId"
-						params={{ modelId: row.original.weightsHash }}
-						className="inline-flex items-center gap-1.5 whitespace-nowrap text-main text-sm transition-colors hover:text-main/80"
-					>
-						View Details
-						<ExternalLink className="h-3.5 w-3.5" />
-					</Link>
-				),
-			},
-		],
-		[],
-	);
-
 	const table = useReactTable({
-		data: models,
-		columns,
+		data: models ?? [],
+		columns: modelTableColumns,
 		getCoreRowModel: getCoreRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
 		getSortedRowModel: getSortedRowModel(),
@@ -191,6 +58,19 @@ function HomeComponent() {
 	const SEARCH_ICON =
 		"absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/60";
 
+	if (!models) {
+		return (
+			<div className="min-h-screen w-full px-6 py-12">
+				<div className="mx-auto max-w-[1600px]">
+					<div className="flex flex-col items-center gap-4 py-16">
+						<Loader2 className="h-12 w-12 animate-spin text-main" />
+						<p className="text-foreground/70">Loading models...</p>
+					</div>
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div className="min-h-screen w-full px-6 py-12">
 			<div className="mx-auto max-w-[1600px]">
@@ -201,6 +81,9 @@ function HomeComponent() {
 						Explore verified AI models and their fairness compliance status
 					</p>
 				</div>
+
+				{/* Provider Info Banner */}
+				<ProviderInfoBanner />
 
 				{/* Search Bar */}
 				<Card className="mb-6 p-4">
@@ -252,7 +135,7 @@ function HomeComponent() {
 								{isLoading ? (
 									<TableRow>
 										<TableCell
-											colSpan={columns.length}
+											colSpan={modelTableColumns.length}
 											className="h-32 text-center"
 										>
 											<div className="flex flex-col items-center gap-2">
@@ -280,7 +163,7 @@ function HomeComponent() {
 								) : (
 									<TableRow>
 										<TableCell
-											colSpan={columns.length}
+											colSpan={modelTableColumns.length}
 											className="h-32 text-center"
 										>
 											<div className="flex flex-col items-center gap-2">

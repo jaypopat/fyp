@@ -106,15 +106,15 @@ app.post("/attest/audit", async (c) => {
 
 		const passed = isValid;
 
-		// 2. Create timestamp
-		const timestamp = Math.floor(Date.now() / 1000);
+		// 2. Create attestation hash from proof
+		const attestationHash = keccak256(proof);
 
-		// 3. Sign message matching contract:
-		// keccak256(abi.encodePacked(auditId, passed, timestamp))
+		// 3. Sign message matching contract format:
+		// keccak256(abi.encodePacked(uint256(auditId), attestationHash, passed, "AUDIT"))
 		const messageHash = keccak256(
 			encodePacked(
-				["uint256", "bool", "uint64"],
-				[BigInt(auditId), passed, BigInt(timestamp)],
+				["uint256", "bytes32", "bool", "string"],
+				[BigInt(auditId), attestationHash, passed, "AUDIT"],
 			),
 		);
 
@@ -122,10 +122,7 @@ app.post("/attest/audit", async (c) => {
 			message: { raw: messageHash },
 		});
 
-		// 4. Create attestation hash from proof
-		const attestationHash = keccak256(proof);
-
-		// 5. Return attestation (provider will submit via contract)
+		// 4. Return attestation (provider will submit via contract)
 		return c.json({
 			auditId,
 			attestationHash,

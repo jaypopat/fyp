@@ -1,9 +1,9 @@
 {
 	"name": "fyp",
 	"devDependencies": {
-		"@biomejs/biome": "^2.2.0",
+		"@biomejs/biome": "^2.3.10",
 		"concurrently": "^9.2.1",
-		"turbo": "^2.5.4"
+		"turbo": "^2.7.2"
 	},
 	"overrides": {
 		"@noir-lang/noir_js": "1.0.0-beta.15",
@@ -21,7 +21,10 @@
 		"check-types": "turbo check-types",
 		"dev:native": "turbo -F native dev",
 		"dev:web": "turbo -F web dev",
-		"dev:server": "turbo -F server dev"
+		"dev:server": "turbo -F server dev",
+		"demo:audit": "bun scripts/audit-e2e.ts",
+		"demo:type-a": "bun scripts/malicious-server-e2e-type-a.ts",
+		"demo:type-b": "bun scripts/malicious-server-e2e-type-b.ts"
 	},
 	"type": "module",
 	"workspaces": [

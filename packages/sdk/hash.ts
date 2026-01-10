@@ -1,0 +1,215 @@
+/**
+ * Browser-safe hashing utilities using Poseidon
+ * No Node.js dependencies - safe for browser/web environments
+ */
+import {
+	poseidon1,
+	poseidon2,
+	poseidon3,
+	poseidon4,
+	poseidon5,
+	poseidon6,
+	poseidon7,
+	poseidon8,
+	poseidon9,
+	poseidon10,
+	poseidon11,
+	poseidon12,
+	poseidon13,
+	poseidon14,
+	poseidon15,
+	poseidon16,
+} from "poseidon-lite";
+import type { Hash } from "viem";
+
+/**
+ * Call the appropriate Poseidon hash function based on input length
+ */
+function poseidon(inputs: bigint[]): bigint {
+	switch (inputs.length) {
+		case 1:
+			return poseidon1(inputs);
+		case 2:
+			return poseidon2(inputs);
+		case 3:
+			return poseidon3(inputs);
+		case 4:
+			return poseidon4(inputs);
+		case 5:
+			return poseidon5(inputs);
+		case 6:
+			return poseidon6(inputs);
+		case 7:
+			return poseidon7(inputs);
+		case 8:
+			return poseidon8(inputs);
+		case 9:
+			return poseidon9(inputs);
+		case 10:
+			return poseidon10(inputs);
+		case 11:
+			return poseidon11(inputs);
+		case 12:
+			return poseidon12(inputs);
+		case 13:
+			return poseidon13(inputs);
+		case 14:
+			return poseidon14(inputs);
+		case 15:
+			return poseidon15(inputs);
+		case 16:
+			return poseidon16(inputs);
+		default:
+			throw new Error(`Poseidon supports 1-16 inputs, got ${inputs.length}`);
+	}
+}
+
+export function bytesToHash(bytes: Uint8Array): Hash {
+	return `0x${[...bytes].map((b) => b.toString(16).padStart(2, "0")).join("")}` as Hash;
+}
+
+export function bytesToPlainHash(bytes: Uint8Array): string {
+	return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+export function hexToBytes(hex: Hash | string): Uint8Array {
+	if (!hex.startsWith("0x")) throw new Error("Hash string must start with 0x");
+	const clean = hex.slice(2);
+	if (clean.length % 2 !== 0) throw new Error("Invalid hex length");
+	const out = new Uint8Array(clean.length / 2);
+	for (let i = 0; i < out.length; i++)
+		out[i] = Number.parseInt(clean.slice(i * 2, i * 2 + 2), 16);
+	return out;
+}
+
+/**
+ * Hash bytes using Poseidon (ZK-friendly hash)
+ * Converts bytes to field elements and hashes them
+ */
+export function hashBytes(data: Uint8Array): string {
+	// Split data into chunks that fit in a field element (< 254 bits)
+	// We use 31 bytes per chunk to be safe
+	const CHUNK_SIZE = 31;
+	const chunks: bigint[] = [];
+
+	for (let i = 0; i < data.length; i += CHUNK_SIZE) {
+		const chunk = data.slice(i, i + CHUNK_SIZE);
+		// Convert chunk to bigint
+		let value = 0n;
+		for (let j = 0; j < chunk.length; j++) {
+			value = (value << 8n) | BigInt(chunk[j] || 0);
+		}
+		chunks.push(value);
+	}
+
+	// Hash all chunks together
+	const hash = poseidon(chunks);
+
+	// Convert to 32-byte hex string (64 chars)
+	const hex = hash.toString(16).padStart(64, "0");
+
+	if (hex.length > 64) {
+		// This should never happen: Poseidon outputs fit in 32 bytes.
+		throw new Error(`Unexpected Poseidon hash length ${hex.length} > 64`);
+	}
+
+	return hex;
+}
+
+/**
+ * Hash field elements directly using Poseidon (ZK-friendly)
+ * Converts numeric values to field elements with fixed-point scaling for floats
+ *
+ * @param values - Array of numbers, strings, or bigints to hash
+ * @returns 64-character hex string (no 0x prefix)
+ */
+export function hashPoseidonFields(
+	values: Array<number | string | bigint>,
+): string {
+	// BN254 field modulus
+	const BN254_FIELD_MODULUS =
+		21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+
+	// Convert all values to bigints (data is already pre-scaled from CSV)
+	const fields = values.map((v) => {
+		if (typeof v === "bigint") {
+			// Ensure bigint fits in field
+			return v % BN254_FIELD_MODULUS;
+		}
+		if (typeof v === "string") {
+			// Parse string as integer (no scaling - data already scaled in preprocessing)
+			const parsed = BigInt(v);
+			return parsed % BN254_FIELD_MODULUS;
+		}
+		if (typeof v === "number") {
+			// Convert number to bigint (should not happen in normal flow with pre-scaled CSV)
+			const bigintValue = BigInt(Math.round(v));
+			return bigintValue % BN254_FIELD_MODULUS;
+		}
+		throw new Error(`Unsupported value type: ${typeof v}`);
+	});
+
+	// Hash the field elements
+	const hash = poseidon(fields);
+
+	// Convert to 32-byte hex string (64 chars)
+	const hex = hash.toString(16).padStart(64, "0");
+
+	if (hex.length > 64) {
+		// This should never happen: Poseidon outputs fit in 32 bytes.
+		throw new Error(`Unexpected Poseidon hash length ${hex.length} > 64`);
+	}
+
+	return hex;
+}
+
+// ============================================
+// AUDIT RECORD HASHING (Browser-safe)
+// ============================================
+
+/**
+ * Canonical query record for audit trail
+ */
+export type AuditRecord = {
+	seqNum: number;
+	modelId: number;
+	features: number[];
+	sensitiveAttr: number;
+	prediction: number;
+	timestamp: number;
+};
+
+/**
+ * Hash a query record into a Merkle leaf using Poseidon.
+ * Must match circuit's hash_record_to_leaf exactly:
+ *
+ * leaf_data = [features[0..13], prediction, sensitiveAttr]  (16 fields)
+ * hash1 = poseidon8(leaf_data[0..7])
+ * hash2 = poseidon8(leaf_data[8..15])
+ * leaf_hash = poseidon2([hash1, hash2])
+ *
+ * @returns 64-character hex string (no 0x prefix)
+ */
+export function hashRecordLeaf(r: AuditRecord): string {
+	// Build leaf_data array matching circuit: [features[0..13], prediction, sensitiveAttr]
+	const leafData: bigint[] = [];
+
+	// Add 14 features (pad with 0 if needed)
+	for (let i = 0; i < 14; i++) {
+		leafData.push(BigInt(r.features[i] ?? 0));
+	}
+
+	// Add binary prediction (circuit expects 0 or 1)
+	leafData.push(r.prediction >= 0.5 ? 1n : 0n);
+
+	// Add sensitive attribute
+	leafData.push(BigInt(r.sensitiveAttr));
+
+	// Hash exactly as circuit does
+	const hash1 = poseidon8(leafData.slice(0, 8));
+	const hash2 = poseidon8(leafData.slice(8, 16));
+	const leafHash = poseidon2([hash1, hash2]);
+
+	// Convert to 64-char hex (no 0x prefix)
+	return leafHash.toString(16).padStart(64, "0");
+}

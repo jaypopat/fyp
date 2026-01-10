@@ -13,6 +13,7 @@ export type NetworkConfig = {
 	contractAddress: Hash;
 	rpcUrl: string;
 	attestationServiceUrl: string;
+	serverUrl: string;
 	chain: Chain;
 	explorerBase: string;
 };
@@ -27,6 +28,7 @@ const SDK_CONFIG: SdkConfig = {
 		contractAddress: "0x5fbdb2315678afecb367f032d93f642f64180aa3",
 		rpcUrl: "http://localhost:8545",
 		attestationServiceUrl: "http://localhost:3000",
+		serverUrl: "http://localhost:5000",
 		chain: anvil,
 		explorerBase: "https://app.tryethernal.com",
 	},
@@ -34,6 +36,7 @@ const SDK_CONFIG: SdkConfig = {
 		contractAddress: "0x7584c0472a52b9f121f1f8f522a7191a5650a2b8",
 		rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com",
 		attestationServiceUrl: "https://attestation-api.fyp.jaypopat.me",
+		serverUrl: "https://server-api.fyp.jaypopat.me",
 		chain: sepolia,
 		explorerBase: "https://sepolia.etherscan.io",
 	},
@@ -56,12 +59,14 @@ export function detectEnvironment(): Environment {
 		return activeEnvironment;
 	}
 
-	// 2. Check environment variables (Runtime Detection)
-	if (process.env.ZKFAIR_ENV === "sepolia") {
-		return "sepolia";
-	}
-	if (process.env.NODE_ENV === "production") {
-		return "sepolia";
+	// 2. Check environment variables (Runtime Detection) - browser-safe
+	if (typeof process !== "undefined" && process.env) {
+		if (process.env.ZKFAIR_ENV === "sepolia") {
+			return "sepolia";
+		}
+		if (process.env.NODE_ENV === "production") {
+			return "sepolia";
+		}
 	}
 
 	// 3. Default fallback

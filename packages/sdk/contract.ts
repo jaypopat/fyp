@@ -14,6 +14,7 @@ import type {
 	AuditProofSubmittedEvent,
 	AuditRequestedEvent,
 	BatchCommittedEvent,
+	DisputeRaisedEvent,
 	ModelCertifiedEvent,
 	ModelRegisteredEvent,
 	ProviderSlashedEvent,
@@ -148,16 +149,16 @@ export class ContractClient {
 	 * @param modelId Model ID used for queries
 	 * @param merkleRoot Merkle root of query-output pairs
 	 * @param queryCount Number of queries in batch
-	 * @param timestampStart Start timestamp
-	 * @param timestampEnd End timestamp
+	 * @param seqNumStart Start sequence number
+	 * @param seqNumEnd End sequence number
 	 * @returns Transaction hash
 	 */
 	async commitBatch(
 		modelId: bigint,
 		merkleRoot: Hash,
 		queryCount: bigint,
-		timestampStart: bigint,
-		timestampEnd: bigint,
+		seqNumStart: bigint,
+		seqNumEnd: bigint,
 	) {
 		if (!this.walletClient)
 			throw new Error("Wallet client required for write operations");
@@ -167,7 +168,7 @@ export class ContractClient {
 			abi: zkFairAbi,
 			functionName: "commitBatch",
 			account: this.walletClient.account,
-			args: [modelId, merkleRoot, queryCount, timestampStart, timestampEnd],
+			args: [modelId, merkleRoot, queryCount, seqNumStart, seqNumEnd],
 		});
 	}
 
@@ -184,12 +185,20 @@ export class ContractClient {
 		if (!this.walletClient)
 			throw new Error("Wallet client required for write operations");
 
+		// Get required audit stake from contract
+		const auditStake = await this.publicClient.readContract({
+			address: this.contractAddress,
+			abi: zkFairAbi,
+			functionName: "AUDIT_STAKE",
+		});
+
 		return await this.walletClient.writeContract({
 			address: this.contractAddress,
 			abi: zkFairAbi,
 			functionName: "requestAudit",
 			account: this.walletClient.account,
 			args: [batchId],
+			value: auditStake as bigint,
 		});
 	}
 
@@ -564,6 +573,147 @@ export class ContractClient {
 			address: this.contractAddress,
 			abi: zkFairAbi,
 			eventName: "AuditRequested",
+			fromBlock: fromBlock ?? "earliest",
+			toBlock: toBlock ?? "latest",
+		});
+		return logs.map((log) => log.args);
+	}
+
+	// ============================================
+	// PHASE 4: USER DISPUTES
+	// ============================================
+
+	/**
+	 * Get the required dispute stake amount
+	 * @returns Dispute stake amount in wei
+	 */
+	async getDisputeStake(): Promise<bigint> {
+		return this.publicClient.readContract({
+			address: this.contractAddress,
+			abi: zkFairAbi,
+			functionName: "DISPUTE_STAKE",
+		}) as Promise<bigint>;
+	}
+
+	/**
+	 * Dispute when provider never batched a query (Type A fraud)
+	 * User must have a signed receipt from provider proving the query existed
+	 * @param modelId Model ID from receipt
+	 * @param seqNum Sequence number from receipt
+	 * @param timestamp Timestamp from receipt
+	 * @param featuresHash Hash of features (for privacy, user doesn't reveal actual features)
+	 * @param sensitiveAttr Sensitive attribute from receipt
+	 * @param prediction Prediction from receipt (scaled by 1e6)
+	 * @param providerSignature Provider's signature on the receipt data
+	 * @returns Transaction hash
+	 */
+	async disputeNonInclusion(
+		modelId: bigint,
+		seqNum: bigint,
+		timestamp: bigint,
+		featuresHash: Hash,
+		sensitiveAttr: bigint,
+		prediction: bigint,
+		providerSignature: `0x${string}`,
+	) {
+		if (!this.walletClient)
+			throw new Error("Wallet client required for write operations");
+
+		// Get required dispute stake from contract
+		const disputeStake = await this.getDisputeStake();
+
+		return await this.walletClient.writeContract({
+			address: this.contractAddress,
+			abi: zkFairAbi,
+			functionName: "disputeNonInclusion",
+			account: this.walletClient.account,
+			args: [
+				modelId,
+				seqNum,
+				timestamp,
+				featuresHash,
+				sensitiveAttr,
+				prediction,
+				providerSignature,
+			],
+			value: disputeStake,
+		});
+	}
+
+	/**
+	 * Dispute when provider batched wrong/tampered data (Type B fraud)
+	 * User must have a signed receipt from provider proving the query data
+	 * Contract computes leafHash from verified receipt data to prevent manipulation
+	 * @param batchId The batch that claims to contain this query
+	 * @param seqNum Sequence number from receipt
+	 * @param timestamp Timestamp from receipt
+	 * @param featuresHash Hash of features (for privacy, user doesn't reveal actual features)
+	 * @param sensitiveAttr Sensitive attribute from receipt
+	 * @param prediction Prediction from receipt (scaled by 1e6)
+	 * @param providerSignature Provider's signature on the receipt data
+	 * @param merkleProof Array of sibling hashes for Merkle proof
+	 * @param proofPositions Array of positions (0=left, 1=right) for each sibling
+	 * @returns Transaction hash
+	 */
+	async disputeFraudulentInclusion(
+		batchId: bigint,
+		seqNum: bigint,
+		timestamp: bigint,
+		featuresHash: Hash,
+		sensitiveAttr: bigint,
+		prediction: bigint,
+		providerSignature: `0x${string}`,
+		merkleProof: Hash[],
+		proofPositions: number[],
+	) {
+		if (!this.walletClient)
+			throw new Error("Wallet client required for write operations");
+
+		// Get required dispute stake from contract
+		const disputeStake = await this.getDisputeStake();
+
+		return await this.walletClient.writeContract({
+			address: this.contractAddress,
+			abi: zkFairAbi,
+			functionName: "disputeFraudulentInclusion",
+			account: this.walletClient.account,
+			args: [
+				batchId,
+				seqNum,
+				timestamp,
+				featuresHash,
+				sensitiveAttr,
+				prediction,
+				providerSignature,
+				merkleProof,
+				proofPositions,
+			],
+			value: disputeStake,
+		});
+	}
+
+	// ============================================
+	// DISPUTE EVENT WATCHER
+	// ============================================
+
+	watchDisputeRaised(callback: (event: DisputeRaisedEvent) => void) {
+		return this.publicClient.watchContractEvent({
+			address: this.contractAddress,
+			abi: zkFairAbi,
+			eventName: "DisputeRaised",
+			onLogs: (logs) => {
+				for (const log of logs) {
+					callback(log.args as DisputeRaisedEvent);
+				}
+			},
+		});
+	}
+
+	async getDisputeRaisedEvents(fromBlock?: bigint, toBlock?: bigint) {
+		const logs = await this.publicClient.getContractEvents({
+			address: this.contractAddress,
+			abi: zkFairAbi,
+			eventName: "DisputeRaised",
 			fromBlock: fromBlock ?? "earliest",
 			toBlock: toBlock ?? "latest",
 		});

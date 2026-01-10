@@ -2,6 +2,7 @@
 	"models": [
 		{
 			"id": 1,
+			"hash": "0x09c72f51dff5a78d0789300c09349b0ee875c6463f047b19399b1d2a81f9b91a",
 			"name": "adult-income",
 			"path": "../../examples/adult-income/model.onnx"
 		}

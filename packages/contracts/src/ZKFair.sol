@@ -25,8 +25,11 @@ contract ZKFair is Ownable, Pausable {
     // ============================================
 
     uint256 public constant PROVIDER_STAKE = 0.0001 ether;
+    uint256 public constant AUDIT_STAKE = 0.00005 ether; // Stake required to request audit
+    uint256 public constant DISPUTE_STAKE = 0.0001 ether; // Stake required to file dispute
     uint256 public constant AUDIT_RESPONSE_DEADLINE = 24 hours;
-    uint256 public constant REQUIRED_SAMPLES = 100;
+    uint256 public constant REQUIRED_SAMPLES = 10;
+    uint256 public constant DISPUTE_GRACE_PERIOD = 10 seconds; // Time provider has to batch before dispute allowed (short for demo)
 
     // ============================================
     // ENUMS
@@ -69,8 +72,8 @@ contract ZKFair is Ownable, Pausable {
         uint256 modelId;
         bytes32 merkleRoot;
         uint256 queryCount;
-        uint256 timestampStart;
-        uint256 timestampEnd;
+        uint256 seqNumStart;
+        uint256 seqNumEnd;
         uint256 committedAt;
         bool audited;
         AuditStatus auditStatus;
@@ -146,6 +149,12 @@ contract ZKFair is Ownable, Pausable {
         address indexed oldService,
         address indexed newService
     );
+    event DisputeRaised(
+        uint256 indexed modelId,
+        address indexed user,
+        uint256 seqNum,
+        string reason
+    );
 
     // ============================================
     // ERRORS
@@ -169,6 +178,11 @@ contract ZKFair is Ownable, Pausable {
     error NoStakeToWithdraw();
     error HasPendingAudits();
     error ActiveAuditExists();
+    error DisputeGracePeriodNotPassed();
+    error SeqNumAlreadyBatched();
+    error SeqNumNotInBatchRange();
+    error InvalidMerkleProof();
+    error ProofValid();
 
     // ============================================
     // CONSTRUCTOR
@@ -328,15 +342,15 @@ contract ZKFair is Ownable, Pausable {
     /// @param modelId ID of the certified model used
     /// @param merkleRoot Merkle root of (query, output) pairs
     /// @param queryCount Number of queries in batch
-    /// @param timestampStart Unix timestamp of first query
-    /// @param timestampEnd Unix timestamp of last query
+    /// @param seqNumStart Sequence number of first query
+    /// @param seqNumEnd Sequence number of last query
     /// @return batchId Unique identifier for the batch
     function commitBatch(
         uint256 modelId,
         bytes32 merkleRoot,
         uint256 queryCount,
-        uint256 timestampStart,
-        uint256 timestampEnd
+        uint256 seqNumStart,
+        uint256 seqNumEnd
     )
         external
         onlyProvider(modelId)
@@ -355,7 +369,7 @@ contract ZKFair is Ownable, Pausable {
             revert InvalidModelStatus();
         }
         if (merkleRoot == bytes32(0) || queryCount == 0) revert InvalidInput();
-        if (timestampEnd < timestampStart) revert InvalidInput();
+        if (seqNumEnd < seqNumStart) revert InvalidInput();
 
         batchId = ++batchCounter;
 
@@ -363,8 +377,8 @@ contract ZKFair is Ownable, Pausable {
             modelId: modelId,
             merkleRoot: merkleRoot,
             queryCount: queryCount,
-            timestampStart: timestampStart,
-            timestampEnd: timestampEnd,
+            seqNumStart: seqNumStart,
+            seqNumEnd: seqNumEnd,
             committedAt: block.timestamp,
             audited: false,
             auditStatus: AuditStatus.PENDING,
@@ -382,11 +396,14 @@ contract ZKFair is Ownable, Pausable {
 
     /// @notice Request audit on a committed batch (generates random samples on-chain)
     /// @dev Uses blockhash-based pseudo-randomness - sufficient for most use cases
+    /// @dev Requires AUDIT_STAKE which is forfeited if provider passes, or returned + provider stake if provider fails
     /// @param batchId ID of the batch to audit
     /// @return auditId Unique identifier for the audit
     function requestAudit(
         uint256 batchId
-    ) external validBatch(batchId) whenNotPaused returns (uint256 auditId) {
+    ) external payable validBatch(batchId) whenNotPaused returns (uint256 auditId) {
+        if (msg.value != AUDIT_STAKE) revert InsufficientStake();
+
         Batch storage batch = batches[batchId];
 
         if (batch.audited) revert AlreadyAudited();
@@ -442,9 +459,7 @@ contract ZKFair is Ownable, Pausable {
         emit AuditRequested(auditId, batchId, sampleIndices, deadline);
     }
 
-    /// @notice Provider submits ZK proof responding to audit
-    /// @param auditId ID of the audit request
-    /// @notice Submit attestation that audit proof was verified off-chain by attestation service
+    /// @notice Provider submits attestation that audit proof was verified off-chain by attestation service
     /// @param auditId ID of the audit request
     /// @param attestationHash Hash of the attestation (keccak256(proof || "AUDIT"))
     /// @param signature Signature from attestation service
@@ -484,9 +499,13 @@ contract ZKFair is Ownable, Pausable {
         if (passed) {
             audit.status = AuditStatus.PASSED;
             batch.auditStatus = AuditStatus.PASSED;
+            // Provider wins - gets challenger's stake as reward
+            _safeTransfer(model.provider, AUDIT_STAKE);
         } else {
             audit.status = AuditStatus.FAILED;
             batch.auditStatus = AuditStatus.FAILED;
+            // Challenger wins - gets their stake back + provider's stake
+            _safeTransfer(audit.challenger, AUDIT_STAKE);
             _slashProvider(
                 batch.modelId,
                 audit.challenger,
@@ -498,7 +517,7 @@ contract ZKFair is Ownable, Pausable {
     }
 
     /// @notice Slash provider for missing audit deadline (permissionless)
-    /// @dev Anyone can call after deadline - challenger gets slashed stake as reward
+    /// @dev Anyone can call after deadline - challenger gets their stake back + provider's stake
     /// @param auditId ID of the expired audit
     function slashExpiredAudit(
         uint256 auditId
@@ -514,7 +533,10 @@ contract ZKFair is Ownable, Pausable {
         batch.audited = true;
         batch.auditStatus = AuditStatus.EXPIRED;
 
-        // Slash and reward challenger
+        // Return challenger's stake first
+        _safeTransfer(audit.challenger, AUDIT_STAKE);
+
+        // Slash provider and reward challenger
         _slashProvider(
             batch.modelId,
             audit.challenger,
@@ -522,6 +544,183 @@ contract ZKFair is Ownable, Pausable {
         );
 
         emit AuditExpired(auditId, audit.batchId, msg.sender);
+    }
+
+    // ============================================
+    // PHASE 4: USER DISPUTES
+    // ============================================
+
+    /// @notice Dispute when provider never batched a query (Type A fraud)
+    /// @dev User must have a signed receipt from provider proving the query existed
+    /// @dev Requires DISPUTE_STAKE which is returned + provider stake if valid, or forfeited if invalid
+    /// @param modelId Model ID from receipt
+    /// @param seqNum Sequence number from receipt
+    /// @param timestamp Timestamp from receipt
+    /// @param featuresHash Hash of features (for privacy, user doesn't reveal actual features)
+    /// @param sensitiveAttr Sensitive attribute from receipt
+    /// @param prediction Prediction from receipt (scaled by 1e6)
+    /// @param providerSignature Provider's signature on the receipt data
+    function disputeNonInclusion(
+        uint256 modelId,
+        uint256 seqNum,
+        uint256 timestamp,
+        bytes32 featuresHash,
+        uint256 sensitiveAttr,
+        int256 prediction,
+        bytes calldata providerSignature
+    ) external payable validModel(modelId) whenNotPaused {
+        if (msg.value != DISPUTE_STAKE) revert InsufficientStake();
+
+        Model storage model = models[modelId];
+
+        // 1. Verify grace period has passed (give provider time to batch)
+        if (block.timestamp < timestamp + DISPUTE_GRACE_PERIOD) {
+            revert DisputeGracePeriodNotPassed();
+        }
+
+        // 2. Verify provider signature matches the receipt data
+        _verifyReceiptAndComputeLeaf(
+            seqNum,
+            modelId,
+            featuresHash,
+            sensitiveAttr,
+            prediction,
+            timestamp,
+            providerSignature,
+            model.provider
+        );
+
+        // 3. Check that no batch contains this seqNum
+        uint256[] memory modelBatches = batchesByModel[modelId];
+        for (uint256 i = 0; i < modelBatches.length; i++) {
+            Batch storage batch = batches[modelBatches[i]];
+            if (seqNum >= batch.seqNumStart && seqNum <= batch.seqNumEnd) {
+                // SeqNum IS in a batch - this dispute type doesn't apply
+                // User should use disputeFraudulentInclusion instead
+                // Forfeit dispute stake to provider for invalid dispute
+                _safeTransfer(model.provider, msg.value);
+                revert SeqNumAlreadyBatched();
+            }
+        }
+
+        // 4. Provider failed to batch this query - return stake and slash provider
+        _safeTransfer(msg.sender, msg.value); // Return disputer's stake
+        emit DisputeRaised(modelId, msg.sender, seqNum, "Query never batched");
+        _slashProvider(modelId, msg.sender, "Failed to batch user query");
+    }
+
+    /// @notice Dispute when provider batched wrong/tampered data (Type B fraud)
+    /// @dev User must have a signed receipt from provider proving the query data
+    /// @dev Contract computes leafHash from verified receipt data to prevent user manipulation
+    /// @dev Requires DISPUTE_STAKE which is returned + provider stake if valid, or forfeited if invalid
+    /// @param batchId The batch that claims to contain this query
+    /// @param seqNum Sequence number from receipt
+    /// @param timestamp Timestamp from receipt
+    /// @param featuresHash Hash of features (for privacy, user doesn't reveal actual features)
+    /// @param sensitiveAttr Sensitive attribute from receipt
+    /// @param prediction Prediction from receipt (scaled by 1e6)
+    /// @param providerSignature Provider's signature on the receipt data
+    /// @param merkleProof Array of sibling hashes for Merkle proof
+    /// @param proofPositions Array of positions (0=left, 1=right) for each sibling
+    function disputeFraudulentInclusion(
+        uint256 batchId,
+        uint256 seqNum,
+        uint256 timestamp,
+        bytes32 featuresHash,
+        uint256 sensitiveAttr,
+        int256 prediction,
+        bytes calldata providerSignature,
+        bytes32[] calldata merkleProof,
+        uint8[] calldata proofPositions
+    ) external payable validBatch(batchId) whenNotPaused {
+        if (msg.value != DISPUTE_STAKE) revert InsufficientStake();
+
+        Batch storage batch = batches[batchId];
+        uint256 modelId = batch.modelId;
+        Model storage model = models[modelId];
+
+        // 1. Verify seqNum is in this batch's claimed range
+        if (seqNum < batch.seqNumStart || seqNum > batch.seqNumEnd) {
+            revert SeqNumNotInBatchRange();
+        }
+
+        // 2. Verify provider signature and compute leafHash
+        bytes32 leafHash = _verifyReceiptAndComputeLeaf(
+            seqNum,
+            modelId,
+            featuresHash,
+            sensitiveAttr,
+            prediction,
+            timestamp,
+            providerSignature,
+            model.provider
+        );
+
+        // 3. Verify Merkle proof FAILS against on-chain root
+        if (_computeMerkleRoot(leafHash, merkleProof, proofPositions) == batch.merkleRoot) {
+            // Proof is valid - provider included the data they signed
+            _safeTransfer(model.provider, msg.value);
+            revert ProofValid();
+        }
+
+        // 4. Merkle proof failed - provider provably lied
+        _safeTransfer(msg.sender, msg.value); // Return disputer's stake
+        emit DisputeRaised(modelId, msg.sender, seqNum, "Fraudulent batch inclusion");
+        _slashProvider(modelId, msg.sender, "Committed tampered batch data");
+    }
+
+    /// @dev Verify provider signature on receipt data and compute leaf hash
+    function _verifyReceiptAndComputeLeaf(
+        uint256 seqNum,
+        uint256 modelId,
+        bytes32 featuresHash,
+        uint256 sensitiveAttr,
+        int256 prediction,
+        uint256 timestamp,
+        bytes calldata providerSignature,
+        address expectedProvider
+    ) internal pure returns (bytes32) {
+        // Compute data hash (same as receipt encoding)
+        bytes32 dataHash = keccak256(
+            abi.encodePacked(
+                seqNum,
+                modelId,
+                featuresHash,
+                sensitiveAttr,
+                prediction,
+                timestamp
+            )
+        );
+
+        // Verify provider signed this data
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(dataHash);
+        address recoveredSigner = ECDSA.recover(ethSignedMessageHash, providerSignature);
+
+        if (recoveredSigner != expectedProvider) revert InvalidSignature();
+
+        // Return the leaf hash
+        return dataHash;
+    }
+
+    /// @dev Compute Merkle root from leaf and proof
+    function _computeMerkleRoot(
+        bytes32 leaf,
+        bytes32[] calldata proof,
+        uint8[] calldata positions
+    ) internal pure returns (bytes32) {
+        bytes32 computedHash = leaf;
+
+        for (uint256 i = 0; i < proof.length; i++) {
+            if (positions[i] == 0) {
+                // Sibling is on the left
+                computedHash = keccak256(abi.encodePacked(proof[i], computedHash));
+            } else {
+                // Sibling is on the right
+                computedHash = keccak256(abi.encodePacked(computedHash, proof[i]));
+            }
+        }
+
+        return computedHash;
     }
 
     // ============================================

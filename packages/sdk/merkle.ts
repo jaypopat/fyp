@@ -1,5 +1,5 @@
 import type { Hex } from "viem";
-import { hashPoseidonFields } from "./utils";
+import { hashPoseidonFields } from "./hash";
 
 function ensure0x(h: string): Hex {
 	return (h.startsWith("0x") ? h : `0x${h}`) as Hex;

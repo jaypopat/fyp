@@ -19,4 +19,20 @@ export class BrowserSDK {
 		this.events = new EventsAPI(this.contracts);
 	}
 }
+
 export { getDefaultConfig } from "./config";
+// Re-export event types for use in browser apps
+export type {
+	AuditExpiredEvent,
+	AuditProofSubmittedEvent,
+	AuditRequestedEvent,
+	BatchCommittedEvent,
+	DisputeRaisedEvent,
+	ModelCertifiedEvent,
+	ModelRegisteredEvent,
+	ProviderSlashedEvent,
+	StakeWithdrawnEvent,
+} from "./events";
+// Re-export browser-safe types (no Noir dependencies)
+export type { AuditRecord } from "./hash";
+export { hashRecordLeaf } from "./hash";

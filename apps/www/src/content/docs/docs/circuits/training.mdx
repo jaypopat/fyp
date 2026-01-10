@@ -1,7 +1,81 @@
 ---
-title: "Circuit 2: Fairness Audit"
-description: "ZK circuit for fairness audits."
+title: "Circuit 1: Training Certification"
+description: "ZK circuit for proving training fairness."
 ---
 
+The training certification circuit proves that a model was trained fairly on a committed dataset.
 
-Placeholder: Circuit details and examples.
+## Purpose
+
+When a model provider registers their model, they must prove:
+
+1. **Weights match commitment** - The model weights hash to the committed `weightsHash`
+2. **Dataset is valid** - Each training row exists in the committed dataset Merkle tree
+3. **Model is fair** - Predictions satisfy the fairness threshold (demographic parity)
+
+## Public Inputs
+
+| Input | Type | Description |
+|-------|------|-------------|
+| `weights_hash` | `Field` | Poseidon hash of model weights |
+| `dataset_merkle_root` | `Field` | Root of committed dataset tree |
+| `fairness_threshold` | `u32` | Max allowed disparity (e.g., 10 = 10%) |
+
+## Private Inputs
+
+| Input | Type | Description |
+|-------|------|-------------|
+| `weights` | `[Field; N]` | Model weights |
+| `dataset` | `[[Field; F]; D]` | Training data rows |
+| `merkle_proofs` | `[MerkleProof; D]` | Proofs for each row |
+| `predictions` | `[u1; D]` | Model predictions |
+| `sensitive_attrs` | `[u1; D]` | Protected attribute values |
+
+## Verification Logic
+
+```rust
+// 1. Verify weights hash
+let computed_hash = poseidon_hash(weights);
+assert(computed_hash == weights_hash);
+
+// 2. Verify each dataset row is in committed tree
+for i in 0..DATASET_SIZE {
+    let leaf = compute_leaf_hash(dataset[i]);
+    assert(verify_merkle_proof(leaf, merkle_proofs[i], dataset_merkle_root));
+}
+
+// 3. Compute demographic parity
+let group_0_positive = count(predictions where sensitive_attr == 0 && pred == 1);
+let group_1_positive = count(predictions where sensitive_attr == 1 && pred == 1);
+let group_0_total = count(sensitive_attr == 0);
+let group_1_total = count(sensitive_attr == 1);
+
+let rate_0 = group_0_positive * 100 / group_0_total;
+let rate_1 = group_1_positive * 100 / group_1_total;
+
+// 4. Check fairness threshold
+let disparity = abs(rate_0 - rate_1);
+assert(disparity <= fairness_threshold);
+```
+
+## Fairness Metric
+
+The circuit uses **demographic parity**:
+
+$$
+\text\{Disparity\} = \left| P(\hat\{Y\}=1 \mid A=0) - P(\hat\{Y\}=1 \mid A=1) \right|
+$$
+
+Where:
+- $\hat\{Y\}$ = model prediction
+- $A$ = sensitive attribute (e.g., gender, race)
+
+## Usage
+
+```bash
+# Generate proof via CLI
+zkfair proof generate --weights-hash 0x...
+
+# Submit to contract
+zkfair proof submit --proof ./proof.json
+```

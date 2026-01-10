@@ -1,7 +1,193 @@
 ---
 title: Architecture Overview
-description: High level architecture of zk-Fair.
+description: High level architecture of ZKFair protocol.
 ---
 
+import { Card, CardGrid } from '@astrojs/starlight/components';
 
-Placeholder: Describe system components and interactions.
+ZKFair is a trustless ML fairness auditing system built on:
+
+- **Cryptographic commitments** to model weights and training data
+- **ZK proofs** for training certification and continuous auditing  
+- **On-chain batch commitments** with Merkle trees
+- **Client-side fraud detection** via receipt verification
+- **Economic incentives** through staking and slashing
+
+## System Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           ZKFAIR PROTOCOL FLOW                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  PHASE 1: MODEL REGISTRATION                                                │
+│  ─────────────────────────────                                              │
+│  Provider runs CLI to register model on-chain:                              │
+│  • Hash weights + dataset → commitments                                     │
+│  • registerModel() with stake (0.0001 ETH)                                  │
+│  • Generate ZK training proof → attestation service                         │
+│  • submitCertificationProof() → model CERTIFIED                             │
+│                                                                             │
+│  PHASE 2: INFERENCE & BATCHING                                              │
+│  ─────────────────────────────                                              │
+│  Users query the inference server:                                          │
+│  • POST /predict → ONNX inference + signed receipt                          │
+│  • Queries stored with sequence numbers                                     │
+│  • Auto-batch when: 100 queries OR 30 minutes                               │
+│  • commitBatch() → Merkle root on-chain                                     │
+│                                                                             │
+│  PHASE 3: AUDITING                                                          │
+│  ────────────────                                                           │
+│  Anyone can challenge a batch:                                              │
+│  • requestAudit(batchId) with stake (0.00005 ETH)                           │
+│  • Contract generates random sample indices                                 │
+│  • Provider has 24h to respond with ZK fairness proof                       │
+│  • submitAuditProof() → PASSED or FAILED                                    │
+│  • Missing deadline → provider slashed                                      │
+│                                                                             │
+│  PHASE 4: FRAUD DETECTION                                                   │
+│  ────────────────────────                                                   │
+│  Users verify their receipts:                                               │
+│  • Receipts stored locally (IndexedDB)                                      │
+│  • Sentinel verifies against on-chain Merkle roots                          │
+│  • Dispute types:                                                           │
+│    - NON_INCLUSION: Query never batched                                     │
+│    - FRAUDULENT_INCLUSION: Merkle proof fails                               │
+│  • Provider slashed, user compensated                                       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+## Components
+
+<CardGrid>
+  <Card title="CLI" icon="terminal">
+    Command-line tool for model providers to register and certify models.
+  </Card>
+  <Card title="Server" icon="laptop">
+    Inference server with batching, receipts, and audit handling.
+  </Card>
+  <Card title="Web App" icon="document">
+    User interface with Sentinel fraud detection.
+  </Card>
+  <Card title="SDK" icon="puzzle">
+    TypeScript SDK for providers (ProviderSDK) and clients (BrowserSDK).
+  </Card>
+  <Card title="Contracts" icon="setting">
+    Solidity contracts for model registry, batching, and disputes.
+  </Card>
+  <Card title="ZK Circuits" icon="approve-check">
+    Noir circuits for training certification and fairness audits.
+  </Card>
+</CardGrid>
+
+## Data Flow
+
+### 1. Model Registration
+
+```typescript
+// Provider prepares artifacts
+my-model/
+├── weights.bin              // Serialized model weights
+├── dataset_encoded.csv      // Label-encoded training data  
+├── fairness_threshold.json  // { "threshold": 10 }
+└── model.onnx              // ONNX model for inference
+
+// CLI computes commitments
+weightsHash = poseidon(weights)
+datasetRoot = merkleRoot(dataset)
+
+// Register on-chain
+registerModel(name, weightsHash, datasetRoot, threshold)
+```
+
+### 2. Inference & Batching
+
+```typescript
+// User requests inference
+POST /predict { modelHash, input }
+
+// Server processes
+prediction = onnxSession.run(input)
+seqNum = db.insert({ modelId, features, prediction, timestamp })
+receipt = sign({ seqNum, dataHash }, providerKey)
+
+// Auto-batch
+if (unbatchedCount >= 100 || oldestQuery > 30min) {
+  root = merkleRoot(queries)
+  commitBatch(modelId, root, seqRange)
+}
+```
+
+### 3. Audit Response
+
+```typescript
+// Challenger requests audit
+requestAudit(batchId) // stakes 0.00005 ETH
+
+// Contract generates random samples
+sampleIndices = random(0..queryCount, 10)
+
+// Provider generates ZK proof
+proof = fairnessAuditCircuit({
+  weights, samples, merkleProofs, threshold
+})
+
+// Submit via attestation service
+submitAuditProof(auditId, attestationHash, signature)
+```
+
+### 4. Fraud Detection
+
+```typescript
+// User verifies receipt
+batch = findBatchForSeqNum(seqNum)
+
+if (!batch && gracePeriodPassed) {
+  // FRAUD: Non-inclusion
+  disputeNonInclusion(receipt)
+}
+
+proof = fetchProof(providerUrl, seqNum)
+if (!verifyMerkleProof(leafHash, proof, batch.root)) {
+  // FRAUD: Invalid proof
+  disputeFraudulentInclusion(batchId, seqNum)
+}
+```
+
+## Security Model
+
+### Trust Assumptions
+
+| Component | Trust Level |
+|-----------|-------------|
+| Smart contract | Immutable, verified code |
+| Attestation service | TEE-based, signs honestly |
+| ZK circuits | Mathematically sound |
+| Users | Store receipts honestly |
+
+### Threat Mitigation
+
+| Threat | Mitigation |
+|--------|------------|
+| Provider omits queries | Merkle proofs + user receipts |
+| Provider tampers data | Signed receipts + verification |
+| Provider uses unfair model | ZK fairness proofs |
+| Provider ignores audits | Deadline + slashing |
+| Challenger spam | Audit stake required |
+
+## Economic Model
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| `PROVIDER_STAKE` | 0.0001 ETH | Required to register model |
+| `AUDIT_STAKE` | 0.00005 ETH | Required to request audit |
+| `DISPUTE_STAKE` | 0.0001 ETH | Required to file dispute |
+| `AUDIT_DEADLINE` | 24 hours | Provider response window |
+| `GRACE_PERIOD` | 1 hour | Time to batch queries |
+
+### Slashing Conditions
+
+- **Failed audit** → Provider loses stake to challenger
+- **Missed deadline** → Provider slashed
+- **Valid dispute** → Provider slashed, user compensated

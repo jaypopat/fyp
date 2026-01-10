@@ -1,10 +1,27 @@
+import type { Hash } from "viem";
 import type { ContractClient } from "./contract";
 
-/**
- * Batch API - Query batch commitments from blockchain
- */
 export class BatchAPI {
 	constructor(private contracts: ContractClient) {}
+
+	/**
+	 * Commit a batch of queries
+	 */
+	async commit(
+		modelId: bigint,
+		merkleRoot: Hash,
+		queryCount: bigint,
+		seqNumStart: bigint,
+		seqNumEnd: bigint,
+	) {
+		return this.contracts.commitBatch(
+			modelId,
+			merkleRoot,
+			queryCount,
+			seqNumStart,
+			seqNumEnd,
+		);
+	}
 
 	/**
 	 * Get batch details by ID

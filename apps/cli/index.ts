@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 import { run } from "@drizzle-team/brocli";
 import { commit, model, proof } from "./commands";
 
