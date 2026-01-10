@@ -1,7 +1,7 @@
 import type { BatchCommittedEvent } from "@zkfair/sdk/browser";
 import { toast } from "sonner";
+import { getGracePeriodMs } from "./constants";
 import { db, type SentinelReceipt } from "./db";
-import { getGracePeriodMs } from "./demo";
 import { onBatchCommitted } from "./event-store";
 import { sdk } from "./sdk";
 import { verifyAndUpdateReceipt } from "./sentinel";

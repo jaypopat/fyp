@@ -1,6 +1,7 @@
 import { hashRecordLeaf } from "@zkfair/sdk/hash";
 import { verifyMerkleProof } from "@zkfair/sdk/merkle";
 import type { Hex } from "viem";
+import { getGracePeriodMs } from "./constants";
 import { db, type SentinelReceipt } from "./db";
 import { sdk } from "./sdk";
 
@@ -22,8 +23,6 @@ export type VerificationResult =
 	| { status: "VERIFIED"; batch: BatchInfo }
 	| { status: "FRAUD_NON_INCLUSION"; reason: string }
 	| { status: "FRAUD_INVALID_PROOF"; reason: string; batch: BatchInfo };
-
-const GRACE_PERIOD_MS = 60 * 60 * 1000; // 1 hour, matches contract
 
 /**
  * Find the on-chain batch containing a seqNum
@@ -103,7 +102,8 @@ export async function verifyReceipt(
 
 	if (!batch) {
 		// No batch contains this seqNum
-		const gracePeriodPassed = Date.now() > receipt.timestamp + GRACE_PERIOD_MS;
+		const gracePeriodPassed =
+			Date.now() > receipt.timestamp + getGracePeriodMs();
 
 		if (gracePeriodPassed) {
 			return {

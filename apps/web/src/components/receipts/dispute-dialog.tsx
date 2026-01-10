@@ -16,7 +16,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { config } from "@/config";
-import { DISPUTE_STAKE } from "@/lib/constants";
+import { DISPUTE_STAKE, PREDICTION_SCALE_FACTOR } from "@/lib/constants";
 import { db, type SentinelReceipt } from "@/lib/db";
 import type { VerificationResult } from "@/lib/sentinel";
 
@@ -88,10 +88,10 @@ export function DisputeDialog({ dispute, onClose }: DisputeDialogProps) {
 					args: [
 						BigInt(receipt.modelId),
 						BigInt(receipt.seqNum),
-						BigInt(Math.floor(receipt.timestamp / 1000)), // Convert ms to seconds
+						BigInt(Math.floor(receipt.timestamp / 1000)),
 						(receipt.featuresHash || "0x") as Hex,
 						BigInt(receipt.sensitiveAttr),
-						BigInt(Math.round(receipt.prediction * 1e6)),
+						BigInt(Math.round(receipt.prediction * PREDICTION_SCALE_FACTOR)),
 						receipt.providerSignature as Hex,
 					],
 					value: disputeStake,
@@ -155,7 +155,7 @@ export function DisputeDialog({ dispute, onClose }: DisputeDialogProps) {
 							BigInt(Math.floor(receipt.timestamp / 1000)),
 							(receipt.featuresHash || "0x") as Hex,
 							BigInt(receipt.sensitiveAttr),
-							BigInt(Math.round(receipt.prediction * 1e6)),
+							BigInt(Math.round(receipt.prediction * PREDICTION_SCALE_FACTOR)),
 							receipt.providerSignature as Hex,
 							merkleProof,
 							proofPositions,

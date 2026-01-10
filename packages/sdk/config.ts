@@ -54,22 +54,25 @@ let activeEnvironment: Environment | null = null;
  * Used as the FALLBACK if no global config has been explicitly set.
  */
 export function detectEnvironment(): Environment {
-	// 1. If user explicitly set a global env, return that!
 	if (activeEnvironment) {
 		return activeEnvironment;
 	}
 
-	// 2. Check environment variables (Runtime Detection) - browser-safe
-	if (typeof process !== "undefined" && process.env) {
-		if (process.env.ZKFAIR_ENV === "sepolia") {
-			return "sepolia";
-		}
-		if (process.env.NODE_ENV === "production") {
-			return "sepolia";
-		}
+	// Vite frontend
+	if (typeof import.meta !== "undefined" && (import.meta as any).env) {
+		const env = (import.meta as any).env;
+		if (env.VITE_ZKFAIR_ENV === "sepolia") return "sepolia";
+		if (env.PROD) return "sepolia";
 	}
 
-	// 3. Default fallback
+	// Node.js backend
+	if (
+		typeof process !== "undefined" &&
+		process.env?.NODE_ENV === "production"
+	) {
+		return "sepolia";
+	}
+
 	return "local";
 }
 
