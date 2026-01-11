@@ -98,13 +98,15 @@ app.post("/attest/audit", async (c) => {
 
 		const proofBytes = Buffer.from(proof.slice(2), "hex");
 
-		// 1. Verify proof using UltraHonk backend
-		const isValid = await auditBackend.verifyProof({
+		// Verification will fail for dummy proofs (0x00) from failed circuits
+		const passed = await auditBackend.verifyProof({
 			proof: proofBytes,
 			publicInputs,
 		});
 
-		const passed = isValid;
+		console.log(
+			`Audit ${auditId}: Proof verification ${passed ? "PASSED" : "FAILED"}`,
+		);
 
 		// 2. Create attestation hash from proof
 		const attestationHash = keccak256(proof);

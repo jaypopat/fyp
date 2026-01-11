@@ -3,14 +3,14 @@ import { anvil, sepolia } from "wagmi/chains";
 import { injected, mock } from "wagmi/connectors";
 import { config } from "@/config";
 
-const isDevelopment_anvil = config.chain == anvil;
+const isDevelopment = config.chain.id === anvil.id;
 
 // Anvil's first test account (publicly known, only for local dev)
 const ANVIL_ACCOUNT = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as const;
 
 export const wagmiConfig = createConfig({
-	chains: isDevelopment_anvil ? [anvil] : [sepolia],
-	connectors: isDevelopment_anvil
+	chains: isDevelopment ? [anvil] : [sepolia],
+	connectors: isDevelopment
 		? [
 				mock({
 					accounts: [ANVIL_ACCOUNT],

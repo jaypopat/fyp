@@ -10,26 +10,15 @@ import {
 import { useEffect, useState } from "react";
 import type { Hash } from "viem";
 import { AdultIncomeForm } from "@/components/adult-income-form";
-import {
-	ModelBatchesCard,
-	ModelLifecycleCard,
-	ModelMetadataCard,
-} from "@/components/model";
+import { ModelBatchesCard } from "@/components/model";
+import { ModelDashboardHeader } from "@/components/model/model-dashboard-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { config } from "@/config";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuditActions, useClipboard } from "@/hooks";
 import { db } from "@/lib/db";
 import { useEventStore } from "@/lib/event-store";
 import { predict } from "@/lib/inference";
-import { getModelStatusBadge } from "@/lib/model-status";
 import { useModelBatches } from "@/lib/use-model-batches";
 import { useModelDetail } from "@/lib/use-model-detail";
 
@@ -49,8 +38,6 @@ function ModelDetailPage() {
 	const auditEvents = events.filter(
 		(e) => e.type === "AUDIT_REQUESTED" || e.type === "AUDIT_PROOF_SUBMITTED",
 	);
-
-	// Clipboard hook
 	const { copy: handleCopy, copiedField } = useClipboard();
 
 	// Track user's receipts for this model to highlight relevant batches
@@ -79,7 +66,6 @@ function ModelDetailPage() {
 		model?.name?.toLowerCase().includes("adult") ||
 		model?.name?.toLowerCase().includes("income");
 
-	// Audit actions
 	const {
 		handleChallenge,
 		handleClaimExpiredAudit,
@@ -123,60 +109,27 @@ function ModelDetailPage() {
 	}
 
 	return (
-		<div className="container mx-auto space-y-6 px-4 py-8">
-			{/* Header Card */}
-			<Card>
-				<CardHeader className="pb-3">
-					<div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-						<div className="space-y-4">
-							<Button variant="ghost" size="sm" className="-ml-3 w-fit" asChild>
-								<Link to="/" className="inline-flex items-center gap-2">
-									<ArrowLeft className="h-4 w-4" />
-									<span>Back to models</span>
-								</Link>
-							</Button>
-							<CardTitle className="font-semibold text-2xl text-foreground leading-tight">
-								{model.name}
-							</CardTitle>
-							<CardDescription className="text-sm">
-								Registered by{" "}
-								<a
-									href={`${config.explorerBase}/address/${model.author}`}
-									target="_blank"
-									rel="noreferrer"
-									className="underline-offset-4 hover:underline"
-									title="View author on explorer"
-								>
-									<code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-										{model.author}
-									</code>
-								</a>
-							</CardDescription>
-						</div>
-						<div className="shrink-0">{getModelStatusBadge(model.status)}</div>
-					</div>
-				</CardHeader>
-				{model.description && (
-					<CardContent className="pt-0 text-muted-foreground text-sm">
-						{model.description}
-					</CardContent>
-				)}
-			</Card>
+		<div className="container mx-auto space-y-4 px-4 py-6">
+			{/* Back Link */}
+			<Button variant="ghost" size="sm" className="-ml-2" asChild>
+				<Link to="/" className="inline-flex items-center gap-2">
+					<ArrowLeft className="h-4 w-4" />
+					<span>Back to models</span>
+				</Link>
+			</Button>
 
-			{/* Main Grid - Metadata + Lifecycle + Inference */}
-			<div className="grid gap-4 lg:grid-cols-3">
-				<ModelMetadataCard
-					model={model}
-					copiedField={copiedField}
-					onCopy={handleCopy}
-				/>
+			<ModelDashboardHeader
+				model={model}
+				batchCount={batches?.length ?? 0}
+				onCopy={(value) => handleCopy("hash", value)}
+				copiedField={copiedField === "hash" ? model.weightsHash : null}
+			/>
 
-				<ModelLifecycleCard model={model} />
-
-				<Card className="flex flex-col">
+			<div className="grid gap-4 lg:grid-cols-5">
+				<Card className="lg:col-span-2">
 					<CardHeader className="pb-3">
-						<div className="flex items-center justify-between">
-							<CardTitle className="font-semibold text-base">
+						<div className="flex min-h-[2rem] items-center justify-between">
+							<CardTitle className="font-semibold text-base leading-8">
 								Try Inference
 							</CardTitle>
 							{hasGuidedForm && (
@@ -189,19 +142,19 @@ function ModelDetailPage() {
 									{showGuidedForm ? (
 										<>
 											<ChevronUp className="h-3 w-3" />
-											Simple
+											CSV
 										</>
 									) : (
 										<>
 											<ChevronDown className="h-3 w-3" />
-											Guided
+											Form
 										</>
 									)}
 								</Button>
 							)}
 						</div>
 					</CardHeader>
-					<CardContent className="flex flex-1 flex-col space-y-3">
+					<CardContent className="space-y-3">
 						{hasGuidedForm && showGuidedForm ? (
 							<AdultIncomeForm
 								onSubmit={handleInference}
@@ -211,95 +164,102 @@ function ModelDetailPage() {
 						) : (
 							<>
 								<input
-									className="w-full rounded border px-3 py-2 text-sm"
+									className="w-full rounded border bg-background px-3 py-2 text-sm"
 									placeholder="e.g. 39, 7, 77516, 9, ..."
 									value={inputCSV}
 									onChange={(e) => setInputCSV(e.target.value)}
 								/>
 								{result && (
-									<div className="rounded bg-muted p-3 text-xs">
-										<p>
-											<span className="font-medium">Prediction:</span>{" "}
-											<b>{result.prediction === 1 ? ">50K" : "≤50K"}</b>
-										</p>
-										<p>
-											<span className="font-medium">Receipt:</span>{" "}
-											<code className="text-xs">#{result.seqNum}</code>
+									<div className="rounded-lg border bg-muted/50 p-3">
+										<div className="flex items-center justify-between">
+											<span className="text-muted-foreground text-xs">
+												Prediction
+											</span>
+											<Badge
+												variant={
+													result.prediction === 1 ? "default" : "secondary"
+												}
+											>
+												{result.prediction === 1 ? ">50K" : "≤50K"}
+											</Badge>
+										</div>
+										<p className="mt-1 font-mono text-muted-foreground text-xs">
+											Receipt #{result.seqNum}
 										</p>
 									</div>
 								)}
-								<div className="mt-auto">
-									<Button
-										disabled={loading}
-										className="w-full"
-										size="sm"
-										onClick={() => {
-											const values = inputCSV
-												.split(",")
-												.map((v) => v.trim())
-												.filter((v) => v.length > 0)
-												.map((v) => Number(v));
-											if (
-												!values.length ||
-												values.some((x) => Number.isNaN(x))
-											) {
-												alert("Provide valid numeric input");
-												return;
-											}
-											handleInference(values);
-										}}
-									>
-										{loading ? "Predicting…" : "Predict"}
-									</Button>
-								</div>
+								<Button
+									disabled={loading}
+									className="w-full"
+									size="sm"
+									onClick={() => {
+										const values = inputCSV
+											.split(",")
+											.map((v) => v.trim())
+											.filter((v) => v.length > 0)
+											.map((v) => Number(v));
+										if (!values.length || values.some((x) => Number.isNaN(x))) {
+											alert("Provide valid numeric input");
+											return;
+										}
+										handleInference(values);
+									}}
+								>
+									{loading ? "Predicting…" : "Predict"}
+								</Button>
 							</>
 						)}
 					</CardContent>
 				</Card>
-			</div>
 
-			{/* Batch History with Audit Events Badge */}
-			{batches && batches.length > 0 && (
-				<Card>
+				{/* Batch History */}
+				<Card className="lg:col-span-3">
 					<CardHeader className="pb-3">
-						<div className="flex items-center justify-between">
-							<CardTitle className="flex items-center gap-2 font-semibold text-base">
+						<div className="flex min-h-[2rem] items-center justify-between">
+							<CardTitle className="flex items-center gap-2 font-semibold text-base leading-8">
 								<Shield className="h-4 w-4" />
-								Batch Commitments ({batches.length})
+								Batch History
 								{auditEvents.length > 0 && (
-									<Badge variant="secondary" className="ml-2 gap-1 text-xs">
+									<Badge variant="secondary" className="ml-1 gap-1 text-xs">
 										<Radio className="h-3 w-3 animate-pulse text-blue-500" />
-										{auditEvents.length} audit event
-										{auditEvents.length !== 1 ? "s" : ""}
+										{auditEvents.length} live
 									</Badge>
 								)}
 							</CardTitle>
 							{userSeqNums.size > 0 && (
 								<Badge variant="outline" className="text-xs">
-									{userSeqNums.size} of your queries
+									{userSeqNums.size} yours
 								</Badge>
 							)}
 						</div>
-						<CardDescription className="text-xs">
-							Provider-committed query batches. Challenge any batch to verify
-							fairness.
-						</CardDescription>
 					</CardHeader>
 					<CardContent className="pt-0">
-						<ModelBatchesCard
-							batches={batches}
-							isLoading={batchesLoading}
-							userSeqNums={userSeqNums}
-							onChallenge={handleChallenge}
-							onClaimExpiredAudit={handleClaimExpiredAudit}
-							challengingBatch={challengingBatch}
-							claimingAudit={claimingAudit}
-							isPending={isPending}
-							isConfirming={isConfirming}
-						/>
+						{batches && batches.length > 0 ? (
+							<ModelBatchesCard
+								batches={batches}
+								isLoading={batchesLoading}
+								userSeqNums={userSeqNums}
+								onChallenge={handleChallenge}
+								onClaimExpiredAudit={handleClaimExpiredAudit}
+								challengingBatch={challengingBatch}
+								claimingAudit={claimingAudit}
+								isPending={isPending}
+								isConfirming={isConfirming}
+							/>
+						) : (
+							<div className="flex flex-col items-center justify-center py-8 text-center">
+								<Shield className="h-8 w-8 text-muted-foreground/50" />
+								<p className="mt-2 text-muted-foreground text-sm">
+									No batches yet
+								</p>
+								<p className="text-muted-foreground/70 text-xs">
+									Batches appear after provider commits queries
+								</p>
+							</div>
+						)}
 					</CardContent>
 				</Card>
-			)}
+			</div>
 		</div>
 	);
 }

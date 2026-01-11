@@ -271,16 +271,34 @@ export class AuditAPI {
 
 		// 8. Execute circuit and generate proof
 		const noir = new Noir(fairness_audit_circuit as CompiledCircuit);
-		const { witness } = await noir.execute(input);
 
-		const backend = new UltraHonkBackend(fairness_audit_circuit.bytecode);
-		const proofData = await backend.generateProof(witness);
+		let zkProof: Hex;
+		let publicInputs: `0x${string}`[];
+		let circuitPassed = true;
 
-		const zkProof = `0x${Array.from(proofData.proof)
-			.map((b) => b.toString(16).padStart(2, "0"))
-			.join("")}` as Hex;
+		try {
+			const { witness } = await noir.execute(input);
+			const backend = new UltraHonkBackend(fairness_audit_circuit.bytecode);
+			const proofData = await backend.generateProof(witness);
+
+			zkProof = `0x${Array.from(proofData.proof)
+				.map((b) => b.toString(16).padStart(2, "0"))
+				.join("")}` as Hex;
+			publicInputs = proofData.publicInputs as `0x${string}`[];
+		} catch (error) {
+			// Circuit constraint failed - this means the audit failed (fairness violation detected)
+			console.error(
+				"Circuit execution failed (fairness violation detected):",
+				error,
+			);
+			circuitPassed = false;
+			// Use dummy proof for failed audits - attestation service will sign based on passed=false
+			zkProof = "0x00" as Hex;
+			publicInputs = [];
+		}
 
 		// 9. Request attestation from service
+		// Note: Don't send circuitPassed - attestation service must verify proof itself
 		const attestationResponse = await fetch(
 			`${this.attestationUrl}/attest/audit`,
 			{
@@ -288,7 +306,7 @@ export class AuditAPI {
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					proof: zkProof,
-					publicInputs: proofData.publicInputs,
+					publicInputs: Array.from(publicInputs),
 					auditId: Number(auditId),
 				}),
 			},
@@ -309,7 +327,7 @@ export class AuditAPI {
 
 		return {
 			zkProof,
-			publicInputs: proofData.publicInputs as Hex[],
+			publicInputs: circuitPassed ? (publicInputs as unknown as Hex[]) : [],
 			attestationHash: attestation.attestationHash,
 			signature: attestation.signature,
 			passed: attestation.passed,

@@ -368,8 +368,15 @@ export class ProviderSDK {
 		}) => void,
 	): void {
 		this.sdk.events.watchAuditRequested(async (event) => {
-			const result = await this.sdk.audit.handleAuditRequest(event, this.db);
-			handler?.({ auditId: event.auditId, ...result });
+			try {
+				const result = await this.sdk.audit.handleAuditRequest(event, this.db);
+				handler?.({ auditId: event.auditId, ...result });
+			} catch (error) {
+				console.error(
+					`Fatal error handling audit request ${event.auditId}:`,
+					error instanceof Error ? error.message : error,
+				);
+			}
 		});
 	}
 

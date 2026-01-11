@@ -12,7 +12,7 @@ import { z } from "zod";
 import { db } from "../db";
 import { provider } from "../lib/sdk";
 
-export type DemoMode = "honest" | "non-inclusion" | "fraudulent-inclusion";
+type DemoMode = "honest" | "non-inclusion" | "fraudulent-inclusion";
 
 let currentDemoMode: DemoMode = "honest";
 
