@@ -47,6 +47,7 @@
 		}
 	},
 	"scripts": {
+		"test": "bun test",
 		"build": "tsdown",
 		"dev": "tsdown --watch",
 		"prepublishOnly": "bun run build",

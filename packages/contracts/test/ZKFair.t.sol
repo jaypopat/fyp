@@ -502,6 +502,123 @@ contract ZKFairTest is Test {
         vm.stopPrank();
     }
 
+    function test_disputeNonInclusion_success_slashesProvider() public {
+        uint256 modelId = _registerModel();
+        _certifyModel(modelId);
+
+        // Commit a batch covering seqNums 1-100
+        uint256 batchId = _commitBatch(modelId);
+
+        // Receipt was signed in the past; warp forward past grace period
+        uint256 receiptTimestamp = 100;
+        uint256 seqNum = 200; // NOT in the batch range 1-100
+        bytes32 featuresHash = keccak256("features");
+        uint256 sensitiveAttr = 0;
+        int256 prediction = 1000000;
+
+        // Provider signs the receipt
+        bytes32 dataHash = keccak256(
+            abi.encodePacked(seqNum, modelId, featuresHash, sensitiveAttr, prediction, receiptTimestamp)
+        );
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(dataHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(providerKey, ethSignedMessageHash);
+        bytes memory providerSignature = abi.encodePacked(r, s, v);
+
+        // Warp well past grace period
+        vm.warp(receiptTimestamp + zkFair.DISPUTE_GRACE_PERIOD() + 100);
+
+        uint256 userBalanceBefore = user.balance;
+        uint256 disputeStake = zkFair.DISPUTE_STAKE();
+
+        vm.startPrank(user);
+        zkFair.disputeNonInclusion{value: disputeStake}(
+            modelId,
+            seqNum,
+            receiptTimestamp,
+            featuresHash,
+            sensitiveAttr,
+            prediction,
+            providerSignature
+        );
+        vm.stopPrank();
+
+        // User gets dispute stake back + provider's stake
+        assertEq(user.balance, userBalanceBefore + zkFair.PROVIDER_STAKE());
+
+        // Provider should be slashed
+        ZKFair.Model memory model = zkFair.getModel(modelId);
+        assertEq(uint(model.status), uint(ZKFair.ModelStatus.SLASHED));
+    }
+
+    function test_disputeNonInclusion_seqNumInBatch_reverts() public {
+        uint256 modelId = _registerModel();
+        _certifyModel(modelId);
+        _commitBatch(modelId); // covers seqNum 1-100
+
+        // Create receipt for seqNum 50 (IS in the batch)
+        uint256 receiptTimestamp = 100;
+        uint256 seqNum = 50;
+        bytes32 featuresHash = keccak256("features");
+        uint256 sensitiveAttr = 0;
+        int256 prediction = 1000000;
+
+        bytes32 dataHash = keccak256(
+            abi.encodePacked(seqNum, modelId, featuresHash, sensitiveAttr, prediction, receiptTimestamp)
+        );
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(dataHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(providerKey, ethSignedMessageHash);
+        bytes memory providerSignature = abi.encodePacked(r, s, v);
+
+        vm.warp(receiptTimestamp + zkFair.DISPUTE_GRACE_PERIOD() + 100);
+
+        uint256 stake = zkFair.DISPUTE_STAKE();
+
+        vm.startPrank(user);
+        vm.expectRevert(ZKFair.SeqNumAlreadyBatched.selector);
+        zkFair.disputeNonInclusion{value: stake}(
+            modelId,
+            seqNum,
+            receiptTimestamp,
+            featuresHash,
+            sensitiveAttr,
+            prediction,
+            providerSignature
+        );
+        vm.stopPrank();
+    }
+
+    function test_disputeNonInclusion_beforeGracePeriod_reverts() public {
+        uint256 modelId = _registerModel();
+
+        uint256 seqNum = 200;
+        uint256 timestamp = block.timestamp; // Current time, grace period hasn't passed
+        bytes32 featuresHash = keccak256("features");
+        uint256 sensitiveAttr = 0;
+        int256 prediction = 1000000;
+
+        bytes32 dataHash = keccak256(
+            abi.encodePacked(seqNum, modelId, featuresHash, sensitiveAttr, prediction, timestamp)
+        );
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(dataHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(providerKey, ethSignedMessageHash);
+        bytes memory providerSignature = abi.encodePacked(r, s, v);
+
+        uint256 stake = zkFair.DISPUTE_STAKE();
+
+        vm.startPrank(user);
+        vm.expectRevert(ZKFair.DisputeGracePeriodNotPassed.selector);
+        zkFair.disputeNonInclusion{value: stake}(
+            modelId,
+            seqNum,
+            timestamp,
+            featuresHash,
+            sensitiveAttr,
+            prediction,
+            providerSignature
+        );
+        vm.stopPrank();
+    }
+
     // ============================================
     // STAKE WITHDRAWAL TESTS
     // ============================================

@@ -30,6 +30,10 @@
 			"outputs": ["dist/**", "*.js", "*.d.ts"],
 			"cache": true
 		},
+		"test": {
+			"dependsOn": ["^build"],
+			"cache": false
+		},
 		"dev": {
 			"dependsOn": ["^build"],
 			"cache": false,

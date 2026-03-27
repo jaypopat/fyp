@@ -22,9 +22,13 @@
 		"dev:native": "turbo -F native dev",
 		"dev:web": "turbo -F web dev",
 		"dev:server": "turbo -F server dev",
-		"demo:audit": "bun scripts/audit-e2e.ts",
-		"demo:type-a": "bun scripts/malicious-server-e2e-type-a.ts",
-		"demo:type-b": "bun scripts/malicious-server-e2e-type-b.ts"
+		"test": "turbo test",
+		"test:contracts": "turbo -F @zkfair/contracts test",
+		"test:sdk": "turbo -F @zkfair/sdk test",
+		"test:web": "turbo -F web test",
+		"demo:audit": "bun scripts/honest-provider-audit.ts",
+		"demo:type-a": "bun scripts/dispute-non-inclusion.ts",
+		"demo:type-b": "bun scripts/dispute-fraudulent-inclusion.ts"
 	},
 	"type": "module",
 	"workspaces": [
