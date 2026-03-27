@@ -51,13 +51,19 @@ export function ModelDashboardHeader({
 					(m) => m.provider.toLowerCase() === model.author.toLowerCase(),
 				);
 
+				const batchResults = await Promise.all(
+					providerModels.map(async (m) => {
+						const modelId = await sdk.model.getIdFromHash(
+							m.weightsHash as Hash,
+						);
+						return sdk.batch.getByModel(modelId);
+					}),
+				);
+
 				let passedAudits = 0;
 				let failedAudits = 0;
 
-				for (const m of providerModels) {
-					const modelId = await sdk.model.getIdFromHash(m.weightsHash as Hash);
-					const batches = await sdk.batch.getByModel(modelId);
-
+				for (const batches of batchResults) {
 					for (const batch of batches) {
 						if (batch.audited) {
 							if (batch.auditStatus === 1) passedAudits++;
@@ -141,7 +147,7 @@ export function ModelDashboardHeader({
 							Stake
 						</div>
 						<p className="font-semibold text-lg tabular-nums">
-							{stakeEth.toFixed(2)}
+							{stakeEth.toFixed(4)}
 							<span className="ml-0.5 font-normal text-muted-foreground text-xs">
 								ETH
 							</span>

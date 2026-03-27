@@ -199,8 +199,8 @@ export function hashRecordLeaf(r: AuditRecord): string {
 		leafData.push(BigInt(r.features[i] ?? 0));
 	}
 
-	// Add binary prediction (circuit expects 0 or 1)
-	leafData.push(r.prediction >= 0.5 ? 1n : 0n);
+	// Add binary prediction (circuit expects 0 or 1, model outputs 0 or 1)
+	leafData.push(BigInt(r.prediction));
 
 	// Add sensitive attribute
 	leafData.push(BigInt(r.sensitiveAttr));

@@ -5,8 +5,7 @@ export const AUDIT_STAKE = "0.00005"; // ETH
 export const PREDICTION_SCALE_FACTOR = 1e6;
 
 // Grace period before disputes can be filed
-export const DISPUTE_GRACE_PERIOD_SECONDS = 10; // Contract value (demo: 10 seconds)
-export const PRODUCTION_GRACE_PERIOD_MS = 60 * 60 * 1000; // 1 hour
+const PRODUCTION_GRACE_PERIOD_MS = 60 * 60 * 1000; // 1 hour
 
 /**
  * Get grace period for fraud detection based on demo mode

@@ -92,7 +92,7 @@ export function DemoActions({
 					<Button
 						asChild
 						variant="destructive"
-						className="mt-auto w-full gap-2 text-black"
+						className="mt-auto w-full gap-2 text-foreground"
 					>
 						<Link to="/receipts">
 							Go to Receipts to Dispute

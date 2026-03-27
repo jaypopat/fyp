@@ -69,11 +69,10 @@ async function generateAndSubmitProof(weightsHash: Hash) {
 		_dataset_sensitive_attrs: dataset.map((row) =>
 			String(row[thresholds.protectedAttributeIndex] ?? "0"),
 		),
-		_threshold_group_a: String(thresholds.thresholds.group_a),
-		_threshold_group_b: String(thresholds.thresholds.group_b),
 		_dataset_salts: Object.values(salts),
 		_merkle_paths: merklePathsDecimal,
 		_is_even_flags: merkleProofs.isEvenFlags,
+		_merkle_depth: String(merkleProofs.merklePaths[0]?.length ?? 15),
 		// public inputs
 		_weights_hash: weightsHash,
 		_dataset_merkle_root: commitments.datasetMerkleRoot,

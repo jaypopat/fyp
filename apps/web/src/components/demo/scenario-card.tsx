@@ -43,13 +43,13 @@ export function ScenarioCard({
 			</CardHeader>
 			<CardContent className="flex flex-1 flex-col">
 				<div className="flex-1 space-y-2 text-muted-foreground text-sm">
-					{scenario.steps.map((step, idx) => (
+					{scenario.steps.map((step, index) => (
 						<div
-							key={`${scenario.id}-step-${idx}`}
+							key={`${scenario.id}-${step}`}
 							className="flex items-center gap-2"
 						>
 							<span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-xs">
-								{idx + 1}
+								{index + 1}
 							</span>
 							{step}
 						</div>

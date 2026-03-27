@@ -1,18 +1,22 @@
 import { UltraHonkBackend } from "@aztec/bb.js";
+import { SDK } from "@zkfair/sdk";
+import { hashRecordLeaf } from "@zkfair/sdk/hash";
+import { verifyMerkleProof } from "@zkfair/sdk/merkle";
 import {
 	fairness_audit_circuit,
 	training_circuit,
 } from "@zkfair/zk-circuits/codegen";
 import { Hono } from "hono";
-import { encodePacked, keccak256 } from "viem";
+import { encodePacked, type Hex, keccak256, recoverMessageAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
 const pk = process.env.ATTESTATION_SERVICE_PRIVATE_KEY as `0x${string}`;
-const account = privateKeyToAccount(pk);
-
 if (!pk) {
 	throw new Error("Missing ATTESTATION_SERVICE_PRIVATE_KEY");
 }
+const account = privateKeyToAccount(pk);
+
+const sdk = new SDK();
 
 const app = new Hono();
 
@@ -137,9 +141,113 @@ app.post("/attest/audit", async (c) => {
 	}
 });
 
-// ============================================
-// GET /health
-// ============================================
+app.post("/attest/dispute", async (c) => {
+	try {
+		const { batchId, receipt, featuresHash, providerSignature, merkleProof } =
+			await c.req.json<{
+				batchId: string | number;
+				receipt: {
+					seqNum: number;
+					modelId: number;
+					features: number[];
+					sensitiveAttr: number;
+					prediction: number;
+					timestamp: number;
+				};
+				featuresHash: Hex;
+				providerSignature: Hex;
+				merkleProof: { sibling: string; position: "left" | "right" }[];
+			}>();
+
+		if (!batchId || !receipt || !merkleProof) {
+			return c.json({ error: "Missing batchId, receipt, or merkleProof" }, 400);
+		}
+
+		// 1. Read batch from chain
+		const batch = await sdk.batch.get(BigInt(batchId));
+
+		// 2. Read model to get provider address
+		const model = await sdk.model.getById(batch.modelId);
+
+		// 3. Verify provider signature on receipt data
+		const dataHash = keccak256(
+			encodePacked(
+				["uint256", "uint256", "bytes32", "uint256", "int256", "uint256"],
+				[
+					BigInt(receipt.seqNum),
+					BigInt(receipt.modelId),
+					featuresHash,
+					BigInt(receipt.sensitiveAttr),
+					BigInt(receipt.prediction),
+					BigInt(receipt.timestamp),
+				],
+			),
+		);
+
+		const recoveredAddress = await recoverMessageAddress({
+			message: { raw: dataHash },
+			signature: providerSignature,
+		});
+
+		if (recoveredAddress.toLowerCase() !== model.provider.toLowerCase()) {
+			return c.json({ error: "Invalid provider signature" }, 400);
+		}
+
+		// 4. Compute Poseidon leaf from receipt data
+		const leafHash = hashRecordLeaf({
+			seqNum: receipt.seqNum,
+			modelId: receipt.modelId,
+			features: receipt.features,
+			sensitiveAttr: receipt.sensitiveAttr,
+			prediction: receipt.prediction,
+			timestamp: receipt.timestamp,
+		});
+
+		// 5. Verify Poseidon Merkle proof against on-chain root
+		const isValid = await verifyMerkleProof(
+			leafHash,
+			batch.merkleRoot,
+			merkleProof,
+		);
+
+		if (isValid) {
+			return c.json(
+				{ error: "Merkle proof is valid - no fraud detected" },
+				400,
+			);
+		}
+
+		// 6. Proof failed — fraud confirmed. Sign attestation.
+		const batchMerkleRoot = batch.merkleRoot;
+		const attestationHash = keccak256(
+			encodePacked(
+				["uint256", "uint256", "bytes32"],
+				[BigInt(batchId), BigInt(receipt.seqNum), batchMerkleRoot],
+			),
+		);
+
+		const messageHash = keccak256(
+			encodePacked(
+				["uint256", "uint256", "bytes32", "string"],
+				[BigInt(batchId), BigInt(receipt.seqNum), attestationHash, "DISPUTE"],
+			),
+		);
+
+		const signature = await account.signMessage({
+			message: { raw: messageHash },
+		});
+
+		console.log(
+			`Dispute attestation for batch ${batchId}, seqNum ${receipt.seqNum}: FRAUD CONFIRMED`,
+		);
+
+		return c.json({ attestationHash, signature });
+	} catch (error) {
+		console.error("Dispute attestation error:", error);
+		return c.json({ error: "Attestation failed", details: String(error) }, 500);
+	}
+});
+
 app.get("/health", (c) =>
 	c.json({
 		status: "ok",

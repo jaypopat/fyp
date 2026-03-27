@@ -27,6 +27,7 @@ export class ContractClient {
 	private publicClient;
 	private walletClient?;
 	private chain: Chain;
+	private processedAuditIds = new Set<string>();
 
 	constructor(options: ZkFairOptions = {}) {
 		const config = getDefaultConfig();
@@ -480,8 +481,19 @@ export class ContractClient {
 			address: this.contractAddress,
 			abi: zkFairAbi,
 			eventName: "AuditRequested",
+			strict: true,
 			onLogs: (logs) => {
 				for (const log of logs) {
+					const auditId = (log.args as AuditRequestedEvent).auditId.toString();
+					// Deduplicate by auditId
+					if (this.processedAuditIds.has(auditId)) {
+						continue;
+					}
+
+					this.processedAuditIds.add(auditId);
+					console.log(
+						`[ContractClient] Processing AuditRequested for audit ${auditId}`,
+					);
 					callback(log.args as AuditRequestedEvent);
 				}
 			},
@@ -642,8 +654,7 @@ export class ContractClient {
 
 	/**
 	 * Dispute when provider batched wrong/tampered data (Type B fraud)
-	 * User must have a signed receipt from provider proving the query data
-	 * Contract computes leafHash from verified receipt data to prevent manipulation
+	 * User must have a signed receipt and an attestation confirming fraud
 	 * @param batchId The batch that claims to contain this query
 	 * @param seqNum Sequence number from receipt
 	 * @param timestamp Timestamp from receipt
@@ -651,8 +662,8 @@ export class ContractClient {
 	 * @param sensitiveAttr Sensitive attribute from receipt
 	 * @param prediction Prediction from receipt (scaled by 1e6)
 	 * @param providerSignature Provider's signature on the receipt data
-	 * @param merkleProof Array of sibling hashes for Merkle proof
-	 * @param proofPositions Array of positions (0=left, 1=right) for each sibling
+	 * @param attestationHash Hash from attestation service confirming fraud
+	 * @param attestationSignature Attestation service signature
 	 * @returns Transaction hash
 	 */
 	async disputeFraudulentInclusion(
@@ -663,8 +674,8 @@ export class ContractClient {
 		sensitiveAttr: bigint,
 		prediction: bigint,
 		providerSignature: `0x${string}`,
-		merkleProof: Hash[],
-		proofPositions: number[],
+		attestationHash: Hash,
+		attestationSignature: `0x${string}`,
 	) {
 		if (!this.walletClient)
 			throw new Error("Wallet client required for write operations");
@@ -685,8 +696,8 @@ export class ContractClient {
 				sensitiveAttr,
 				prediction,
 				providerSignature,
-				merkleProof,
-				proofPositions,
+				attestationHash,
+				attestationSignature,
 			],
 			value: disputeStake,
 		});

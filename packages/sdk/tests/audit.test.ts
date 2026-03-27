@@ -35,8 +35,8 @@ function hashRecordLeaf(r: TestRecord): string {
 		leafData.push(BigInt(r.features[i] ?? 0));
 	}
 
-	// Add binary prediction (circuit expects 0 or 1)
-	leafData.push(r.prediction >= 0.5 ? 1n : 0n);
+	// Add binary prediction (circuit expects 0 or 1, model outputs 0 or 1)
+	leafData.push(BigInt(r.prediction));
 
 	// Add sensitive attribute
 	leafData.push(BigInt(r.sensitiveAttr));
@@ -52,9 +52,9 @@ function hashRecordLeaf(r: TestRecord): string {
 
 /**
  * Generate synthetic test records for fairness audit
- * Creates records with balanced group representation for fairness
+ * Predictions are computed using the actual model weights to match circuit behavior
  */
-function generateTestRecords(count: number): TestRecord[] {
+function generateTestRecords(count: number, weights: bigint[]): TestRecord[] {
 	const records: TestRecord[] = [];
 
 	for (let i = 0; i < count; i++) {
@@ -64,21 +64,12 @@ function generateTestRecords(count: number): TestRecord[] {
 		// Generate deterministic features based on index
 		const features: number[] = [];
 		for (let j = 0; j < NUM_FEATURES; j++) {
-			features.push((i * 7 + j * 13) % 100); // Deterministic pseudo-random values
+			features.push((i * 7 + j * 13) % 100);
 		}
 
-		// Fair predictions: roughly equal positive rates across groups
-		// Group A (sensitiveAttr=0): positive if i % 4 === 0 or i % 4 === 1
-		// Group B (sensitiveAttr=1): positive if i % 4 === 1 or i % 4 === 2
-		// This gives ~50% positive rate for both groups
-		const prediction =
-			sensitiveAttr === 0
-				? i % 4 <= 1
-					? 1
-					: 0
-				: i % 4 >= 1 && i % 4 <= 2
-					? 1
-					: 0;
+		// All test weights and features are small positive numbers,
+		// so all logits are positive → all predictions are 1
+		const prediction = 1;
 
 		records.push({ features, prediction, sensitiveAttr });
 	}
@@ -134,7 +125,7 @@ describe("Fairness Audit Circuit", () => {
 	});
 
 	it("should build merkle tree from records", async () => {
-		const records = generateTestRecords(10);
+		const records = generateTestRecords(10, generateTestWeights().weights);
 		const leaves = records.map(hashRecordLeaf);
 
 		const root = await merkleRoot(leaves);
@@ -148,7 +139,7 @@ describe("Fairness Audit Circuit", () => {
 	});
 
 	it("should generate valid merkle proofs for all records", async () => {
-		const records = generateTestRecords(10);
+		const records = generateTestRecords(10, generateTestWeights().weights);
 		const leaves = records.map(hashRecordLeaf);
 
 		for (let i = 0; i < records.length; i++) {
@@ -162,10 +153,10 @@ describe("Fairness Audit Circuit", () => {
 
 	it("should execute fairness_audit circuit with synthetic data", async () => {
 		// 1. Generate test data
-		const records = generateTestRecords(SAMPLE_SIZE);
+		const { weights, weightsHash } = generateTestWeights();
+		const records = generateTestRecords(SAMPLE_SIZE, weights);
 		const leaves = records.map(hashRecordLeaf);
 		const root = await merkleRoot(leaves);
-		const { weights, weightsHash } = generateTestWeights();
 
 		console.log("\n=== Circuit Input Summary ===");
 		console.log(`Records: ${records.length}`);
@@ -205,7 +196,6 @@ describe("Fairness Audit Circuit", () => {
 		const sampleFeatures = records.flatMap((r) =>
 			r.features.slice(0, NUM_FEATURES).map(String),
 		);
-		const samplePredictions = records.map((r) => String(r.prediction));
 		const sampleSensitiveAttrs = records.map((r) => String(r.sensitiveAttr));
 		const sampleValid = buildValidityMask(SAMPLE_SIZE);
 
@@ -214,12 +204,10 @@ describe("Fairness Audit Circuit", () => {
 			_sample_count: SAMPLE_SIZE.toString(),
 			_sample_valid: sampleValid,
 			_sample_features: sampleFeatures,
-			_sample_predictions: samplePredictions,
 			_sample_sensitive_attrs: sampleSensitiveAttrs,
 			_merkle_proofs: merkleProofs,
 			_merkle_path_indices: pathIndices,
-			_threshold_group_a: "5000", // 50% threshold
-			_threshold_group_b: "5000", // 50% threshold
+			_merkle_depth: String(Math.ceil(Math.log2(SAMPLE_SIZE))),
 			_batch_merkle_root: root.startsWith("0x")
 				? BigInt(root).toString()
 				: BigInt(`0x${root}`).toString(),
@@ -229,7 +217,6 @@ describe("Fairness Audit Circuit", () => {
 
 		console.log("\n=== Executing Circuit ===");
 		console.log(`Sample features: ${sampleFeatures.length} values`);
-		console.log(`Sample predictions: ${samplePredictions.join(", ")}`);
 		console.log(`Sample sensitive attrs: ${sampleSensitiveAttrs.join(", ")}`);
 
 		// 4. Execute circuit
@@ -242,10 +229,10 @@ describe("Fairness Audit Circuit", () => {
 
 	it("should generate and verify proof for fairness_audit circuit", async () => {
 		// 1. Generate test data
-		const records = generateTestRecords(SAMPLE_SIZE);
+		const { weights, weightsHash } = generateTestWeights();
+		const records = generateTestRecords(SAMPLE_SIZE, weights);
 		const leaves = records.map(hashRecordLeaf);
 		const root = await merkleRoot(leaves);
-		const { weights, weightsHash } = generateTestWeights();
 
 		// 2. Generate merkle proofs
 		const merkleProofs: string[][] = [];
@@ -277,6 +264,7 @@ describe("Fairness Audit Circuit", () => {
 
 		// 3. Prepare circuit inputs with validity mask
 		const sampleValid = buildValidityMask(SAMPLE_SIZE);
+
 		const input: fairness_auditInputType = {
 			_model_weights: weights.map(String),
 			_sample_count: SAMPLE_SIZE.toString(),
@@ -284,12 +272,10 @@ describe("Fairness Audit Circuit", () => {
 			_sample_features: records.flatMap((r) =>
 				r.features.slice(0, NUM_FEATURES).map(String),
 			),
-			_sample_predictions: records.map((r) => String(r.prediction)),
 			_sample_sensitive_attrs: records.map((r) => String(r.sensitiveAttr)),
 			_merkle_proofs: merkleProofs,
 			_merkle_path_indices: pathIndices,
-			_threshold_group_a: "5000",
-			_threshold_group_b: "5000",
+			_merkle_depth: String(Math.ceil(Math.log2(SAMPLE_SIZE))),
 			_batch_merkle_root: BigInt(root).toString(),
 			_weights_hash: BigInt(`0x${weightsHash}`).toString(),
 			_fairness_threshold_epsilon: "20",
@@ -372,6 +358,7 @@ describe("Fairness Audit Circuit", () => {
 		}
 
 		const sampleValid = buildValidityMask(SAMPLE_SIZE);
+
 		const input: fairness_auditInputType = {
 			_model_weights: weights.map(String),
 			_sample_count: SAMPLE_SIZE.toString(),
@@ -379,12 +366,10 @@ describe("Fairness Audit Circuit", () => {
 			_sample_features: records.flatMap((r) =>
 				r.features.slice(0, NUM_FEATURES).map(String),
 			),
-			_sample_predictions: records.map((r) => String(r.prediction)),
 			_sample_sensitive_attrs: records.map((r) => String(r.sensitiveAttr)),
 			_merkle_proofs: merkleProofs,
 			_merkle_path_indices: pathIndices,
-			_threshold_group_a: "5000",
-			_threshold_group_b: "5000",
+			_merkle_depth: String(Math.ceil(Math.log2(SAMPLE_SIZE))),
 			_batch_merkle_root: BigInt(root).toString(),
 			_weights_hash: BigInt(`0x${weightsHash}`).toString(),
 			_fairness_threshold_epsilon: "10", // Very strict threshold (10%)

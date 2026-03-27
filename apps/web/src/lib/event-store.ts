@@ -8,7 +8,7 @@ import type {
 import { create } from "zustand";
 import { sdk } from "./sdk";
 
-export type ProtocolEventType =
+type ProtocolEventType =
 	| "BATCH_COMMITTED"
 	| "AUDIT_REQUESTED"
 	| "AUDIT_PROOF_SUBMITTED"

@@ -13,6 +13,7 @@ import {
 } from "./artifacts";
 import { getDefaultConfig } from "./config";
 import type { ContractClient } from "./contract";
+import { bytesToHash } from "./hash";
 import { getArtifactDir, parseCSV, weightsToFields } from "./utils";
 
 export class ProofAPI {
@@ -85,11 +86,10 @@ export class ProofAPI {
 			_dataset_sensitive_attrs: dataset.map((row) =>
 				String(row[thresholds.protectedAttributeIndex] ?? "0"),
 			),
-			_threshold_group_a: String(thresholds.thresholds.group_a),
-			_threshold_group_b: String(thresholds.thresholds.group_b),
 			_dataset_salts: Object.values(salts),
 			_merkle_paths: merklePathsDecimal,
 			_is_even_flags: merkleProofs.isEvenFlags,
+			_merkle_depth: String(merkleProofs.merklePaths[0]?.length ?? 15),
 
 			// public inputs
 			_weights_hash: weightsHash,
@@ -105,10 +105,7 @@ export class ProofAPI {
 		const backend = new UltraHonkBackend(training_circuit.bytecode);
 		const proofData = await backend.generateProof(witness);
 
-		// Convert proof bytes to hex string
-		const proofHex = `0x${Array.from(proofData.proof)
-			.map((b) => b.toString(16).padStart(2, "0"))
-			.join("")}` as `0x${string}`;
+		const proofHex = bytesToHash(proofData.proof) as `0x${string}`;
 
 		const publicInputsHex = proofData.publicInputs.map(
 			(pi) => `0x${Buffer.from(pi).toString("hex")}` as `0x${string}`,

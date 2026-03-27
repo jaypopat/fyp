@@ -38,7 +38,7 @@ export interface SentinelReceipt {
 	disputeTxHash?: string; // Tx hash of the submitted dispute
 }
 
-export class SentinelDatabase extends Dexie {
+class SentinelDatabase extends Dexie {
 	receipts!: Table<SentinelReceipt>;
 
 	constructor() {

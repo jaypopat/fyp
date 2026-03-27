@@ -94,7 +94,7 @@ async function verifyProof(
  * Verify a receipt against the blockchain
  * Returns the verification status with all relevant details
  */
-export async function verifyReceipt(
+async function verifyReceipt(
 	receipt: SentinelReceipt,
 ): Promise<VerificationResult> {
 	// 1. Find on-chain batch for this seqNum
@@ -190,33 +190,4 @@ export async function verifyAndUpdateReceipt(
 	}
 
 	return result;
-}
-
-/**
- * Get dispute info for a fraud result
- * Only call this after verifyReceipt returns a FRAUD status
- */
-export function getDisputeInfo(result: VerificationResult):
-	| {
-			canDispute: true;
-			type: "NON_INCLUSION" | "FRAUDULENT_INCLUSION";
-			batchId?: bigint;
-	  }
-	| {
-			canDispute: false;
-	  } {
-	switch (result.status) {
-		case "FRAUD_NON_INCLUSION":
-			return { canDispute: true, type: "NON_INCLUSION" };
-
-		case "FRAUD_INVALID_PROOF":
-			return {
-				canDispute: true,
-				type: "FRAUDULENT_INCLUSION",
-				batchId: result.batch.batchId,
-			};
-
-		default:
-			return { canDispute: false };
-	}
 }

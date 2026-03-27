@@ -15,18 +15,16 @@ export function StepTracker({
 }: StepTrackerProps) {
 	return (
 		<div className="space-y-2">
-			{steps.map((step, idx) => {
+			{steps.map((step, stepIndex) => {
 				let status: StepStatus = "pending";
-				if (idx < currentStep) status = "complete";
-				else if (idx === currentStep) status = "in-progress";
-				if (fraudAtStep !== undefined && idx === fraudAtStep) status = "fraud";
+				if (stepIndex < currentStep) status = "complete";
+				else if (stepIndex === currentStep) status = "in-progress";
+				if (fraudAtStep !== undefined && stepIndex === fraudAtStep)
+					status = "fraud";
 
 				return (
-					<div
-						key={`step-${idx}-${step.slice(0, 10)}`}
-						className="flex items-center gap-3"
-					>
-						<StepIndicator status={status} index={idx} />
+					<div key={step} className="flex items-center gap-3">
+						<StepIndicator status={status} index={stepIndex} />
 						<span
 							className={`text-sm ${
 								status === "pending" ? "text-muted-foreground" : ""

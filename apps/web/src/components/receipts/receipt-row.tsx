@@ -9,7 +9,6 @@ import {
 	Scale,
 	Shield,
 } from "lucide-react";
-import type { Hex } from "viem";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -30,7 +29,7 @@ export function ReceiptRow({
 	onDispute,
 }: ReceiptRowProps) {
 	const formatPrediction = (prediction: number): string => {
-		return prediction >= 0.5 ? ">50K" : "<=50K";
+		return prediction === 1 ? ">50K" : "<=50K";
 	};
 
 	return (
@@ -74,11 +73,7 @@ export function ReceiptRow({
 	);
 }
 
-export function ReceiptStatusBadge({
-	status,
-}: {
-	status: SentinelReceipt["status"];
-}) {
+function ReceiptStatusBadge({ status }: { status: SentinelReceipt["status"] }) {
 	switch (status) {
 		case "PENDING":
 			return (
@@ -161,7 +156,7 @@ function ReceiptActions({
 					variant="destructive"
 					size="sm"
 					onClick={() => onDispute(receipt)}
-					className="gap-1 text-black"
+					className="gap-1 text-foreground"
 				>
 					<Gavel className="h-3 w-3" />
 					Dispute

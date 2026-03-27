@@ -181,8 +181,7 @@ contract ZKFair is Ownable, Pausable {
     error DisputeGracePeriodNotPassed();
     error SeqNumAlreadyBatched();
     error SeqNumNotInBatchRange();
-    error InvalidMerkleProof();
-    error ProofValid();
+    error InvalidMerkleProof(); // kept for interface compatibility
 
     // ============================================
     // CONSTRUCTOR
@@ -430,13 +429,29 @@ contract ZKFair is Ownable, Pausable {
             )
         );
 
-        // Generate REQUIRED_SAMPLES random indices within batch range
+        // Batch must have at least REQUIRED_SAMPLES queries
+        if (batch.queryCount < REQUIRED_SAMPLES) revert InvalidInput();
+
+        // Generate REQUIRED_SAMPLES unique random indices within batch range
         uint256[] memory sampleIndices = new uint256[](REQUIRED_SAMPLES);
+        uint256 nonce = 0;
         for (uint256 i = 0; i < REQUIRED_SAMPLES; i++) {
-            uint256 randomNumber = uint256(
-                keccak256(abi.encodePacked(seed, i))
-            );
-            sampleIndices[i] = randomNumber % batch.queryCount;
+            bool unique;
+            uint256 candidate;
+            do {
+                candidate = uint256(
+                    keccak256(abi.encodePacked(seed, nonce))
+                ) % batch.queryCount;
+                nonce++;
+                unique = true;
+                for (uint256 j = 0; j < i; j++) {
+                    if (sampleIndices[j] == candidate) {
+                        unique = false;
+                        break;
+                    }
+                }
+            } while (!unique);
+            sampleIndices[i] = candidate;
         }
 
         // Create audit
@@ -611,8 +626,8 @@ contract ZKFair is Ownable, Pausable {
 
     /// @notice Dispute when provider batched wrong/tampered data (Type B fraud)
     /// @dev User must have a signed receipt from provider proving the query data
-    /// @dev Contract computes leafHash from verified receipt data to prevent user manipulation
-    /// @dev Requires DISPUTE_STAKE which is returned + provider stake if valid, or forfeited if invalid
+    /// @dev Uses attestation service to bridge Poseidon Merkle verification off-chain
+    /// @dev Requires DISPUTE_STAKE which is returned + provider stake if valid
     /// @param batchId The batch that claims to contain this query
     /// @param seqNum Sequence number from receipt
     /// @param timestamp Timestamp from receipt
@@ -620,8 +635,8 @@ contract ZKFair is Ownable, Pausable {
     /// @param sensitiveAttr Sensitive attribute from receipt
     /// @param prediction Prediction from receipt (scaled by 1e6)
     /// @param providerSignature Provider's signature on the receipt data
-    /// @param merkleProof Array of sibling hashes for Merkle proof
-    /// @param proofPositions Array of positions (0=left, 1=right) for each sibling
+    /// @param attestationHash Hash from attestation service confirming fraud
+    /// @param attestationSignature Attestation service signature
     function disputeFraudulentInclusion(
         uint256 batchId,
         uint256 seqNum,
@@ -630,8 +645,8 @@ contract ZKFair is Ownable, Pausable {
         uint256 sensitiveAttr,
         int256 prediction,
         bytes calldata providerSignature,
-        bytes32[] calldata merkleProof,
-        uint8[] calldata proofPositions
+        bytes32 attestationHash,
+        bytes calldata attestationSignature
     ) external payable validBatch(batchId) whenNotPaused {
         if (msg.value != DISPUTE_STAKE) revert InsufficientStake();
 
@@ -644,8 +659,8 @@ contract ZKFair is Ownable, Pausable {
             revert SeqNumNotInBatchRange();
         }
 
-        // 2. Verify provider signature and compute leafHash
-        bytes32 leafHash = _verifyReceiptAndComputeLeaf(
+        // 2. Verify provider signature on receipt data
+        _verifyReceiptAndComputeLeaf(
             seqNum,
             modelId,
             featuresHash,
@@ -656,14 +671,20 @@ contract ZKFair is Ownable, Pausable {
             model.provider
         );
 
-        // 3. Verify Merkle proof FAILS against on-chain root
-        if (_computeMerkleRoot(leafHash, merkleProof, proofPositions) == batch.merkleRoot) {
-            // Proof is valid - provider included the data they signed
-            _safeTransfer(model.provider, msg.value);
-            revert ProofValid();
-        }
+        // 3. Verify attestation service confirmed fraud
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(batchId, seqNum, attestationHash, "DISPUTE")
+        );
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
+            messageHash
+        );
+        address recoveredSigner = ECDSA.recover(
+            ethSignedMessageHash,
+            attestationSignature
+        );
+        if (recoveredSigner != attestationService) revert InvalidSignature();
 
-        // 4. Merkle proof failed - provider provably lied
+        // 4. Attestation confirms fraud - slash provider
         _safeTransfer(msg.sender, msg.value); // Return disputer's stake
         emit DisputeRaised(modelId, msg.sender, seqNum, "Fraudulent batch inclusion");
         _slashProvider(modelId, msg.sender, "Committed tampered batch data");
@@ -700,27 +721,6 @@ contract ZKFair is Ownable, Pausable {
 
         // Return the leaf hash
         return dataHash;
-    }
-
-    /// @dev Compute Merkle root from leaf and proof
-    function _computeMerkleRoot(
-        bytes32 leaf,
-        bytes32[] calldata proof,
-        uint8[] calldata positions
-    ) internal pure returns (bytes32) {
-        bytes32 computedHash = leaf;
-
-        for (uint256 i = 0; i < proof.length; i++) {
-            if (positions[i] == 0) {
-                // Sibling is on the left
-                computedHash = keccak256(abi.encodePacked(proof[i], computedHash));
-            } else {
-                // Sibling is on the right
-                computedHash = keccak256(abi.encodePacked(computedHash, proof[i]));
-            }
-        }
-
-        return computedHash;
     }
 
     // ============================================

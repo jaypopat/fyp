@@ -5,9 +5,7 @@
 export { commitBatch, getServerMode, setServerMode } from "./api";
 export {
 	clearDemoPersistence,
-	DEMO_CONFIG,
 	type DemoMode,
-	getGracePeriodMs,
 	getPersistedDemoMode,
 	isDemoMode,
 	setDemoMode,

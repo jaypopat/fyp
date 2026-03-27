@@ -12,7 +12,7 @@ import { useProtocolEvents } from "@/lib/use-protocol-events";
 import "../index.css";
 import Header from "@/components/header";
 
-export type RouterAppContext = Record<string, never>;
+type RouterAppContext = Record<string, never>;
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
 	component: RootComponent,

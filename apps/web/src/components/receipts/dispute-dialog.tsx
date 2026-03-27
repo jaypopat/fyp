@@ -100,7 +100,17 @@ export function DisputeDialog({ dispute, onClose }: DisputeDialogProps) {
 			);
 		} else if (type === "FRAUDULENT_INCLUSION" && batchId !== undefined) {
 			try {
-				// Fetch the Merkle proof from provider
+				if (!receipt.providerSignature) {
+					toast.error("Missing provider signature on receipt");
+					return;
+				}
+
+				if (!receipt.featuresHash) {
+					toast.error("Missing features hash in receipt");
+					return;
+				}
+
+				// 1. Fetch the Merkle proof from provider
 				const proofUrl = `${receipt.providerUrl}/proof/${receipt.seqNum}`;
 				console.log("[Dispute] Proof URL:", proofUrl);
 
@@ -120,30 +130,52 @@ export function DisputeDialog({ dispute, onClose }: DisputeDialogProps) {
 					siblings: { sibling: string; position: "left" | "right" }[];
 				};
 
-				// Convert proof to contract format
-				const merkleProof = proof.siblings.map((p) => `0x${p.sibling}` as Hex);
-				const proofPositions = proof.siblings.map((p) =>
-					p.position === "left" ? 0 : 1,
+				// 2. Request attestation from attestation service
+				console.log("[Dispute] Requesting dispute attestation...");
+				const attestationRes = await fetch(
+					`${config.attestationServiceUrl}/attest/dispute`,
+					{
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							batchId: batchId.toString(),
+							receipt: {
+								seqNum: receipt.seqNum,
+								modelId: receipt.modelId,
+								features: receipt.features,
+								sensitiveAttr: receipt.sensitiveAttr,
+								prediction: receipt.prediction,
+								timestamp: Math.floor(receipt.timestamp / 1000),
+							},
+							featuresHash: receipt.featuresHash,
+							providerSignature: receipt.providerSignature,
+							merkleProof: proof.siblings,
+						}),
+					},
 				);
 
-				// Receipt data that provider signed - contract will verify and compute leafHash
-				console.log("[Dispute] Submitting fraudulent inclusion dispute", {
+				if (!attestationRes.ok) {
+					const errData = await attestationRes.json().catch(() => null);
+					toast.error("Attestation Failed", {
+						description:
+							errData?.error || "Attestation service could not confirm fraud",
+					});
+					return;
+				}
+
+				const { attestationHash, signature: attestationSignature } =
+					(await attestationRes.json()) as {
+						attestationHash: Hex;
+						signature: Hex;
+					};
+
+				console.log("[Dispute] Got attestation, submitting on-chain", {
 					batchId,
 					seqNum: receipt.seqNum,
-					hasSignature: !!receipt.providerSignature,
-					proofLength: merkleProof.length,
+					attestationHash,
 				});
 
-				if (!receipt.providerSignature) {
-					toast.error("Missing provider signature on receipt");
-					return;
-				}
-
-				if (!receipt.featuresHash) {
-					toast.error("Missing features hash in receipt");
-					return;
-				}
-
+				// 3. Submit dispute with attestation
 				writeContract(
 					{
 						address: config.contractAddress as Hex,
@@ -157,8 +189,8 @@ export function DisputeDialog({ dispute, onClose }: DisputeDialogProps) {
 							BigInt(receipt.sensitiveAttr),
 							BigInt(Math.round(receipt.prediction * PREDICTION_SCALE_FACTOR)),
 							receipt.providerSignature as Hex,
-							merkleProof,
-							proofPositions,
+							attestationHash,
+							attestationSignature,
 						],
 						value: disputeStake,
 					},
@@ -218,7 +250,7 @@ export function DisputeDialog({ dispute, onClose }: DisputeDialogProps) {
 							variant="destructive"
 							onClick={handleDispute}
 							disabled={isPending || isConfirming || isSuccess}
-							className="text-black"
+							className="text-foreground"
 						>
 							{isPending || isConfirming ? (
 								<>

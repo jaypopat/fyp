@@ -14,6 +14,7 @@
  */
 
 import { SDK } from "@zkfair/sdk";
+import { hashRecordLeaf } from "@zkfair/sdk/hash";
 import { createMerkleProof } from "@zkfair/sdk/merkle";
 import {
 	createPublicClient,
@@ -24,6 +25,8 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { localhost } from "viem/chains";
+
+const ATTESTATION_URL = process.env.ATTESTATION_URL || "http://localhost:3000";
 
 const RPC_URL = "http://localhost:8545";
 const PRIVATE_KEY = process.env.PRIVATE_KEY as Hex;
@@ -119,29 +122,22 @@ async function main() {
 			prediction: BigInt(0), // Lie: result is 0 (different from signed receipt)
 		};
 
-		const leafFake = keccak256(
-			encodePacked(
-				["uint256", "uint256", "bytes32", "uint256", "int256", "uint256"],
-				[
-					queryFake.seqNum,
-					realModelId!,
-					featuresHash,
-					queryFake.sensitiveAttr,
-					queryFake.prediction,
-					queryFake.timestamp,
-				],
-			),
-		);
+		// Use Poseidon hash for fake leaf (matches circuit and batch tree)
+		const leafFake = hashRecordLeaf({
+			seqNum: Number(queryFake.seqNum),
+			modelId: Number(realModelId!),
+			features: queryFake.features,
+			sensitiveAttr: Number(queryFake.sensitiveAttr),
+			prediction: Number(queryFake.prediction),
+			timestamp: Number(queryFake.timestamp),
+		});
 
 		console.log(`Provider signed receipt for data: ${receiptDataHash}`);
-		console.log(`Provider planted different data: ${leafFake}`);
-
-		console.log(`Provider signed receipt for data: ${receiptDataHash}`);
-		console.log(`Provider planted different data: ${leafFake}`);
+		console.log(`Provider planted different data (Poseidon): ${leafFake}`);
 
 		// Committing the batch with the FAKE leaf
 		// For simplicity, batch size 1
-		const leaves = [leafFake.replace("0x", "")];
+		const leaves = [leafFake];
 		const { root, proof } = await createMerkleProof(leaves, 0);
 
 		console.log("Committing Fraudulent Batch...");
@@ -175,15 +171,44 @@ async function main() {
 			});
 		});
 
-		// User submits dispute with their signed receipt data
-		// The contract will:
-		// 1. Verify provider signed this receipt
-		// 2. Compute leafHash from the signed data
-		// 3. Check if Merkle proof fails (proving provider lied)
-		// 4. Slash provider if proof fails
+		// User submits dispute:
+		// 1. Get attestation from attestation service (verifies Poseidon Merkle proof off-chain)
+		// 2. Submit attestation on-chain (contract verifies provider sig + attestation sig)
 
-		const merkleProof = proof.map((p) => ("0x" + p.sibling) as Hex);
-		const proofPositions = proof.map((p) => (p.position === "left" ? 0 : 1));
+		console.log("Requesting dispute attestation...");
+		const attestationRes = await fetch(`${ATTESTATION_URL}/attest/dispute`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				batchId: myBatch.batchId!.toString(),
+				receipt: {
+					seqNum: Number(queryUser.seqNum),
+					modelId: Number(realModelId!),
+					features: queryUser.features,
+					sensitiveAttr: Number(queryUser.sensitiveAttr),
+					prediction: Number(queryUser.prediction),
+					timestamp: Number(queryUser.timestamp),
+				},
+				featuresHash,
+				providerSignature,
+				merkleProof: proof,
+			}),
+		});
+
+		if (!attestationRes.ok) {
+			const errData = await attestationRes.json().catch(() => null);
+			throw new Error(
+				`Attestation failed: ${errData?.error || attestationRes.statusText}`,
+			);
+		}
+
+		const { attestationHash, signature: attestationSignature } =
+			(await attestationRes.json()) as {
+				attestationHash: Hex;
+				signature: Hex;
+			};
+
+		console.log(`Attestation received: ${attestationHash}`);
 
 		const txDispute = await sdk.dispute.disputeFraudulentInclusion(
 			myBatch.batchId!,
@@ -193,8 +218,8 @@ async function main() {
 			queryUser.sensitiveAttr,
 			queryUser.prediction,
 			providerSignature,
-			merkleProof,
-			proofPositions,
+			attestationHash,
+			attestationSignature,
 		);
 		console.log(`Dispute submitted (tx: ${txDispute})`);
 

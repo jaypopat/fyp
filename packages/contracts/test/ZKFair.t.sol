@@ -379,6 +379,17 @@ contract ZKFairTest is Test {
         vm.stopPrank();
     }
 
+    function _signDisputeAttestation(uint256 batchId, uint256 seqNum, bytes32 attestationHash)
+        internal view returns (bytes memory signature)
+    {
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(batchId, seqNum, attestationHash, "DISPUTE")
+        );
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(attestationKey, ethSignedMessageHash);
+        signature = abi.encodePacked(r, s, v);
+    }
+
     function test_disputeFraudulentInclusion_requiresStake() public {
         uint256 modelId = _registerModel();
         uint256 batchId = _commitBatch(modelId);
@@ -393,8 +404,100 @@ contract ZKFairTest is Test {
             0,
             0,
             new bytes(65),
-            new bytes32[](0),
-            new uint8[](0)
+            bytes32(0),
+            new bytes(0)
+        );
+        vm.stopPrank();
+    }
+
+    function test_disputeFraudulentInclusion_withAttestation_slashes() public {
+        uint256 modelId = _registerModel();
+        uint256 batchId = _commitBatch(modelId);
+
+        // Create receipt data
+        uint256 seqNum = 50; // In range [1, 100]
+        uint256 timestamp = block.timestamp;
+        bytes32 featuresHash = keccak256("features");
+        uint256 sensitiveAttr = 0;
+        int256 prediction = 1000000;
+
+        // Provider signs the receipt
+        bytes32 dataHash = keccak256(
+            abi.encodePacked(seqNum, modelId, featuresHash, sensitiveAttr, prediction, timestamp)
+        );
+        bytes32 ethSignedMsg = MessageHashUtils.toEthSignedMessageHash(dataHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(providerKey, ethSignedMsg);
+        bytes memory providerSignature = abi.encodePacked(r, s, v);
+
+        // Create attestation (attestation service confirms fraud)
+        bytes32 attestationHash = keccak256("dispute_attestation");
+        bytes memory attestationSignature = _signDisputeAttestation(batchId, seqNum, attestationHash);
+
+        uint256 userBalanceBefore = user.balance;
+
+        vm.startPrank(user);
+        zkFair.disputeFraudulentInclusion{value: zkFair.DISPUTE_STAKE()}(
+            batchId,
+            seqNum,
+            timestamp,
+            featuresHash,
+            sensitiveAttr,
+            prediction,
+            providerSignature,
+            attestationHash,
+            attestationSignature
+        );
+        vm.stopPrank();
+
+        // User gets dispute stake back + provider's stake
+        assertEq(user.balance, userBalanceBefore + zkFair.PROVIDER_STAKE());
+
+        // Provider should be slashed
+        ZKFair.Model memory model = zkFair.getModel(modelId);
+        assertEq(uint(model.status), uint(ZKFair.ModelStatus.SLASHED));
+    }
+
+    function test_disputeFraudulentInclusion_invalidAttestation_reverts() public {
+        uint256 modelId = _registerModel();
+        uint256 batchId = _commitBatch(modelId);
+
+        uint256 seqNum = 50;
+        uint256 timestamp = block.timestamp;
+        bytes32 featuresHash = keccak256("features");
+        uint256 sensitiveAttr = 0;
+        int256 prediction = 1000000;
+
+        // Provider signs the receipt
+        bytes32 dataHash = keccak256(
+            abi.encodePacked(seqNum, modelId, featuresHash, sensitiveAttr, prediction, timestamp)
+        );
+        bytes32 ethSignedMsg = MessageHashUtils.toEthSignedMessageHash(dataHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(providerKey, ethSignedMsg);
+        bytes memory providerSignature = abi.encodePacked(r, s, v);
+
+        // Sign attestation with WRONG key (provider instead of attestation service)
+        bytes32 attestationHash = keccak256("dispute_attestation");
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(batchId, seqNum, attestationHash, "DISPUTE")
+        );
+        bytes32 ethSignedHash = MessageHashUtils.toEthSignedMessageHash(messageHash);
+        (uint8 v2, bytes32 r2, bytes32 s2) = vm.sign(providerKey, ethSignedHash);
+        bytes memory badAttestation = abi.encodePacked(r2, s2, v2);
+
+        uint256 stake = zkFair.DISPUTE_STAKE();
+
+        vm.startPrank(user);
+        vm.expectRevert(ZKFair.InvalidSignature.selector);
+        zkFair.disputeFraudulentInclusion{value: stake}(
+            batchId,
+            seqNum,
+            timestamp,
+            featuresHash,
+            sensitiveAttr,
+            prediction,
+            providerSignature,
+            attestationHash,
+            badAttestation
         );
         vm.stopPrank();
     }

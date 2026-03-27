@@ -134,9 +134,9 @@ function ActivityPage() {
 						</div>
 					) : (
 						<div className="space-y-3">
-							{events.map((event, idx) => (
+							{events.map((event) => (
 								<EventCard
-									key={`${event.type}-${event.timestamp}-${idx}`}
+									key={`${event.type}-${event.timestamp}`}
 									event={event}
 								/>
 							))}

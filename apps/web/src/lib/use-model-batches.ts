@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import type { Hash } from "viem";
 import { sdk } from "./sdk";
 
-export type BatchData = {
+type BatchData = {
 	batchId: string;
 	modelId: string;
 	merkleRoot: Hash;
@@ -42,8 +42,10 @@ export function useModelBatches(weightsHash: Hash, initialModelId?: bigint) {
 					setModelIdBigInt(modelId);
 				}
 
-				const batchIds = await sdk.batch.getIdsByModel(modelId);
-				const batchData = await sdk.batch.getByModel(modelId);
+				const [batchIds, batchData] = await Promise.all([
+					sdk.batch.getIdsByModel(modelId),
+					sdk.batch.getByModel(modelId),
+				]);
 
 				if (!mounted) return;
 

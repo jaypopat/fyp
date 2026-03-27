@@ -7,7 +7,7 @@ import { useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { config } from "@/config";
 import { AUDIT_STAKE } from "@/lib/constants";
 
-export type ActionType = "challenge" | "claim" | null;
+type ActionType = "challenge" | "claim" | null;
 
 export function useAuditActions() {
 	const [challengingBatch, setChallengingBatch] = useState<string | null>(null);

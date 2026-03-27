@@ -30,11 +30,6 @@
 			"import": "./model.ts",
 			"default": "./model.ts"
 		},
-		"./client": {
-			"types": "./client.ts",
-			"import": "./client.ts",
-			"default": "./client.ts"
-		},
 		"./merkle": {
 			"types": "./merkle.ts",
 			"import": "./merkle.ts",

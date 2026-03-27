@@ -52,7 +52,7 @@ async function checkReceiptsForBatch(event: BatchCommittedEvent) {
 		// Case 1: seqNum is in the batch range - verify Merkle proof
 		if (seqNum >= startSeq && seqNum <= endSeq) {
 			console.log(
-				`[FraudDetector] Receipt #${seqNum} is in batch range, verifying...`,
+				`[FraudDetector] Receipt #${seqNum} is in batch range, verifying Merkle proof...`,
 			);
 			await verifyAndCheckFraud(receipt);
 		}
@@ -60,27 +60,20 @@ async function checkReceiptsForBatch(event: BatchCommittedEvent) {
 		else if (seqNum < startSeq) {
 			if (hasGracePeriodExpired(receipt)) {
 				console.log(
-					`[FraudDetector] Receipt #${seqNum} was skipped (seqNum < startSeq ${startSeq}) - NON-INCLUSION FRAUD`,
+					`[FraudDetector] Receipt #${seqNum} was skipped (< startSeq ${startSeq}) and grace period expired - NON-INCLUSION FRAUD`,
 				);
 				await markAsNonInclusion(receipt, batchId);
 			} else {
 				console.log(
-					`[FraudDetector] Receipt #${seqNum} skipped but within grace period`,
+					`[FraudDetector] Receipt #${seqNum} before batch range but within grace period`,
 				);
 			}
 		}
 		// Case 3: seqNum is AFTER the batch range - may be in next batch
 		else if (seqNum > endSeq) {
-			if (hasGracePeriodExpired(receipt)) {
-				console.log(
-					`[FraudDetector] Receipt #${seqNum} excluded and grace period expired - NON-INCLUSION FRAUD`,
-				);
-				await markAsNonInclusion(receipt, batchId);
-			} else {
-				console.log(
-					`[FraudDetector] Receipt #${seqNum} is after batch range, may be in next batch`,
-				);
-			}
+			console.log(
+				`[FraudDetector] Receipt #${seqNum} is after batch range [${startSeq}-${endSeq}], will be in future batch`,
+			);
 		}
 	}
 }
@@ -205,21 +198,4 @@ export function cleanupFraudDetector() {
 	}
 	isInitialized = false;
 	console.log("[FraudDetector] Cleaned up");
-}
-
-/**
- * Manually trigger a check for all pending receipts
- * Useful for initial page load or manual refresh
- */
-export async function checkAllPendingReceipts() {
-	console.log("[FraudDetector] Manual check of all pending receipts...");
-
-	const pendingReceipts = await db.receipts
-		.where("status")
-		.anyOf(["PENDING", "BATCHED"])
-		.toArray();
-
-	for (const receipt of pendingReceipts) {
-		await verifyAndCheckFraud(receipt);
-	}
 }

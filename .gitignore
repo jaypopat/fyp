@@ -5,3 +5,6 @@ node_modules
 .ropeproject
 examples/**/weights.bin
 examples/**/fairness_threshold.json
+.agents/
+.claude/
+*.log

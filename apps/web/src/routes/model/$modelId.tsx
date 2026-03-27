@@ -7,7 +7,7 @@ import {
 	Radio,
 	Shield,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
 import type { Hash } from "viem";
 import { AdultIncomeForm } from "@/components/adult-income-form";
 import { ModelBatchesCard } from "@/components/model";
@@ -54,13 +54,16 @@ function ModelDetailPage() {
 	}, [modelId]);
 
 	// Inference UI state
-	const [inputCSV, setInputCSV] = useState("");
-	const [loading, setLoading] = useState(false);
-	const [result, setResult] = useState<{
-		prediction: number;
-		seqNum: number;
-	} | null>(null);
-	const [showGuidedForm, setShowGuidedForm] = useState(true);
+	type InferenceState = {
+		inputCSV: string;
+		loading: boolean;
+		result: { prediction: number; seqNum: number } | null;
+		showGuidedForm: boolean;
+	};
+	const [inference, updateInference] = useReducer(
+		(s: InferenceState, a: Partial<InferenceState>) => ({ ...s, ...a }),
+		{ inputCSV: "", loading: false, result: null, showGuidedForm: true },
+	);
 
 	const hasGuidedForm =
 		model?.name?.toLowerCase().includes("adult") ||
@@ -76,8 +79,7 @@ function ModelDetailPage() {
 	} = useAuditActions();
 
 	const handleInference = async (input: number[]) => {
-		setLoading(true);
-		setResult(null);
+		updateInference({ loading: true, result: null });
 		try {
 			const providerUrl = model!.inferenceUrl;
 			const resultData = await predict({
@@ -85,15 +87,16 @@ function ModelDetailPage() {
 				modelHash: modelId,
 				input,
 			});
-			setResult({
-				prediction: resultData.prediction,
-				seqNum: resultData.receipt.seqNum,
+			updateInference({
+				loading: false,
+				result: {
+					prediction: resultData.prediction,
+					seqNum: resultData.receipt.seqNum,
+				},
 			});
 		} catch (err) {
 			console.error(err);
-			setResult(null);
-		} finally {
-			setLoading(false);
+			updateInference({ loading: false, result: null });
 		}
 	};
 
@@ -136,10 +139,14 @@ function ModelDetailPage() {
 								<Button
 									variant="ghost"
 									size="sm"
-									onClick={() => setShowGuidedForm(!showGuidedForm)}
+									onClick={() =>
+										updateInference({
+											showGuidedForm: !inference.showGuidedForm,
+										})
+									}
 									className="h-8 gap-1 text-xs"
 								>
-									{showGuidedForm ? (
+									{inference.showGuidedForm ? (
 										<>
 											<ChevronUp className="h-3 w-3" />
 											CSV
@@ -155,21 +162,23 @@ function ModelDetailPage() {
 						</div>
 					</CardHeader>
 					<CardContent className="space-y-3">
-						{hasGuidedForm && showGuidedForm ? (
+						{hasGuidedForm && inference.showGuidedForm ? (
 							<AdultIncomeForm
 								onSubmit={handleInference}
-								loading={loading}
-								result={result}
+								loading={inference.loading}
+								result={inference.result}
 							/>
 						) : (
 							<>
 								<input
 									className="w-full rounded border bg-background px-3 py-2 text-sm"
 									placeholder="e.g. 39, 7, 77516, 9, ..."
-									value={inputCSV}
-									onChange={(e) => setInputCSV(e.target.value)}
+									value={inference.inputCSV}
+									onChange={(e) =>
+										updateInference({ inputCSV: e.target.value })
+									}
 								/>
-								{result && (
+								{inference.result && (
 									<div className="rounded-lg border bg-muted/50 p-3">
 										<div className="flex items-center justify-between">
 											<span className="text-muted-foreground text-xs">
@@ -177,23 +186,25 @@ function ModelDetailPage() {
 											</span>
 											<Badge
 												variant={
-													result.prediction === 1 ? "default" : "secondary"
+													inference.result.prediction === 1
+														? "default"
+														: "secondary"
 												}
 											>
-												{result.prediction === 1 ? ">50K" : "≤50K"}
+												{inference.result.prediction === 1 ? ">50K" : "≤50K"}
 											</Badge>
 										</div>
 										<p className="mt-1 font-mono text-muted-foreground text-xs">
-											Receipt #{result.seqNum}
+											Receipt #{inference.result.seqNum}
 										</p>
 									</div>
 								)}
 								<Button
-									disabled={loading}
+									disabled={inference.loading}
 									className="w-full"
 									size="sm"
 									onClick={() => {
-										const values = inputCSV
+										const values = inference.inputCSV
 											.split(",")
 											.map((v) => v.trim())
 											.filter((v) => v.length > 0)
@@ -205,7 +216,7 @@ function ModelDetailPage() {
 										handleInference(values);
 									}}
 								>
-									{loading ? "Predicting…" : "Predict"}
+									{inference.loading ? "Predicting…" : "Predict"}
 								</Button>
 							</>
 						)}

@@ -1,90 +1,74 @@
-# zkFair Turborepo
+# zkFair
 
-zkFair is a framework and toolchain for generating and verifying **zero-knowledge proofs of ML model fairness**.
-This repository is a [Turborepo](https://turbo.build/) with multiple apps and packages.
+zkFair is a framework for generating and verifying **zero-knowledge proofs of ML model fairness**. Providers register models, commit query batches, and respond to fairness audits — all using ZK proofs on-chain. Users get cryptographic guarantees that deployed models satisfy demographic parity, without the provider ever revealing model weights or training data.
 
-📚 [Full Documentation](https://fyp.jaypopat.me/docs)
----
+[Documentation](https://fyp.jaypopat.me/docs) | [Live Demo](https://app.fyp.jaypopat.me)
 
-## What does this solve
-This platform provides a privacy-preserving way for model providers to prove their AI models are fair, while giving users confidence to interact with verifiably unbiased systems. We decentralize trust by making the entire process permissionless: anyone can register as a provider, challenge models through audits (zk-powered!).
-[Learn more about the architecture →](https://fyp.jaypopat.me/docs/architecture)**
+## Key Contributions
 
-## How it works
+### 1. Zero-Knowledge Fairness Protocol
+Two Noir ZK circuits enable privacy-preserving fairness verification:
+- **Training Certification** — proves a model satisfies demographic parity on its training dataset, without revealing weights or data
+- **Batch Auditing** — proves ongoing fairness on random samples from deployed inference batches, enabling continuous runtime monitoring
 
-#### For Users
-- Browse verified models in the web UI registry
-- Challenge any model with an audit request
-- Query models for inference with confidence they're unbiased
+### 2. Economic Incentive Mechanism
+A Solidity smart contract enforces honest participation through staking and slashing:
+- Providers stake ETH to register models; dishonest behavior (missed audits, invalid proofs) results in stake forfeiture
+- Auditors stake to challenge batches; valid challenges are rewarded from the provider's stake
+- 24-hour response deadlines with automatic slashing for non-compliance
 
-#### For Providers
+### 3. Client-Side Fraud Detection (Sentinel)
+Users receive signed receipts for every inference query. The Sentinel system detects two classes of provider fraud:
+- **Non-inclusion** — a query was made but never appeared in any committed batch
+- **Fraudulent inclusion** — a query was batched with tampered data (different features or prediction)
 
-- Register your model using the CLI (apps/cli) and generate certification proofs
-- Upload batches of query commitments at regular intervals
-- Respond to audits within the deadline or lose your stake
+Both dispute types are provable on-chain using the signed receipt as evidence.
 
-#### For Auditors
+### 4. Open-Source Modular Implementation
+A production-ready TypeScript SDK and toolchain:
+- **SDK** (`@zkfair/sdk`) — core library with contract interaction, proof generation, Poseidon hashing, Merkle trees, and provider/client utilities
+- **ZK Circuits** (`@zkfair/zk-circuits`) — Noir circuits compiled to UltraHonk via `@aztec/bb.js`
+- **Smart Contract** (`@zkfair/contracts`) — Solidity contract with model registry, batch commitments, audit lifecycle, and dispute resolution
+- **Apps** — CLI for providers, React dashboard, inference server, and off-chain attestation service
 
-- Select any model batch to audit
-- If providers fail to respond or provide invalid proofs, claim their entire stake as reward
-
-
-## Roadmap
-- Monetization layer - Enable providers to charge for inference via x402 protocol integration
-- Simplified onboarding - Abstract server logic with plug-and-play DB adapters, automatic batching, and schema helpers
-
-
-## 📂 Repo Structure
+## Repo Structure
 
 ```
-
 apps/
-  cli/       → Command-line interface
-  www/       → landing page + docs
-  web/       → Web dashboard (Registry)
-  server/    → Mock provider server (plug and play using sdk components)
+  cli/           Command-line interface for providers
+  web/           React dashboard (model registry, audit tracking)
+  server/        Hono inference server (ONNX model, query logging, auto-batching)
+  attestation/   Off-chain proof verification + signed attestations
+  www/           Landing page + documentation site
 
 packages/
-  contracts/   → Solidity contracts for verifying proofs and storing model metadata
-  sdk/         → TypeScript SDK for web/server and cli to interact with contracts
-  zk-circuits/ → Noir circuits for ZK logic (registration and ongoing audit circuits)
-  
-````
+  sdk/           TypeScript SDK shared across all apps
+  contracts/     Solidity smart contract (Foundry)
+  zk-circuits/   Noir ZK circuits (training + fairness audit)
+```
 
----
+## Getting Started
 
-## 🚀 Getting Started
-
-### Install dependencies
 ```bash
+# Install dependencies
 bun install
-````
 
-### Run all apps in dev
-
-```bash
+# Run all apps in dev (starts local anvil chain + all services)
 bun run dev
-# or
-turbo run dev
-```
 
-### Run a single app
-
-```bash
-turbo run dev --filter=cli
+# Run a single app
 turbo run dev --filter=web
-turbo run dev --filter=www
-```
+turbo run dev --filter=server
 
-### Build everything
-
-```bash
+# Build everything
 turbo run build
-```
 
-### Build a single app/package
+# Run contract tests
+cd packages/contracts && bun run test
 
-```bash
-turbo run build --filter=sdk
-turbo run build --filter=zk-circuits
+# Run SDK tests
+cd packages/sdk && bun test
+
+# Compile ZK circuits
+cd packages/zk-circuits && bun run compile
 ```

@@ -7,7 +7,7 @@ import {
 	getSortedRowModel,
 	useReactTable,
 } from "@tanstack/react-table";
-import { ExternalLink, Loader2, Search } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { useState } from "react";
 import { ProviderInfoBanner } from "@/components/provider-info-banner";
 import { Button } from "@/components/ui/button";

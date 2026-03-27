@@ -71,15 +71,6 @@ export function clearDemoPersistence() {
 }
 
 /**
- * Get grace period for fraud detection based on demo mode
- * - Production: 1 hour (wait for provider to batch)
- * - Demo: 0ms (instant fraud detection)
- */
-export function getGracePeriodMs(): number {
-	return isDemoMode() ? 0 : 60 * 60 * 1000; // 0 in demo, 1 hour in production
-}
-
-/**
  * Demo configuration constants
  */
 export const DEMO_CONFIG = {

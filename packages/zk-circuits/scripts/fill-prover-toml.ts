@@ -95,8 +95,6 @@ async function generateProverToml() {
 	toml += `_dataset_sensitive_attrs = [${sensitiveAttrs.map((a) => toTomlString(a)).join(", ")}]\n\n`;
 
 	// Thresholds (already scaled integers in JSON)
-	toml += `_threshold_group_a = "${thresholds.thresholds.group_a}"\n`;
-	toml += `_threshold_group_b = "${thresholds.thresholds.group_b}"\n\n`;
 
 	// Salts (ALL values must be quoted strings - these are large field elements)
 	toml += `_dataset_salts = [${saltsSubset.map((s) => `"${s}"`).join(", ")}]\n\n`;
@@ -133,6 +131,8 @@ async function generateProverToml() {
 		})
 		.join(",\n");
 	toml += `\n]\n\n`;
+
+	toml += `_merkle_depth = "${subsetProofs[0]?.length ?? 15}"\n\n`;
 
 	// Public inputs (all quoted strings)
 	toml += `_weights_hash = "${weightsHash}"\n`;

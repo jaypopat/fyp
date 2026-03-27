@@ -1,13 +1,13 @@
 import type { Hex } from "viem";
 import { db } from "./db";
 
-export type WebPredictParams = {
+type WebPredictParams = {
 	providerUrl: string;
 	modelHash: string; // Contract weightsHash
 	input: number[];
 };
 
-export type Receipt = {
+type Receipt = {
 	seqNum: number;
 	modelId: number;
 	features: number[];
@@ -19,7 +19,7 @@ export type Receipt = {
 	providerSignature: Hex;
 };
 
-export type PredictResult = {
+type PredictResult = {
 	modelId: number;
 	prediction: number;
 	timestamp: number;

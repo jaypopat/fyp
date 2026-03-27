@@ -5,27 +5,17 @@ import {
 	type fairness_auditInputType,
 } from "@zkfair/zk-circuits/codegen";
 import { and, asc, between, sql } from "drizzle-orm";
-import { poseidon2, poseidon8 } from "poseidon-lite";
 import type { Hash, Hex } from "viem";
 import { parseFairnessThresholdFile, parsePathsFile } from "./artifacts";
 import { getDefaultConfig } from "./config";
 import type { ContractClient } from "./contract";
 import type { AuditRequestedEvent } from "./events";
+import { type AuditRecord, bytesToHash, hashRecordLeaf } from "./hash";
 import { createMerkleProof, merkleRoot } from "./merkle";
 import { type DrizzleDB, type QueryLog, zkfairQueryLogs } from "./schema";
 import { getArtifactDir, weightsToFields } from "./utils";
 
-/**
- * Canonical query record for audit trail
- */
-export type AuditRecord = {
-	seqNum: number;
-	modelId: number;
-	features: number[];
-	sensitiveAttr: number;
-	prediction: number;
-	timestamp: number;
-};
+export type { AuditRecord };
 
 /**
  * Batch metadata for persistent audit batches
@@ -49,39 +39,6 @@ export type AuditProof = {
 };
 
 /**
- * Hash a record leaf exactly as the circuit does:
- * leaf_data = [features[0..13], prediction, sensitiveAttr] (16 fields)
- * hash1 = poseidon8(leaf_data[0..7])
- * hash2 = poseidon8(leaf_data[8..15])
- * leaf_hash = poseidon2([hash1, hash2])
- *
- * @returns 64-character hex string (no 0x prefix)
- */
-export function hashRecordLeaf(r: AuditRecord): string {
-	// Build leaf_data array matching circuit: [features[0..13], prediction, sensitiveAttr]
-	const leafData: bigint[] = [];
-
-	// Add 14 features (pad with 0 if needed)
-	for (let i = 0; i < 14; i++) {
-		leafData.push(BigInt(r.features[i] ?? 0));
-	}
-
-	// Add binary prediction (circuit expects 0 or 1)
-	leafData.push(r.prediction >= 0.5 ? 1n : 0n);
-
-	// Add sensitive attribute
-	leafData.push(BigInt(r.sensitiveAttr));
-
-	// Hash exactly as circuit does
-	const hash1 = poseidon8(leafData.slice(0, 8));
-	const hash2 = poseidon8(leafData.slice(8, 16));
-	const leafHash = poseidon2([hash1, hash2]);
-
-	// Convert to 64-char hex (no 0x prefix)
-	return leafHash.toString(16).padStart(64, "0");
-}
-
-/**
  * AuditAPI - High-level audit operations with contract integration
  * Provides both local computation and on-chain submission capabilities
  * Uses standardized Poseidon hash and JSON encoding
@@ -92,6 +49,16 @@ export class AuditAPI {
 	constructor(private contracts: ContractClient) {
 		const config = getDefaultConfig();
 		this.attestationUrl = config.attestationServiceUrl;
+	}
+
+	private buildLeafIndex(records: AuditRecord[]) {
+		const leaves: string[] = [];
+		const indexBySeq = new Map<number, number>();
+		for (const [i, rec] of records.entries()) {
+			leaves.push(hashRecordLeaf(rec).toLowerCase());
+			indexBySeq.set(rec.seqNum, i);
+		}
+		return { leaves, indexBySeq };
 	}
 
 	/**
@@ -107,15 +74,7 @@ export class AuditAPI {
 			throw new Error("Cannot build batch from empty records");
 		}
 
-		const leaves: string[] = [];
-		const indexBySeq = new Map<number, number>();
-
-		for (const [i, rec] of records.entries()) {
-			const leaf = hashRecordLeaf(rec);
-			leaves.push(leaf.toLowerCase());
-			indexBySeq.set(rec.seqNum, i);
-		}
-
+		const { leaves, indexBySeq } = this.buildLeafIndex(records);
 		const root = await merkleRoot(leaves);
 
 		const indices = records.map((r, i) => ({
@@ -185,9 +144,6 @@ export class AuditAPI {
 			while (features.length < NUM_FEATURES) features.push(0);
 			return features.slice(0, NUM_FEATURES).map(String);
 		});
-		const samplePredictions = sampledRecords.map((r) =>
-			r.prediction >= 0.5 ? "1" : "0",
-		);
 		const sampleSensitiveAttrs = sampledRecords.map((r) =>
 			String(r.sensitiveAttr),
 		);
@@ -202,9 +158,6 @@ export class AuditAPI {
 		// 5. Pad samples/predictions/attrs to SAMPLE_SIZE (but circuit will skip invalid ones)
 		while (sampleFeatures.length < NUM_FEATURES * SAMPLE_SIZE) {
 			sampleFeatures.push("0");
-		}
-		while (samplePredictions.length < SAMPLE_SIZE) {
-			samplePredictions.push("0");
 		}
 		while (sampleSensitiveAttrs.length < SAMPLE_SIZE) {
 			sampleSensitiveAttrs.push("0");
@@ -246,12 +199,10 @@ export class AuditAPI {
 			_sample_count: String(actualSampleCount),
 			_sample_valid: sampleValid,
 			_sample_features: sampleFeatures,
-			_sample_predictions: samplePredictions,
 			_sample_sensitive_attrs: sampleSensitiveAttrs,
 			_merkle_proofs: circuitMerkleProofs,
 			_merkle_path_indices: circuitPathIndices,
-			_threshold_group_a: String(fairnessConfig.thresholds.group_a),
-			_threshold_group_b: String(fairnessConfig.thresholds.group_b),
+			_merkle_depth: String(TREE_DEPTH),
 			_batch_merkle_root: root.startsWith("0x")
 				? BigInt(root).toString()
 				: BigInt(`0x${root}`).toString(),
@@ -281,9 +232,7 @@ export class AuditAPI {
 			const backend = new UltraHonkBackend(fairness_audit_circuit.bytecode);
 			const proofData = await backend.generateProof(witness);
 
-			zkProof = `0x${Array.from(proofData.proof)
-				.map((b) => b.toString(16).padStart(2, "0"))
-				.join("")}` as Hex;
+			zkProof = bytesToHash(proofData.proof) as Hex;
 			publicInputs = proofData.publicInputs as `0x${string}`[];
 		} catch (error) {
 			// Circuit constraint failed - this means the audit failed (fairness violation detected)
@@ -345,15 +294,7 @@ export class AuditAPI {
 			throw new Error("No records provided");
 		}
 
-		const leaves: string[] = [];
-		const indexBySeq = new Map<number, number>();
-
-		for (const [i, rec] of records.entries()) {
-			const leaf = hashRecordLeaf(rec);
-			leaves.push(leaf.toLowerCase());
-			indexBySeq.set(rec.seqNum, i);
-		}
-
+		const { leaves, indexBySeq } = this.buildLeafIndex(records);
 		const index = indexBySeq.get(seqNum);
 
 		if (index === undefined) {
