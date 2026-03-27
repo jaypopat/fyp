@@ -79,6 +79,10 @@ export class EventsAPI {
 		return this.contracts.watchStakeWithdrawn(callback);
 	}
 
+	watchDisputeRaised(callback: (event: DisputeRaisedEvent) => void) {
+		return this.contracts.watchDisputeRaised(callback);
+	}
+
 	// ============================================
 	// HISTORICAL EVENT QUERIES
 	// ============================================

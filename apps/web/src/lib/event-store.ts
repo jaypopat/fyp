@@ -118,6 +118,19 @@ export const useEventStore = create<EventStoreState>((set, get) => ({
 		);
 		unwatchers.push(unwatchAuditProof);
 
+		// Watch DisputeRaised events
+		const unwatchDispute = sdk.events.watchDisputeRaised(
+			(event: DisputeRaisedEvent) => {
+				console.log("[EventStore] DisputeRaised:", event);
+				get().addEvent({
+					type: "DISPUTE_RAISED",
+					timestamp: Date.now(),
+					data: event,
+				});
+			},
+		);
+		unwatchers.push(unwatchDispute);
+
 		// Watch ProviderSlashed events
 		const unwatchSlashed = sdk.events.watchProviderSlashed(
 			(event: ProviderSlashedEvent) => {
