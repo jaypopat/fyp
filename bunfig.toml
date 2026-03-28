@@ -1,5 +1,2 @@
 [install]
 # linker = "hoisted"
-
-[test]
-root = "packages/sdk"

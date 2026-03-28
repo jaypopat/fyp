@@ -28,5 +28,5 @@ async function attestProof(weightsHash: `0x${string}`) {
 	console.log("Attestation Success:", result);
 }
 attestProof(
-	"0x1371d09ac9cd9cea9637e46bead0cda0e0c804c133876b2cf7aa6c28a549f8cb",
+	"0x09c72f51dff5a78d0789300c09349b0ee875c6463f047b19399b1d2a81f9b91a",
 );
