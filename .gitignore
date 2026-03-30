@@ -8,3 +8,4 @@ examples/**/fairness_threshold.json
 .agents/
 .claude/
 *.log
+test-results
