@@ -67,7 +67,12 @@ beforeAll(async () => {
 			const res = await fetch("http://localhost:8545", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ jsonrpc: "2.0", method: "eth_chainId", params: [], id: 1 }),
+				body: JSON.stringify({
+					jsonrpc: "2.0",
+					method: "eth_chainId",
+					params: [],
+					id: 1,
+				}),
 			});
 			if (res.ok) break;
 		} catch {
@@ -141,9 +146,7 @@ afterAll(() => {
 async function registerModel() {
 	const seed = BigInt(Math.floor(Math.random() * 1_000_000));
 	const weightsHash = keccak256(encodePacked(["uint256"], [seed]));
-	const datasetRoot = keccak256(
-		encodePacked(["string"], ["test_dataset"]),
-	);
+	const datasetRoot = keccak256(encodePacked(["string"], ["test_dataset"]));
 
 	const tx = await sdk.model.register(
 		`Test Model ${seed}`,
@@ -168,9 +171,7 @@ describe("Protocol Integration Tests", () => {
 			const { modelId } = await registerModel();
 
 			const model = await sdk.model.getById(modelId);
-			expect(model.provider.toLowerCase()).toBe(
-				account.address.toLowerCase(),
-			);
+			expect(model.provider.toLowerCase()).toBe(account.address.toLowerCase());
 			expect(model.stake).toBeGreaterThan(0n);
 		}, 30_000);
 	});
@@ -179,16 +180,8 @@ describe("Protocol Integration Tests", () => {
 		it("should commit a batch and verify on-chain", async () => {
 			const { modelId } = await registerModel();
 
-			const merkleRoot = keccak256(
-				encodePacked(["string"], ["test_batch"]),
-			);
-			const tx = await sdk.batch.commit(
-				modelId,
-				merkleRoot,
-				10n,
-				1n,
-				10n,
-			);
+			const merkleRoot = keccak256(encodePacked(["string"], ["test_batch"]));
+			const tx = await sdk.batch.commit(modelId, merkleRoot, 10n, 1n, 10n);
 			await client.waitForTransactionReceipt({ hash: tx });
 
 			const batchIds = await sdk.batch.getIdsByModel(modelId);
@@ -204,8 +197,7 @@ describe("Protocol Integration Tests", () => {
 		it("should slash provider when query is omitted from batch", async () => {
 			const { modelId } = await registerModel();
 
-			const timestamp =
-				BigInt(Math.floor(Date.now() / 1000)) - 3601n;
+			const timestamp = BigInt(Math.floor(Date.now() / 1000)) - 3601n;
 
 			const queryA = {
 				seqNum: 100n,
@@ -226,29 +218,16 @@ describe("Protocol Integration Tests", () => {
 			};
 
 			const featuresHashA = keccak256(
-				encodePacked(
-					["string"],
-					[JSON.stringify(queryA.features)],
-				),
+				encodePacked(["string"], [JSON.stringify(queryA.features)]),
 			);
 			const featuresHashB = keccak256(
-				encodePacked(
-					["string"],
-					[JSON.stringify(queryB.features)],
-				),
+				encodePacked(["string"], [JSON.stringify(queryB.features)]),
 			);
 
 			// Provider signs receipt for query B
 			const dataHashB = keccak256(
 				encodePacked(
-					[
-						"uint256",
-						"uint256",
-						"bytes32",
-						"uint256",
-						"int256",
-						"uint256",
-					],
+					["uint256", "uint256", "bytes32", "uint256", "int256", "uint256"],
 					[
 						queryB.seqNum,
 						modelId,
@@ -266,14 +245,7 @@ describe("Protocol Integration Tests", () => {
 			// Commit batch with only query A (omitting B)
 			const leafA = keccak256(
 				encodePacked(
-					[
-						"uint256",
-						"uint256",
-						"bytes32",
-						"uint256",
-						"int256",
-						"uint256",
-					],
+					["uint256", "uint256", "bytes32", "uint256", "int256", "uint256"],
 					[
 						queryA.seqNum,
 						modelId,
@@ -285,13 +257,7 @@ describe("Protocol Integration Tests", () => {
 				),
 			);
 
-			const txBatch = await sdk.batch.commit(
-				modelId,
-				leafA,
-				1n,
-				100n,
-				100n,
-			);
+			const txBatch = await sdk.batch.commit(modelId, leafA, 1n, 100n, 100n);
 			await client.waitForTransactionReceipt({ hash: txBatch });
 
 			const modelBefore = await sdk.model.getById(modelId);
@@ -318,8 +284,7 @@ describe("Protocol Integration Tests", () => {
 		it("should slash provider when batch data doesn't match receipt", async () => {
 			const { modelId } = await registerModel();
 
-			const timestamp =
-				BigInt(Math.floor(Date.now() / 1000)) - 3601n;
+			const timestamp = BigInt(Math.floor(Date.now() / 1000)) - 3601n;
 
 			const queryUser = {
 				seqNum: 100n,
@@ -331,22 +296,12 @@ describe("Protocol Integration Tests", () => {
 			};
 
 			const featuresHash = keccak256(
-				encodePacked(
-					["string"],
-					[JSON.stringify(queryUser.features)],
-				),
+				encodePacked(["string"], [JSON.stringify(queryUser.features)]),
 			);
 
 			const receiptDataHash = keccak256(
 				encodePacked(
-					[
-						"uint256",
-						"uint256",
-						"bytes32",
-						"uint256",
-						"int256",
-						"uint256",
-					],
+					["uint256", "uint256", "bytes32", "uint256", "int256", "uint256"],
 					[
 						queryUser.seqNum,
 						modelId,
@@ -372,18 +327,9 @@ describe("Protocol Integration Tests", () => {
 				timestamp: Number(queryFake.timestamp),
 			});
 
-			const { root, proof } = await createMerkleProof(
-				[leafFake],
-				0,
-			);
+			const { root, proof } = await createMerkleProof([leafFake], 0);
 
-			const txBatch = await sdk.batch.commit(
-				modelId,
-				root,
-				1n,
-				100n,
-				100n,
-			);
+			const txBatch = await sdk.batch.commit(modelId, root, 1n, 100n, 100n);
 			await client.waitForTransactionReceipt({ hash: txBatch });
 
 			const batches = await sdk.events.getBatchCommittedHistory();
@@ -391,27 +337,24 @@ describe("Protocol Integration Tests", () => {
 			if (!myBatch) throw new Error("Batch not found");
 
 			// Request attestation from service
-			const attestationRes = await fetch(
-				`${ATTESTATION_URL}/attest/dispute`,
-				{
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						batchId: myBatch.batchId!.toString(),
-						receipt: {
-							seqNum: Number(queryUser.seqNum),
-							modelId: Number(modelId),
-							features: queryUser.features,
-							sensitiveAttr: Number(queryUser.sensitiveAttr),
-							prediction: Number(queryUser.prediction),
-							timestamp: Number(queryUser.timestamp),
-						},
-						featuresHash,
-						providerSignature,
-						merkleProof: proof,
-					}),
-				},
-			);
+			const attestationRes = await fetch(`${ATTESTATION_URL}/attest/dispute`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					batchId: myBatch.batchId!.toString(),
+					receipt: {
+						seqNum: Number(queryUser.seqNum),
+						modelId: Number(modelId),
+						features: queryUser.features,
+						sensitiveAttr: Number(queryUser.sensitiveAttr),
+						prediction: Number(queryUser.prediction),
+						timestamp: Number(queryUser.timestamp),
+					},
+					featuresHash,
+					providerSignature,
+					merkleProof: proof,
+				}),
+			});
 
 			if (!attestationRes.ok) {
 				const err = await attestationRes.json().catch(() => null);
@@ -429,18 +372,17 @@ describe("Protocol Integration Tests", () => {
 			const modelBefore = await sdk.model.getById(modelId);
 			expect(modelBefore.stake).toBeGreaterThan(0n);
 
-			const txDispute =
-				await sdk.dispute.disputeFraudulentInclusion(
-					myBatch.batchId!,
-					queryUser.seqNum,
-					queryUser.timestamp,
-					featuresHash,
-					queryUser.sensitiveAttr,
-					queryUser.prediction,
-					providerSignature,
-					attestationHash,
-					attestationSignature,
-				);
+			const txDispute = await sdk.dispute.disputeFraudulentInclusion(
+				myBatch.batchId!,
+				queryUser.seqNum,
+				queryUser.timestamp,
+				featuresHash,
+				queryUser.sensitiveAttr,
+				queryUser.prediction,
+				providerSignature,
+				attestationHash,
+				attestationSignature,
+			);
 			await client.waitForTransactionReceipt({ hash: txDispute });
 
 			const modelAfter = await sdk.model.getById(modelId);

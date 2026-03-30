@@ -12,7 +12,8 @@
 		"typescript": "^5"
 	},
 	"dependencies": {
-		"@hono/zod-validator": "^0.7.6",
+		"@hono/zod-openapi": "^1.2.4",
+		"@scalar/hono-api-reference": "^0.10.5",
 		"@zkfair/sdk": "workspace:*",
 		"drizzle-orm": "^0.44.7",
 		"hono": "^4.9.11",

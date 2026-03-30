@@ -1,4 +1,4 @@
-import { zValidator } from "@hono/zod-validator";
+import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
 import type { AuditRecord, BatchResult } from "@zkfair/sdk";
 import {
 	type NewBatch,
@@ -7,10 +7,16 @@ import {
 	zkfairQueryLogs,
 } from "@zkfair/sdk/schema";
 import { asc, inArray, isNull } from "drizzle-orm";
-import { Hono } from "hono";
-import { z } from "zod";
 import { db } from "../db";
 import { provider } from "../lib/sdk";
+import {
+	CommitBatchEmptyResponseSchema,
+	CommitBatchSuccessResponseSchema,
+	ErrorResponseSchema,
+	GetDemoModeResponseSchema,
+	SetDemoModeRequestSchema,
+	SetDemoModeResponseSchema,
+} from "../schemas";
 
 type DemoMode = "honest" | "non-inclusion" | "fraudulent-inclusion";
 
@@ -20,34 +26,99 @@ export function getDemoMode(): DemoMode {
 	return currentDemoMode;
 }
 
-export const demoRoutes = new Hono();
+export const demoRoutes = new OpenAPIHono();
 
-demoRoutes.get("/mode", (c) => {
+const getModeRoute = createRoute({
+	method: "get",
+	path: "/mode",
+	tags: ["Demo"],
+	summary: "Get current demo mode",
+	description:
+		"Returns the current demo mode used for batch commitment simulation.",
+	responses: {
+		200: {
+			content: {
+				"application/json": { schema: GetDemoModeResponseSchema },
+			},
+			description: "Current demo mode",
+		},
+	},
+});
+
+demoRoutes.openapi(getModeRoute, (c) => {
 	return c.json({ mode: currentDemoMode });
 });
 
-demoRoutes.post(
-	"/mode",
-	zValidator(
-		"json",
-		z.object({
-			mode: z.enum(["honest", "non-inclusion", "fraudulent-inclusion"]),
-		}),
-	),
-	async (c) => {
-		const { mode } = c.req.valid("json");
-
-		currentDemoMode = mode;
-		console.log(`[Demo] Mode set to: ${mode}`);
-
-		return c.json({
-			mode: currentDemoMode,
-			message: `Demo mode set to ${mode}`,
-		});
+const setModeRoute = createRoute({
+	method: "post",
+	path: "/mode",
+	tags: ["Demo"],
+	summary: "Set demo mode",
+	description:
+		"Switch between honest, non-inclusion (query omission), and fraudulent-inclusion (tampered prediction) modes. Affects how `/demo/commit-batch` builds batches.",
+	request: {
+		body: {
+			content: {
+				"application/json": { schema: SetDemoModeRequestSchema },
+			},
+			required: true,
+		},
 	},
-);
+	responses: {
+		200: {
+			content: {
+				"application/json": { schema: SetDemoModeResponseSchema },
+			},
+			description: "Demo mode updated",
+		},
+	},
+});
 
-demoRoutes.post("/commit-batch", async (c) => {
+demoRoutes.openapi(setModeRoute, async (c) => {
+	const { mode } = c.req.valid("json");
+
+	currentDemoMode = mode;
+	console.log(`[Demo] Mode set to: ${mode}`);
+
+	return c.json({
+		mode: currentDemoMode,
+		message: `Demo mode set to ${mode}`,
+	});
+});
+
+const commitBatchRoute = createRoute({
+	method: "post",
+	path: "/commit-batch",
+	tags: ["Demo"],
+	summary: "Manually commit a batch",
+	description:
+		"Triggers a manual batch commitment using the current demo mode. In honest mode, builds a correct batch. In fraud modes, builds a tampered batch for dispute testing.",
+	responses: {
+		200: {
+			content: {
+				"application/json": {
+					schema: CommitBatchSuccessResponseSchema,
+				},
+			},
+			description: "Batch committed successfully",
+		},
+		204: {
+			content: {
+				"application/json": {
+					schema: CommitBatchEmptyResponseSchema,
+				},
+			},
+			description: "No queries to batch",
+		},
+		500: {
+			content: { "application/json": { schema: ErrorResponseSchema } },
+			description: "Batch commit failed",
+		},
+	},
+});
+
+// @ts-expect-error - OpenAPIHono strict return type checking can't verify discriminated union across multiple c.json() return paths
+demoRoutes.openapi(commitBatchRoute, async (c) => {
 	try {
 		console.log(
 			`[Demo] Manual batch commit triggered (mode: ${currentDemoMode})`,

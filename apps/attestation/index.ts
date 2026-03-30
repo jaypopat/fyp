@@ -1,4 +1,6 @@
 import { UltraHonkBackend } from "@aztec/bb.js";
+import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
+import { apiReference } from "@scalar/hono-api-reference";
 import { SDK } from "@zkfair/sdk";
 import { hashRecordLeaf } from "@zkfair/sdk/hash";
 import { verifyMerkleProof } from "@zkfair/sdk/merkle";
@@ -6,9 +8,18 @@ import {
 	fairness_audit_circuit,
 	training_circuit,
 } from "@zkfair/zk-circuits/codegen";
-import { Hono } from "hono";
 import { encodePacked, type Hex, keccak256, recoverMessageAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import {
+	AuditRequestSchema,
+	AuditResponseSchema,
+	DisputeRequestSchema,
+	DisputeResponseSchema,
+	ErrorResponseSchema,
+	HealthResponseSchema,
+	TrainingRequestSchema,
+	TrainingResponseSchema,
+} from "./schemas";
 
 const pk = process.env.ATTESTATION_SERVICE_PRIVATE_KEY as `0x${string}`;
 if (!pk) {
@@ -18,7 +29,7 @@ const account = privateKeyToAccount(pk);
 
 const sdk = new SDK();
 
-const app = new Hono();
+const app = new OpenAPIHono();
 
 const trainingBackend = new UltraHonkBackend(training_circuit.bytecode, {
 	threads: 1,
@@ -27,24 +38,43 @@ const auditBackend = new UltraHonkBackend(fairness_audit_circuit.bytecode, {
 	threads: 1,
 });
 
-app.post("/attest/training", async (c) => {
+// Routes
+
+const trainingRoute = createRoute({
+	method: "post",
+	path: "/attest/training",
+	tags: ["Attestation"],
+	summary: "Attest training proof",
+	description:
+		"Verify a UltraHonk training circuit proof and return a signed attestation certifying the model was trained fairly.",
+	request: {
+		body: {
+			content: { "application/json": { schema: TrainingRequestSchema } },
+			required: true,
+		},
+	},
+	responses: {
+		200: {
+			content: {
+				"application/json": { schema: TrainingResponseSchema },
+			},
+			description: "Proof verified, training attestation issued",
+		},
+		400: {
+			content: { "application/json": { schema: ErrorResponseSchema } },
+			description: "Proof verification failed or invalid input",
+		},
+		500: {
+			content: { "application/json": { schema: ErrorResponseSchema } },
+			description: "Attestation failed",
+		},
+	},
+});
+
+// @ts-expect-error - OpenAPIHono strict return type checking can't verify discriminated union across multiple c.json() return paths
+app.openapi(trainingRoute, async (c) => {
 	try {
-		const { proof, publicInputs, weightsHash } = await c.req.json<{
-			proof: `0x${string}`;
-			publicInputs: `0x${string}`[];
-			weightsHash: `0x${string}`;
-		}>();
-
-		if (!proof || !publicInputs || !weightsHash) {
-			return c.json(
-				{ error: "Missing proof, publicInputs, or weightsHash" },
-				400,
-			);
-		}
-
-		if (!proof.startsWith("0x")) {
-			return c.json({ error: "Invalid proof format: must start with 0x" }, 400);
-		}
+		const { proof, publicInputs, weightsHash } = c.req.valid("json");
 
 		const proofBytes = Buffer.from(proof.slice(2), "hex");
 
@@ -59,13 +89,13 @@ app.post("/attest/training", async (c) => {
 		}
 
 		// 2. Create attestation hash from the proof hex
-		const attestationHash = keccak256(proof);
+		const attestationHash = keccak256(proof as Hex);
 
 		// 3. Sign message
 		const messageHash = keccak256(
 			encodePacked(
 				["bytes32", "bytes32", "string"],
-				[weightsHash, attestationHash, "TRAINING_CERT"],
+				[weightsHash as Hex, attestationHash, "TRAINING_CERT"],
 			),
 		);
 
@@ -84,21 +114,39 @@ app.post("/attest/training", async (c) => {
 	}
 });
 
-app.post("/attest/audit", async (c) => {
+const auditRoute = createRoute({
+	method: "post",
+	path: "/attest/audit",
+	tags: ["Attestation"],
+	summary: "Attest audit proof",
+	description:
+		"Verify a UltraHonk fairness audit circuit proof and return a signed attestation. The attestation includes whether the proof passed or failed.",
+	request: {
+		body: {
+			content: { "application/json": { schema: AuditRequestSchema } },
+			required: true,
+		},
+	},
+	responses: {
+		200: {
+			content: { "application/json": { schema: AuditResponseSchema } },
+			description: "Audit attestation issued (pass or fail)",
+		},
+		400: {
+			content: { "application/json": { schema: ErrorResponseSchema } },
+			description: "Invalid input",
+		},
+		500: {
+			content: { "application/json": { schema: ErrorResponseSchema } },
+			description: "Attestation failed",
+		},
+	},
+});
+
+// @ts-expect-error - OpenAPIHono strict return type checking can't verify discriminated union across multiple c.json() return paths
+app.openapi(auditRoute, async (c) => {
 	try {
-		const { proof, publicInputs, auditId } = await c.req.json<{
-			proof: `0x${string}`;
-			publicInputs: `0x${string}`[];
-			auditId: string | number | bigint;
-		}>();
-
-		if (!proof || !publicInputs || auditId === undefined) {
-			return c.json({ error: "Missing proof, publicInputs, or auditId" }, 400);
-		}
-
-		if (!proof.startsWith("0x")) {
-			return c.json({ error: "Invalid proof format: must start with 0x" }, 400);
-		}
+		const { proof, publicInputs, auditId } = c.req.valid("json");
 
 		const proofBytes = Buffer.from(proof.slice(2), "hex");
 
@@ -113,7 +161,7 @@ app.post("/attest/audit", async (c) => {
 		);
 
 		// 2. Create attestation hash from proof
-		const attestationHash = keccak256(proof);
+		const attestationHash = keccak256(proof as Hex);
 
 		// 3. Sign message matching contract format:
 		// keccak256(abi.encodePacked(uint256(auditId), attestationHash, passed, "AUDIT"))
@@ -141,27 +189,42 @@ app.post("/attest/audit", async (c) => {
 	}
 });
 
-app.post("/attest/dispute", async (c) => {
+const disputeRoute = createRoute({
+	method: "post",
+	path: "/attest/dispute",
+	tags: ["Attestation"],
+	summary: "Attest dispute (fraud verification)",
+	description:
+		"Verify whether a provider committed fraud by checking a signed receipt against the on-chain batch Merkle root. Returns a signed attestation only if fraud is confirmed.",
+	request: {
+		body: {
+			content: { "application/json": { schema: DisputeRequestSchema } },
+			required: true,
+		},
+	},
+	responses: {
+		200: {
+			content: {
+				"application/json": { schema: DisputeResponseSchema },
+			},
+			description: "Fraud confirmed, dispute attestation issued",
+		},
+		400: {
+			content: { "application/json": { schema: ErrorResponseSchema } },
+			description: "No fraud detected or invalid input",
+		},
+		500: {
+			content: { "application/json": { schema: ErrorResponseSchema } },
+			description: "Attestation failed",
+		},
+	},
+});
+
+// @ts-expect-error - OpenAPIHono strict return type checking can't verify discriminated union across multiple c.json() return paths
+app.openapi(disputeRoute, async (c) => {
 	try {
 		const { batchId, receipt, featuresHash, providerSignature, merkleProof } =
-			await c.req.json<{
-				batchId: string | number;
-				receipt: {
-					seqNum: number;
-					modelId: number;
-					features: number[];
-					sensitiveAttr: number;
-					prediction: number;
-					timestamp: number;
-				};
-				featuresHash: Hex;
-				providerSignature: Hex;
-				merkleProof: { sibling: string; position: "left" | "right" }[];
-			}>();
-
-		if (!batchId || !receipt || !merkleProof) {
-			return c.json({ error: "Missing batchId, receipt, or merkleProof" }, 400);
-		}
+			c.req.valid("json");
 
 		// 1. Read batch from chain
 		const batch = await sdk.batch.get(BigInt(batchId));
@@ -176,7 +239,7 @@ app.post("/attest/dispute", async (c) => {
 				[
 					BigInt(receipt.seqNum),
 					BigInt(receipt.modelId),
-					featuresHash,
+					featuresHash as Hex,
 					BigInt(receipt.sensitiveAttr),
 					BigInt(receipt.prediction),
 					BigInt(receipt.timestamp),
@@ -186,7 +249,7 @@ app.post("/attest/dispute", async (c) => {
 
 		const recoveredAddress = await recoverMessageAddress({
 			message: { raw: dataHash },
-			signature: providerSignature,
+			signature: providerSignature as Hex,
 		});
 
 		if (recoveredAddress.toLowerCase() !== model.provider.toLowerCase()) {
@@ -248,10 +311,52 @@ app.post("/attest/dispute", async (c) => {
 	}
 });
 
-app.get("/health", (c) =>
+const healthRoute = createRoute({
+	method: "get",
+	path: "/health",
+	tags: ["Health"],
+	summary: "Health check",
+	description:
+		"Returns service status and the Ethereum address of the attestation signer.",
+	responses: {
+		200: {
+			content: { "application/json": { schema: HealthResponseSchema } },
+			description: "Service is healthy",
+		},
+	},
+});
+
+app.openapi(healthRoute, (c) =>
 	c.json({
 		status: "ok",
 		attestor: account.address,
+	}),
+);
+
+// OpenAPI spec + Scalar UI
+
+app.doc("/openapi.json", {
+	openapi: "3.1.0",
+	info: {
+		title: "zkFair Attestation Service",
+		version: "1.0.0",
+		description:
+			"Off-chain proof verification and attestation service for the zkFair protocol. Verifies UltraHonk ZK proofs and returns signed attestations for training, audit, and dispute flows.",
+	},
+	tags: [
+		{ name: "Health", description: "Service health" },
+		{
+			name: "Attestation",
+			description: "Proof verification and attestation signing",
+		},
+	],
+});
+
+app.get(
+	"/reference",
+	apiReference({
+		url: "/openapi.json",
+		theme: "kepler",
 	}),
 );
 
