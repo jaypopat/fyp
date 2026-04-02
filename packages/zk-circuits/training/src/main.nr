@@ -5,7 +5,7 @@ use dep::common::{
 };
 
 fn main(
-    // ===== PRIVATE INPUTS =====
+    // private inputs
     _model_weights: [Field; NUM_WEIGHTS],
     _dataset_size: u32,
     _dataset_features: [Field; NUM_FEATURES * MAX_DATASET_SIZE],
@@ -15,16 +15,16 @@ fn main(
     _merkle_paths: [[Field; MAX_TREE_HEIGHT]; MAX_DATASET_SIZE],
     _is_even_flags: [[bool; MAX_TREE_HEIGHT]; MAX_DATASET_SIZE],
     _merkle_depth: u32,
-    // ===== PUBLIC INPUTS =====
+    // public inputs
     _weights_hash: pub Field,
     _dataset_merkle_root: pub Field,
     _fairness_threshold_epsilon: pub Field,
 ) {
-    // === Step 1: Verify model weights commitment ===
+    // Verify model weights commitment
     let computed_weights_hash = poseidon::bn254::hash_15(_model_weights);
     assert(computed_weights_hash == _weights_hash);
 
-    // === Step 2: Verify dataset Merkle root ===
+    // Verify dataset Merkle root
     for i in 0..MAX_DATASET_SIZE {
         if i < _dataset_size {
             let mut row_with_salt: [Field; 16] = [0; 16];
@@ -47,7 +47,7 @@ fn main(
         }
     }
 
-    // === Step 3: Fairness computation ===
+    // Fairness computation
     let mut group_a_positive_pred: u32 = 0;
     let mut group_a_total: u32 = 0;
     let mut group_b_positive_pred: u32 = 0;
@@ -81,7 +81,7 @@ fn main(
     assert(group_a_total > 0);
     assert(group_b_total > 0);
 
-    // === Step 4: Compute fairness metric (demographic parity) ===
+    // Compute fairness metric (demographic parity)
     let rate_a_scaled: u32 = group_a_positive_pred * THRESHOLD_SCALE / group_a_total;
     let rate_b_scaled: u32 = group_b_positive_pred * THRESHOLD_SCALE / group_b_total;
 
@@ -91,7 +91,7 @@ fn main(
         rate_b_scaled - rate_a_scaled
     };
 
-    // === Step 5: Assert fairness threshold ===
+    // Assert fairness threshold
     let threshold_scaled: u32 = (_fairness_threshold_epsilon as u32) * 100;
 
     assert(disparity_scaled <= threshold_scaled);

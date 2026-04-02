@@ -103,7 +103,7 @@ generateAndSubmitProof(
 )
 	.then(() => process.exit(0))
 	.catch((error) => {
-		const fs = require("fs");
+		const fs = require("node:fs");
 		const timestamp = new Date().toISOString();
 		const logEntry = `[${timestamp}]\n${error.stack || error}\n\n`;
 		fs.appendFileSync("circuit-errors.log", logEntry);

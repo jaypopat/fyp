@@ -7,5 +7,9 @@ examples/**/weights.bin
 examples/**/fairness_threshold.json
 .agents/
 .claude/
+.context/
 *.log
 test-results
+CLAUDE.md
+benchmarks/
+docs/

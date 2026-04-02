@@ -3,7 +3,6 @@
  * Usage: bun packages/zk-circuits/scripts/fill-prover-toml.ts <weightsHash>
  * Then: cd packages/zk-circuits/training && nargo execute
  */
-/** biome-ignore-all lint/style/noUnusedTemplateLiteral: <explanation> */
 import {
 	parseCommitmentsFile,
 	parseFairnessThresholdFile,
@@ -19,7 +18,7 @@ if (!weightsHash) {
 
 // Helper to safely convert value to quoted string for TOML
 // CRITICAL: Always quote values so TOML doesn't interpret as native integers
-function toTomlString(value: any): string {
+function toTomlString(value: string | number | null | undefined): string {
 	if (value == null || value === "" || Number.isNaN(value)) {
 		return '"0"';
 	}
@@ -111,7 +110,7 @@ async function generateProverToml() {
 	}
 
 	// _merkle_paths: array of arrays of quoted decimal strings
-	toml += `_merkle_paths = [\n`;
+	toml += "_merkle_paths = [\n";
 	toml += subsetProofs
 		.map((path) => {
 			const converted = path
@@ -120,17 +119,17 @@ async function generateProverToml() {
 			return `  [${converted}]`;
 		})
 		.join(",\n");
-	toml += `\n]\n\n`;
+	toml += "\n]\n\n";
 
 	// _is_even_flags: array of arrays of booleans (unquoted)
-	toml += `_is_even_flags = [\n`;
+	toml += "_is_even_flags = [\n";
 	toml += subsetFlags
 		.map((flags) => {
 			const converted = flags.map((f) => (f ? "true" : "false")).join(", ");
 			return `  [${converted}]`;
 		})
 		.join(",\n");
-	toml += `\n]\n\n`;
+	toml += "\n]\n\n";
 
 	toml += `_merkle_depth = "${subsetProofs[0]?.length ?? 15}"\n\n`;
 

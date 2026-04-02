@@ -97,7 +97,6 @@ async function verifyProof(
 async function verifyReceipt(
 	receipt: SentinelReceipt,
 ): Promise<VerificationResult> {
-	// 1. Find on-chain batch for this seqNum
 	const batch = await findBatch(receipt.modelId, receipt.seqNum);
 
 	if (!batch) {
@@ -118,7 +117,6 @@ async function verifyReceipt(
 		};
 	}
 
-	// 2. Batch exists - fetch proof from provider
 	const proof = await fetchProof(receipt.providerUrl, receipt.seqNum);
 
 	if (!proof) {
@@ -130,7 +128,6 @@ async function verifyReceipt(
 		};
 	}
 
-	// 3. Verify proof against on-chain root
 	const leafHash = computeLeafHash(receipt);
 	const isValid = await verifyProof(leafHash, proof, batch.merkleRoot);
 
@@ -145,10 +142,6 @@ async function verifyReceipt(
 	return { status: "VERIFIED", batch };
 }
 
-/**
- * Verify receipt and update local DB status
- * Convenience wrapper that handles DB persistence
- */
 export async function verifyAndUpdateReceipt(
 	receipt: SentinelReceipt,
 ): Promise<VerificationResult> {

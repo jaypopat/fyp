@@ -83,9 +83,7 @@ export class EventsAPI {
 		return this.contracts.watchDisputeRaised(callback);
 	}
 
-	// ============================================
 	// HISTORICAL EVENT QUERIES
-	// ============================================
 
 	async getModelRegisteredHistory(fromBlock?: bigint, toBlock?: bigint) {
 		return this.contracts.getModelRegisteredEvents(fromBlock, toBlock);

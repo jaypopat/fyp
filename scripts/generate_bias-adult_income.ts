@@ -20,7 +20,7 @@ async function predict(input: number[]): Promise<number | null> {
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ modelHash: MODEL_HASH, input }),
 		});
-		const data = (await res.json()) as any;
+		const data = (await res.json()) as { prediction?: number | null };
 		return data.prediction ?? null;
 	} catch {
 		return null;
@@ -39,8 +39,8 @@ async function commitBatch(): Promise<void> {
 	const res = await fetch(`${SERVER_URL}/demo/commit-batch`, {
 		method: "POST",
 	});
-	const data = (await res.json()) as any;
-	console.log("\n" + "=".repeat(50));
+	const data = (await res.json()) as { batchId?: string };
+	console.log(`\n${"=".repeat(50)}`);
 	if (data.batchId) {
 		console.log(`✓ Batch committed: ${data.batchId}`);
 	} else {
@@ -144,4 +144,4 @@ console.log(disparity > 0.05 ? "\nBIAS DETECTED" : "\nNo significant bias");
 
 // Auto-commit batch for audit
 await commitBatch();
-console.log("Ready for audit challenge in web UI →  /model/" + MODEL_HASH);
+console.log(`Ready for audit challenge in web UI →  /model/${MODEL_HASH}`);

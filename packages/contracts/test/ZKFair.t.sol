@@ -47,9 +47,7 @@ contract ZKFairTest is Test {
         zkFair = new ZKFair(attestationService);
     }
 
-    // ============================================
     // HELPER FUNCTIONS
-    // ============================================
 
     function _registerModel() internal returns (uint256 modelId) {
         vm.startPrank(provider);
@@ -109,9 +107,7 @@ contract ZKFairTest is Test {
         signature = abi.encodePacked(r, s, v);
     }
 
-    // ============================================
     // MODEL REGISTRATION TESTS
-    // ============================================
 
     function test_registerModel_success() public {
         uint256 modelId = _registerModel();
@@ -162,9 +158,7 @@ contract ZKFairTest is Test {
         vm.stopPrank();
     }
 
-    // ============================================
     // CERTIFICATION TESTS
-    // ============================================
 
     function test_submitCertificationProof_success() public {
         uint256 modelId = _registerModel();
@@ -194,9 +188,7 @@ contract ZKFairTest is Test {
         vm.stopPrank();
     }
 
-    // ============================================
     // BATCH COMMITMENT TESTS
-    // ============================================
 
     function test_commitBatch_success() public {
         uint256 modelId = _registerModel();
@@ -217,9 +209,7 @@ contract ZKFairTest is Test {
         vm.stopPrank();
     }
 
-    // ============================================
     // AUDIT STAKING TESTS
-    // ============================================
 
     function test_requestAudit_requiresStake() public {
         uint256 modelId = _registerModel();
@@ -341,9 +331,7 @@ contract ZKFairTest is Test {
         vm.stopPrank();
     }
 
-    // ============================================
     // DISPUTE STAKING TESTS
-    // ============================================
 
     function test_disputeNonInclusion_requiresStake() public {
         uint256 modelId = _registerModel();
@@ -619,9 +607,7 @@ contract ZKFairTest is Test {
         vm.stopPrank();
     }
 
-    // ============================================
     // STAKE WITHDRAWAL TESTS
-    // ============================================
 
     function test_withdrawStake_allBatchesPassed() public {
         uint256 modelId = _registerModel();

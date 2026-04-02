@@ -75,6 +75,7 @@ async function main() {
 		const myLog = logs.find((l) => l.weightsHash === weightsHash);
 		if (!myLog) throw new Error("Could not find model registration log");
 		const realModelId = myLog.modelId;
+		if (realModelId == null) throw new Error("Model ID is null");
 		console.log(`Model ID: ${realModelId}`);
 
 		console.log("Creating Signed Receipt...");
@@ -101,7 +102,7 @@ async function main() {
 				["uint256", "uint256", "bytes32", "uint256", "int256", "uint256"],
 				[
 					queryUser.seqNum,
-					realModelId!,
+					realModelId,
 					featuresHash,
 					queryUser.sensitiveAttr,
 					queryUser.prediction,
@@ -125,7 +126,7 @@ async function main() {
 		// Use Poseidon hash for fake leaf (matches circuit and batch tree)
 		const leafFake = hashRecordLeaf({
 			seqNum: Number(queryFake.seqNum),
-			modelId: Number(realModelId!),
+			modelId: Number(realModelId),
 			features: queryFake.features,
 			sensitiveAttr: Number(queryFake.sensitiveAttr),
 			prediction: Number(queryFake.prediction),
@@ -143,7 +144,7 @@ async function main() {
 		console.log("Committing Fraudulent Batch...");
 
 		const txBatch = await sdk.batch.commit(
-			realModelId!,
+			realModelId,
 			root,
 			BigInt(1), // 1 query
 			BigInt(100), // start
@@ -156,34 +157,31 @@ async function main() {
 		const batches = await sdk.events.getBatchCommittedHistory();
 		const myBatch = batches.find((b) => b.merkleRoot === root);
 		if (!myBatch) throw new Error("Batch not found");
+		if (myBatch.batchId == null) throw new Error("Batch ID is null");
 		console.log(`Batch ID: ${myBatch.batchId}`);
 
 		console.log("Launching Dispute with Signed Receipt...");
 
 		console.log("Checking existing stake...");
-		const providerStakeBefore = await getProviderStake(realModelId!);
+		const providerStakeBefore = await getProviderStake(realModelId);
 		console.log(`Provider Stake: ${providerStakeBefore}`);
 
 		const disputePromise = new Promise((resolve) => {
-			sdk.dispute.watchDisputeRaised((event: any) => {
+			sdk.dispute.watchDisputeRaised((event: unknown) => {
 				console.log("EVENT: DisputeRaised detected!");
 				resolve(event);
 			});
 		});
-
-		// User submits dispute:
-		// 1. Get attestation from attestation service (verifies Poseidon Merkle proof off-chain)
-		// 2. Submit attestation on-chain (contract verifies provider sig + attestation sig)
 
 		console.log("Requesting dispute attestation...");
 		const attestationRes = await fetch(`${ATTESTATION_URL}/attest/dispute`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
-				batchId: myBatch.batchId!.toString(),
+				batchId: myBatch.batchId.toString(),
 				receipt: {
 					seqNum: Number(queryUser.seqNum),
-					modelId: Number(realModelId!),
+					modelId: Number(realModelId),
 					features: queryUser.features,
 					sensitiveAttr: Number(queryUser.sensitiveAttr),
 					prediction: Number(queryUser.prediction),
@@ -211,7 +209,7 @@ async function main() {
 		console.log(`Attestation received: ${attestationHash}`);
 
 		const txDispute = await sdk.dispute.disputeFraudulentInclusion(
-			myBatch.batchId!,
+			myBatch.batchId,
 			queryUser.seqNum,
 			queryUser.timestamp,
 			featuresHash,
@@ -228,7 +226,7 @@ async function main() {
 
 		console.log("Verifying Justice...");
 
-		const providerStakeAfter = await getProviderStake(realModelId!);
+		const providerStakeAfter = await getProviderStake(realModelId);
 		console.log(`Provider Stake after: ${providerStakeAfter}`);
 
 		if (providerStakeAfter < providerStakeBefore) {

@@ -38,6 +38,7 @@ export function DisputeDialog({ dispute, onClose }: DisputeDialogProps) {
 		hash,
 	});
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset wagmi state when switching disputes
 	useEffect(() => {
 		reset();
 	}, [dispute?.receipt?.id, reset]);

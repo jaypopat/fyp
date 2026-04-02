@@ -7,37 +7,40 @@ import {
 	recoverMessageAddress,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { z } from "zod";
+import { HashSchema } from "./artifacts";
 
-/**
- * Data required to create a receipt
- */
-export interface ReceiptData {
-	seqNum: number;
-	modelId: number;
-	features: number[];
-	sensitiveAttr: number;
-	prediction: number;
-	timestamp: number;
+export const ReceiptDataSchema = z.object({
+	seqNum: z.number().int(),
+	modelId: z.number().int(),
+	features: z.array(z.number()),
+	sensitiveAttr: z.number().int(),
+	prediction: z.number(),
+	timestamp: z.number(),
+});
+export type ReceiptData = z.infer<typeof ReceiptDataSchema>;
+
+const HexSchema = z.string().startsWith("0x") as z.ZodType<Hex>;
+
+export const SignedReceiptSchema = ReceiptDataSchema.extend({
+	dataHash: HashSchema,
+	featuresHash: HashSchema,
+	providerSignature: HexSchema,
+});
+export type SignedReceipt = z.infer<typeof SignedReceiptSchema>;
+
+export const ReceiptHashesSchema = z.object({
+	dataHash: HashSchema,
+	featuresHash: HashSchema,
+});
+export type ReceiptHashes = z.infer<typeof ReceiptHashesSchema>;
+
+export function parseReceiptData(data: unknown): ReceiptData {
+	return ReceiptDataSchema.parse(data);
 }
 
-/**
- * A signed receipt proving provider committed to specific inference data
- */
-export interface SignedReceipt extends ReceiptData {
-	/** Hash of all receipt data (deterministic, matches contract encoding) */
-	dataHash: Hash;
-	/** Hash of features array (for on-chain verification without full features) */
-	featuresHash: Hash;
-	/** Provider's signature over dataHash */
-	providerSignature: Hex;
-}
-
-/**
- * Receipt hashes before signing
- */
-export interface ReceiptHashes {
-	dataHash: Hash;
-	featuresHash: Hash;
+export function parseSignedReceipt(data: unknown): SignedReceipt {
+	return SignedReceiptSchema.parse(data);
 }
 
 export function createReceiptHashes(data: ReceiptData): ReceiptHashes {
@@ -45,7 +48,7 @@ export function createReceiptHashes(data: ReceiptData): ReceiptHashes {
 		encodePacked(["string"], [JSON.stringify(data.features)]),
 	);
 
-	// Creating a deterministic hash of all query data (same encoding as contract)
+	// Encoding must match ZKFair.sol's disputeNonInclusion/disputeFraudulentInclusion
 	const dataHash = keccak256(
 		encodePacked(
 			["uint256", "uint256", "bytes32", "uint256", "int256", "uint256"],
@@ -63,18 +66,6 @@ export function createReceiptHashes(data: ReceiptData): ReceiptHashes {
 	return { dataHash, featuresHash };
 }
 
-/**
- * Sign a receipt data hash with a private key
- *
- * @param dataHash - The hash to sign (from createReceiptHashes)
- * @param privateKey - Provider's private key
- * @returns Signature hex string
- *
- * @example
- * ```typescript
- * const signature = await signReceiptHash(dataHash, "0x...");
- * ```
- */
 export async function signReceiptHash(
 	dataHash: Hash,
 	privateKey: Hex,
@@ -85,13 +76,6 @@ export async function signReceiptHash(
 	});
 }
 
-/**
- * Sign a receipt data hash with a viem Account
- *
- * @param dataHash - The hash to sign (from createReceiptHashes)
- * @param account - viem Account instance (must have signMessage capability)
- * @returns Signature hex string
- */
 export async function signReceiptHashWithAccount(
 	dataHash: Hash,
 	account: Account,
@@ -119,18 +103,10 @@ export async function createSignedReceipt(
 	};
 }
 
-/**
- * Verify a receipt signature
- *
- * @param receipt - The signed receipt to verify
- * @param expectedSigner - Expected signer address
- * @returns True if signature is valid and from expected signer
- */
 export async function verifyReceipt(
 	receipt: SignedReceipt,
 	expectedSigner: Hex,
 ): Promise<boolean> {
-	// Recompute the data hash to ensure it matches
 	const { dataHash } = createReceiptHashes(receipt);
 
 	if (dataHash !== receipt.dataHash) {

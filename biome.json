@@ -1,5 +1,5 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.2.6/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.3.10/schema.json",
 	"overrides": [
 		{
 			"includes": ["**/*.astro"],
@@ -11,6 +11,16 @@
 					},
 					"style": {
 						"noUnusedTemplateLiteral": "error"
+					}
+				}
+			}
+		},
+		{
+			"includes": ["apps/www/**/*.css"],
+			"linter": {
+				"rules": {
+					"complexity": {
+						"noImportantStyles": "off"
 					}
 				}
 			}
@@ -42,7 +52,13 @@
 			"!**/.source",
 			"!**/.output",
 			"!**/.tanstack",
-			"!**/.nitro"
+			"!**/.nitro",
+			"!**/openzeppelin-contracts",
+			"!**/forge-std",
+			"!**/.venv",
+			"!**/.astro",
+			"!**/zk-circuits/codegen",
+			"!**/zk-circuits/target"
 		]
 	},
 	"formatter": {
@@ -80,6 +96,11 @@
 			"suspicious": {
 				"noUnknownAtRules": "off"
 			}
+		}
+	},
+	"css": {
+		"parser": {
+			"tailwindDirectives": true
 		}
 	},
 	"javascript": {

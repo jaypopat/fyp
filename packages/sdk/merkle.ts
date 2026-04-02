@@ -1,5 +1,11 @@
 import type { Hex } from "viem";
+import { z } from "zod";
 import { hashPoseidonFields } from "./hash";
+
+const HexLeafSchema = z
+	.string()
+	.length(64)
+	.regex(/^[0-9a-fA-F]{64}$/);
 
 function ensure0x(h: string): Hex {
 	return (h.startsWith("0x") ? h : `0x${h}`) as Hex;
@@ -14,18 +20,7 @@ async function hashNode(left: string, right: string) {
 }
 
 export async function merkleRoot(leaves: string[]): Promise<Hex> {
-	if (leaves.length === 0) throw new Error("No leaves provided");
-	for (let i = 0; i < leaves.length; i++) {
-		const leaf = leaves[i];
-		if (typeof leaf !== "string") {
-			throw new Error(`Leaf at index ${i} missing`);
-		}
-		if (leaf.length !== 64) {
-			throw new Error(
-				`Leaf at index ${i} has invalid length ${leaf.length}, expected 64`,
-			);
-		}
-	}
+	z.array(HexLeafSchema).min(1).parse(leaves);
 
 	let currentLevel = leaves;
 	while (currentLevel.length > 1) {
@@ -67,17 +62,9 @@ export async function createMerkleProof(
 	root: Hex;
 	proof: { sibling: string; position: "left" | "right" }[];
 }> {
-	if (leaves.length === 0) throw new Error("No leaves provided");
+	z.array(HexLeafSchema).min(1).parse(leaves);
 	if (index < 0 || index >= leaves.length)
 		throw new Error("Index out of range");
-	for (let i = 0; i < leaves.length; i++) {
-		const leaf = leaves[i];
-		if (typeof leaf !== "string") throw new Error(`Leaf at index ${i} missing`);
-		if (leaf.length !== 64)
-			throw new Error(
-				`Leaf at index ${i} has invalid length ${leaf.length}, expected 64`,
-			);
-	}
 
 	let level: string[] = leaves.slice(); // work on a copy
 	let idx = index;

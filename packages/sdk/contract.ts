@@ -51,9 +51,7 @@ export class ContractClient {
 		}
 	}
 
-	// ============================================
 	// PHASE 1: MODEL REGISTRATION & CERTIFICATION
-	// ============================================
 
 	/**
 	 * Register a new ML model with required stake
@@ -141,9 +139,7 @@ export class ContractClient {
 		});
 	}
 
-	// ============================================
 	// PHASE 2: BATCH COMMITMENT
-	// ============================================
 
 	/**
 	 * Commit a batch of queries
@@ -173,9 +169,7 @@ export class ContractClient {
 		});
 	}
 
-	// ============================================
 	// PHASE 3: AUDITING
-	// ============================================
 
 	/**
 	 * Request audit on a committed batch
@@ -254,9 +248,7 @@ export class ContractClient {
 		});
 	}
 
-	// ============================================
 	// STAKE MANAGEMENT
-	// ============================================
 
 	/**
 	 * Withdraw stake if all batches audited and passed
@@ -276,9 +268,7 @@ export class ContractClient {
 		});
 	}
 
-	// ============================================
 	// READ FUNCTIONS
-	// ============================================
 
 	/**
 	 * Get model details by ID
@@ -433,9 +423,7 @@ export class ContractClient {
 		};
 	}
 
-	// ============================================
 	// EVENT WATCHERS
-	// ============================================
 
 	watchModelRegistered(callback: (event: ModelRegisteredEvent) => void) {
 		return this.publicClient.watchContractEvent({
@@ -554,9 +542,7 @@ export class ContractClient {
 		});
 	}
 
-	// ============================================
 	// HISTORICAL EVENT QUERIES
-	// ============================================
 
 	async getModelRegisteredEvents(fromBlock?: bigint, toBlock?: bigint) {
 		const logs = await this.publicClient.getContractEvents({
@@ -591,9 +577,7 @@ export class ContractClient {
 		return logs.map((log) => log.args);
 	}
 
-	// ============================================
 	// PHASE 4: USER DISPUTES
-	// ============================================
 
 	/**
 	 * Get the required dispute stake amount
@@ -703,9 +687,7 @@ export class ContractClient {
 		});
 	}
 
-	// ============================================
 	// DISPUTE EVENT WATCHER
-	// ============================================
 
 	watchDisputeRaised(callback: (event: DisputeRaisedEvent) => void) {
 		return this.publicClient.watchContractEvent({

@@ -1,153 +1,85 @@
-import type { Hash } from "viem";
+import type { Hash, Hex } from "viem";
+import { z } from "zod";
 
-function assert(condition: unknown, msg: string): asserts condition {
-	if (!condition) throw new Error(msg);
-}
+export const HashSchema = z
+	.string()
+	.startsWith("0x")
+	.length(66) as z.ZodType<Hash>;
 
-export function assertHash(
-	value: string,
-	label: string,
-): asserts value is Hash {
-	assert(typeof value === "string", `${label} must be string`);
-	assert(value.startsWith("0x"), `${label} must start with 0x`);
-	assert(
-		value.length === 66,
-		`${label} must be 0x + 64 hex chars (got length ${value.length})`,
-	);
-}
+const MetricSchema = z.enum(["demographic_parity", "equalized_odds"]);
 
-export interface PathsFile {
-	dataset: string;
-	weights: string;
-	fairnessThreshold: string;
-}
-export interface Thresholds {
-	group_a: number;
-	group_b: number;
-}
+export const PathsFileSchema = z.object({
+	dataset: z.string(),
+	weights: z.string(),
+	fairnessThreshold: z.string(),
+});
+export type PathsFile = z.infer<typeof PathsFileSchema>;
 
-export interface FairnessThresholdFile {
-	metric: "demographic_parity" | "equalized_odds";
-	targetDisparity: number;
-	protectedAttribute: string;
-	protectedAttributeIndex: number; // Column index of sensitive attribute in dataset
-	thresholds: Thresholds;
-	calculatedMetrics?: Record<string, number>;
-}
+export const ThresholdsSchema = z.object({
+	group_a: z.number(),
+	group_b: z.number(),
+});
+export type Thresholds = z.infer<typeof ThresholdsSchema>;
+
+export const FairnessThresholdFileSchema = z.object({
+	metric: MetricSchema,
+	targetDisparity: z.number(),
+	protectedAttribute: z.string(),
+	protectedAttributeIndex: z.number(),
+	thresholds: ThresholdsSchema,
+	calculatedMetrics: z.record(z.string(), z.number()).optional(),
+});
+export type FairnessThresholdFile = z.infer<typeof FairnessThresholdFileSchema>;
+
+export const CommitmentsFileSchema = z.object({
+	datasetMerkleRoot: HashSchema,
+	weightsHash: HashSchema,
+});
+export type CommitmentsFile = z.infer<typeof CommitmentsFileSchema>;
+
+export const MetadataFileSchema = z.object({
+	name: z.string(),
+	description: z.string(),
+	creator: z.string().optional(),
+});
+export type MetadataFile = z.infer<typeof MetadataFileSchema>;
+
+export const MetaFileSchema = z.object({
+	version: z.number(),
+	createdAt: z.number(),
+});
+export type MetaFile = z.infer<typeof MetaFileSchema>;
+
+export const ProofFileSchema = z.object({
+	version: z.number(),
+	weightsHash: HashSchema,
+	generatedAt: z.number(),
+	proof: z.string().startsWith("0x") as z.ZodType<Hex>,
+	publicInputs: z.array(HashSchema),
+});
+export type ProofFile = z.infer<typeof ProofFileSchema>;
+
+export const SaltsFileSchema = z.record(z.string(), z.string());
+
+export const MerkleProofsFileSchema = z.object({
+	merklePaths: z.array(z.array(z.string())),
+	isEvenFlags: z.array(z.array(z.boolean())),
+});
 
 export function parseFairnessThresholdFile(
 	data: unknown,
 ): FairnessThresholdFile {
-	assert(data && typeof data === "object", "threshold file malformed");
-	const d = data as Record<string, unknown>;
-	assert(typeof d.metric === "string", "threshold.metric missing");
-	assert(
-		typeof d.targetDisparity === "number",
-		"threshold.targetDisparity missing",
-	);
-	assert(
-		typeof d.protectedAttribute === "string",
-		"threshold.protectedAttribute missing",
-	);
-	assert(
-		typeof d.protectedAttributeIndex === "number",
-		"threshold.protectedAttributeIndex missing",
-	);
-	assert(
-		d.thresholds && typeof d.thresholds === "object",
-		"thresholds missing",
-	);
-	const t = d.thresholds as Record<string, unknown>;
-	assert(typeof t.group_a === "number", "thresholds.group_a missing");
-	assert(typeof t.group_b === "number", "thresholds.group_b missing");
-
-	const calc = d.calculatedMetrics as Record<string, unknown> | undefined;
-	const calculatedMetrics = calc
-		? (Object.fromEntries(
-				Object.entries(calc).filter(([_, v]) => typeof v === "number"),
-			) as Record<string, number>)
-		: undefined;
-
-	return {
-		metric: d.metric as "demographic_parity" | "equalized_odds",
-		targetDisparity: d.targetDisparity as number,
-		protectedAttribute: d.protectedAttribute as string,
-		protectedAttributeIndex: d.protectedAttributeIndex as number,
-		thresholds: { group_a: t.group_a as number, group_b: t.group_b as number },
-		calculatedMetrics,
-	};
-}
-
-export interface CommitmentsFile {
-	datasetMerkleRoot: Hash;
-	weightsHash: Hash;
-}
-export interface MetadataFile {
-	name: string;
-	description: string;
-	creator?: string;
-}
-export interface FairnessFile {
-	metric: "demographic_parity" | "equalized_odds";
-	targetDisparity: number;
-	protectedAttribute: string;
-}
-export interface MetaFile {
-	version: number;
-	createdAt: number;
-}
-export interface ProofFile {
-	version: number;
-	weightsHash: Hash;
-	generatedAt: number;
-	proof: Hash; // entire proof as hex (current format)
-	publicInputs: Hash[];
+	return FairnessThresholdFileSchema.parse(data);
 }
 
 export function parsePathsFile(data: unknown): PathsFile {
-	assert(data && typeof data === "object", "paths.json malformed");
-	const d = data as Record<string, unknown>;
-	assert(typeof d.dataset === "string", "paths.dataset missing");
-	assert(typeof d.weights === "string", "paths.weights missing");
-	assert(typeof d.fairnessThreshold === "string", "paths.threshold missing");
+	return PathsFileSchema.parse(data);
+}
 
-	return {
-		dataset: d.dataset as string,
-		weights: d.weights as string,
-		fairnessThreshold: d.fairnessThreshold as string,
-	};
-}
 export function parseCommitmentsFile(data: unknown): CommitmentsFile {
-	assert(data && typeof data === "object", "commitments.json malformed");
-	const d = data as Record<string, unknown>;
-	assert(typeof d.datasetMerkleRoot === "string", "datasetMerkleRoot missing");
-	assert(typeof d.weightsHash === "string", "weightsHash missing");
-	assertHash(d.datasetMerkleRoot as string, "datasetMerkleRoot");
-	assertHash(d.weightsHash as string, "weightsHash");
-	return {
-		datasetMerkleRoot: d.datasetMerkleRoot as Hash,
-		weightsHash: d.weightsHash as Hash,
-	};
+	return CommitmentsFileSchema.parse(data);
 }
+
 export function parseProofFile(data: unknown): ProofFile {
-	assert(data && typeof data === "object", "proof.json malformed");
-	const d = data as Record<string, unknown>;
-	assert(typeof d.generatedAt === "number", "proof.generatedAt missing");
-	assert(typeof d.weightsHash === "string", "weightsHash missing");
-	assert(typeof d.proof === "string", "proof missing");
-	assert(Array.isArray(d.publicInputs), "publicInputs must be array");
-	assertHash(d.weightsHash as string, "weightsHash");
-	assertHash(d.proof as string, "proof");
-	const publicInputs = (d.publicInputs as unknown[]).map((p, i) => {
-		assert(typeof p === "string", `publicInputs[${i}] must be string`);
-		assertHash(p as string, `publicInputs[${i}]`);
-		return p as Hash;
-	});
-	return {
-		version: d.version as number,
-		weightsHash: d.weightsHash as Hash,
-		generatedAt: d.generatedAt as number,
-		proof: d.proof as Hash,
-		publicInputs,
-	};
+	return ProofFileSchema.parse(data);
 }

@@ -79,9 +79,10 @@ function ModelDetailPage() {
 	} = useAuditActions();
 
 	const handleInference = async (input: number[]) => {
+		const providerUrl = model?.inferenceUrl;
+		if (!providerUrl) return;
 		updateInference({ loading: true, result: null });
 		try {
-			const providerUrl = model!.inferenceUrl;
 			const resultData = await predict({
 				providerUrl,
 				modelHash: modelId,

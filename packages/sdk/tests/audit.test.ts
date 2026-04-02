@@ -54,7 +54,7 @@ function hashRecordLeaf(r: TestRecord): string {
  * Generate synthetic test records for fairness audit
  * Predictions are computed using the actual model weights to match circuit behavior
  */
-function generateTestRecords(count: number, weights: bigint[]): TestRecord[] {
+function generateTestRecords(count: number, _weights: bigint[]): TestRecord[] {
 	const records: TestRecord[] = [];
 
 	for (let i = 0; i < count; i++) {

@@ -8,7 +8,7 @@ import {
 	RefreshCw,
 	XCircle,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Hex } from "viem";
 import {
 	DisputeDialog,
@@ -88,23 +88,26 @@ function ReceiptsPage() {
 		});
 	};
 
-	const checkAllPending = async (receiptList: SentinelReceipt[]) => {
-		setCheckingAll(true);
-		setError(null);
+	const checkAllPending = useCallback(
+		async (receiptList: SentinelReceipt[]) => {
+			setCheckingAll(true);
+			setError(null);
 
-		const pending = receiptList.filter(
-			(r) => r.status === "PENDING" || r.status === "BATCHED",
-		);
-		for (const receipt of pending) {
-			try {
-				await verifyAndUpdateReceipt(receipt);
-			} catch {
-				// Continue checking others even if one fails
+			const pending = receiptList.filter(
+				(r) => r.status === "PENDING" || r.status === "BATCHED",
+			);
+			for (const receipt of pending) {
+				try {
+					await verifyAndUpdateReceipt(receipt);
+				} catch {
+					// Continue checking others even if one fails
+				}
 			}
-		}
 
-		setCheckingAll(false);
-	};
+			setCheckingAll(false);
+		},
+		[],
+	);
 
 	const clearAllReceipts = async () => {
 		if (
@@ -129,7 +132,7 @@ function ReceiptsPage() {
 				checkAllPending(receipts);
 			}
 		}
-	}, [receipts]);
+	}, [receipts, checkAllPending]);
 
 	const pendingCount =
 		receipts?.filter(

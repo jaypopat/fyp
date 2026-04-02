@@ -292,10 +292,9 @@ export function AdultIncomeForm(props: {
 		onChange?.(toVector(next), next);
 	}
 
-	// Emit initial vector on mount
+	// biome-ignore lint/correctness/useExhaustiveDependencies: mount-only — onChange is already called inline in update()
 	useEffect(() => {
 		onChange?.(toVector(raw), raw);
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
 	return (

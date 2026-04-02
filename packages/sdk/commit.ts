@@ -1,6 +1,12 @@
 import { mkdir } from "node:fs/promises";
 import type { Hash } from "viem";
-import type { FairnessFile, PathsFile } from "./artifacts";
+import {
+	CommitmentsFileSchema,
+	MerkleProofsFileSchema,
+	PathsFileSchema,
+	parseFairnessThresholdFile,
+	SaltsFileSchema,
+} from "./artifacts";
 import type { ContractClient } from "./contract";
 import { generateAllMerkleProofs, merkleRoot } from "./merkle";
 import type { CommitOptions } from "./types";
@@ -20,9 +26,9 @@ export class CommitAPI {
 	): Promise<Hash> {
 		const datasetRows = await parseCSV(dataSetPath);
 		const weights = await Bun.file(weightsPath).arrayBuffer();
-		const fairnessThreshold = (await Bun.file(
-			fairnessThresholdPath,
-		).json()) as FairnessFile;
+		const fairnessThreshold = parseFairnessThresholdFile(
+			await Bun.file(fairnessThresholdPath).json(),
+		);
 
 		// Compute weights hash first (used for cache directory)
 		const weightsHash = await this.hashWeights(new Uint8Array(weights));
@@ -193,7 +199,7 @@ export class CommitAPI {
 				return null;
 			}
 
-			const cachedPaths = (await pathsFile.json()) as PathsFile;
+			const cachedPaths = PathsFileSchema.parse(await pathsFile.json());
 
 			// Verify paths match (ie cache aint invalid)
 			if (
@@ -205,17 +211,17 @@ export class CommitAPI {
 			}
 
 			// Load all cached artifacts
-			const [masterSalt, salts, commitments, merkleProofs] = await Promise.all([
-				Bun.file(`${dir}/master_salt.txt`).text(),
-				Bun.file(`${dir}/salts.json`).json() as Promise<Record<number, string>>,
-				Bun.file(`${dir}/commitments.json`).json() as Promise<{
-					datasetMerkleRoot: Hash;
-				}>,
-				Bun.file(`${dir}/merkle_proofs.json`).json() as Promise<{
-					merklePaths: string[][];
-					isEvenFlags: boolean[][];
-				}>,
-			]);
+			const [masterSalt, saltsRaw, commitmentsRaw, merkleProofsRaw] =
+				await Promise.all([
+					Bun.file(`${dir}/master_salt.txt`).text(),
+					Bun.file(`${dir}/salts.json`).json(),
+					Bun.file(`${dir}/commitments.json`).json(),
+					Bun.file(`${dir}/merkle_proofs.json`).json(),
+				]);
+
+			const salts = SaltsFileSchema.parse(saltsRaw);
+			const commitments = CommitmentsFileSchema.parse(commitmentsRaw);
+			const merkleProofs = MerkleProofsFileSchema.parse(merkleProofsRaw);
 
 			return {
 				masterSalt: masterSalt.trim(),
@@ -310,8 +316,6 @@ export class CommitAPI {
 
 		console.log(` Deriving ${rowCount} row salts with SHA-256...`);
 		for (let i = 0; i < rowCount; i++) {
-			// Combine master_salt + index + weightsHash
-			// Note: masterSalt is now an integer string, so reconstruct the hash
 			const input = `${masterSalt}${i}${weightsHash}`;
 			const saltBuf = await crypto.subtle.digest(
 				"SHA-256",

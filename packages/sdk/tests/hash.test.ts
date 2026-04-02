@@ -65,7 +65,7 @@ describe("Poseidon compatibility with Noir", () => {
 		console.log("\n=== Row 1 (from CSV) ===");
 		const row1HashHex = hashPoseidonFields(row1Numeric);
 		const row1Hash = BigInt(`0x${row1HashHex}`);
-		console.log("TypeScript Poseidon hash: 0x" + row1HashHex);
+		console.log(`TypeScript Poseidon hash: 0x${row1HashHex}`);
 		console.log(
 			"Expected Noir hash:      0x" +
 				noir_hash_row1.toString(16).padStart(64, "0"),
@@ -74,7 +74,7 @@ describe("Poseidon compatibility with Noir", () => {
 		console.log("\n=== Row 2 (from CSV) ===");
 		const row2HashHex = hashPoseidonFields(row2Numeric);
 		const row2Hash = BigInt(`0x${row2HashHex}`);
-		console.log("TypeScript Poseidon hash: 0x" + row2HashHex);
+		console.log(`TypeScript Poseidon hash: 0x${row2HashHex}`);
 		console.log(
 			"Expected Noir hash:      0x" +
 				noir_hash_row2.toString(16).padStart(64, "0"),

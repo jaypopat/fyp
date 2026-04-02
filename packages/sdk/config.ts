@@ -59,8 +59,12 @@ export function detectEnvironment(): Environment {
 	}
 
 	// Vite frontend
-	if (typeof import.meta !== "undefined" && (import.meta as any).env) {
-		const env = (import.meta as any).env;
+	if (
+		typeof import.meta !== "undefined" &&
+		(import.meta as ImportMeta & { env?: Record<string, string> }).env
+	) {
+		const env = (import.meta as ImportMeta & { env: Record<string, string> })
+			.env;
 		if (env.VITE_ZKFAIR_ENV === "sepolia") return "sepolia";
 		if (env.PROD) return "sepolia";
 	}

@@ -10,9 +10,7 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 /// @notice Implements OATH protocol: Certification, Query Batching, Continuous Auditing
 /// @dev Uses off-chain attestation service for proof verification
 contract ZKFair is Ownable, Pausable {
-    // ============================================
     // STATE VARIABLES
-    // ============================================
 
     address public attestationService; // Off-chain attestation service signer
 
@@ -20,9 +18,7 @@ contract ZKFair is Ownable, Pausable {
     uint256 private batchCounter;
     uint256 private auditCounter;
 
-    // ============================================
     // CONSTANTS
-    // ============================================
 
     uint256 public constant PROVIDER_STAKE = 0.0001 ether;
     uint256 public constant AUDIT_STAKE = 0.00005 ether; // Stake required to request audit
@@ -31,9 +27,7 @@ contract ZKFair is Ownable, Pausable {
     uint256 public constant REQUIRED_SAMPLES = 10;
     uint256 public constant DISPUTE_GRACE_PERIOD = 10 seconds; // Time provider has to batch before dispute allowed (short for demo)
 
-    // ============================================
     // ENUMS
-    // ============================================
 
     enum ModelStatus {
         REGISTERED,
@@ -47,9 +41,7 @@ contract ZKFair is Ownable, Pausable {
         EXPIRED
     }
 
-    // ============================================
     // STRUCTS
-    // ============================================
 
     /// @notice Phase 1: Model Registration & Certification
     struct Model {
@@ -92,9 +84,7 @@ contract ZKFair is Ownable, Pausable {
         bytes32 proofHash;
     }
 
-    // ============================================
     // STORAGE MAPPINGS
-    // ============================================
 
     mapping(uint256 => Model) public models;
     mapping(uint256 => Batch) public batches;
@@ -104,9 +94,7 @@ contract ZKFair is Ownable, Pausable {
     mapping(address => uint256[]) private modelsByProvider;
     mapping(uint256 => uint256[]) private batchesByModel;
 
-    // ============================================
     // EVENTS
-    // ============================================
 
     event ModelRegistered(
         uint256 indexed modelId,
@@ -156,9 +144,7 @@ contract ZKFair is Ownable, Pausable {
         string reason
     );
 
-    // ============================================
     // ERRORS
-    // ============================================
 
     error InvalidInput();
     error ModelNotFound();
@@ -183,18 +169,14 @@ contract ZKFair is Ownable, Pausable {
     error SeqNumNotInBatchRange();
     error InvalidMerkleProof(); // kept for interface compatibility
 
-    // ============================================
     // CONSTRUCTOR
-    // ============================================
 
     constructor(address _attestationService) Ownable(msg.sender) {
         if (_attestationService == address(0)) revert InvalidInput();
         attestationService = _attestationService;
     }
 
-    // ============================================
     // MODIFIERS
-    // ============================================
 
     modifier onlyProvider(uint256 modelId) {
         if (models[modelId].provider != msg.sender) revert UnauthorizedAccess();
@@ -216,9 +198,7 @@ contract ZKFair is Ownable, Pausable {
         _;
     }
 
-    // ============================================
     // PHASE 1: MODEL CERTIFICATION
-    // ============================================
 
     /// @notice Register a new ML model with stake
     /// @param name Human-readable model name
@@ -333,9 +313,7 @@ contract ZKFair is Ownable, Pausable {
         emit InferenceUrlUpdated(modelId, newInferenceUrl);
     }
 
-    // ============================================
     // PHASE 2: QUERY BATCH COMMITMENT
-    // ============================================
 
     /// @notice Commit a batch of queries served to clients
     /// @param modelId ID of the certified model used
@@ -389,9 +367,7 @@ contract ZKFair is Ownable, Pausable {
         emit BatchCommitted(batchId, modelId, merkleRoot, queryCount);
     }
 
-    // ============================================
     // PHASE 3: AUDITING
-    // ============================================
 
     /// @notice Request audit on a committed batch (generates random samples on-chain)
     /// @dev Uses blockhash-based pseudo-randomness - sufficient for most use cases
@@ -561,9 +537,7 @@ contract ZKFair is Ownable, Pausable {
         emit AuditExpired(auditId, audit.batchId, msg.sender);
     }
 
-    // ============================================
     // PHASE 4: USER DISPUTES
-    // ============================================
 
     /// @notice Dispute when provider never batched a query (Type A fraud)
     /// @dev User must have a signed receipt from provider proving the query existed
@@ -588,12 +562,11 @@ contract ZKFair is Ownable, Pausable {
 
         Model storage model = models[modelId];
 
-        // 1. Verify grace period has passed (give provider time to batch)
+        // Verify grace period has passed (give provider time to batch)
         if (block.timestamp < timestamp + DISPUTE_GRACE_PERIOD) {
             revert DisputeGracePeriodNotPassed();
         }
 
-        // 2. Verify provider signature matches the receipt data
         _verifyReceiptAndComputeLeaf(
             seqNum,
             modelId,
@@ -605,7 +578,7 @@ contract ZKFair is Ownable, Pausable {
             model.provider
         );
 
-        // 3. Check that no batch contains this seqNum
+        // Check that no batch contains this seqNum
         uint256[] memory modelBatches = batchesByModel[modelId];
         for (uint256 i = 0; i < modelBatches.length; i++) {
             Batch storage batch = batches[modelBatches[i]];
@@ -618,7 +591,7 @@ contract ZKFair is Ownable, Pausable {
             }
         }
 
-        // 4. Provider failed to batch this query - return stake and slash provider
+        // Provider failed to batch — return stake and slash
         _safeTransfer(msg.sender, msg.value); // Return disputer's stake
         emit DisputeRaised(modelId, msg.sender, seqNum, "Query never batched");
         _slashProvider(modelId, msg.sender, "Failed to batch user query");
@@ -654,12 +627,10 @@ contract ZKFair is Ownable, Pausable {
         uint256 modelId = batch.modelId;
         Model storage model = models[modelId];
 
-        // 1. Verify seqNum is in this batch's claimed range
         if (seqNum < batch.seqNumStart || seqNum > batch.seqNumEnd) {
             revert SeqNumNotInBatchRange();
         }
 
-        // 2. Verify provider signature on receipt data
         _verifyReceiptAndComputeLeaf(
             seqNum,
             modelId,
@@ -671,7 +642,7 @@ contract ZKFair is Ownable, Pausable {
             model.provider
         );
 
-        // 3. Verify attestation service confirmed fraud
+        // Verify attestation service confirmed fraud
         bytes32 messageHash = keccak256(
             abi.encodePacked(batchId, seqNum, attestationHash, "DISPUTE")
         );
@@ -684,7 +655,7 @@ contract ZKFair is Ownable, Pausable {
         );
         if (recoveredSigner != attestationService) revert InvalidSignature();
 
-        // 4. Attestation confirms fraud - slash provider
+        // Fraud confirmed — slash provider
         _safeTransfer(msg.sender, msg.value); // Return disputer's stake
         emit DisputeRaised(modelId, msg.sender, seqNum, "Fraudulent batch inclusion");
         _slashProvider(modelId, msg.sender, "Committed tampered batch data");
@@ -723,9 +694,7 @@ contract ZKFair is Ownable, Pausable {
         return dataHash;
     }
 
-    // ============================================
     // STAKE MANAGEMENT
-    // ============================================
 
     /// @dev Internal slashing function - sends stake to challenger
     function _slashProvider(
@@ -773,18 +742,14 @@ contract ZKFair is Ownable, Pausable {
         emit StakeWithdrawn(modelId, msg.sender, amount);
     }
 
-    // ============================================
     // INTERNAL HELPERS
-    // ============================================
 
     function _safeTransfer(address to, uint256 amount) internal {
         (bool success, ) = payable(to).call{value: amount}("");
         if (!success) revert TransferFailed();
     }
 
-    // ============================================
     // VIEW FUNCTIONS
-    // ============================================
 
     function getModel(
         uint256 modelId
@@ -851,9 +816,7 @@ contract ZKFair is Ownable, Pausable {
         return auditCounter;
     }
 
-    // ============================================
     // ADMIN FUNCTIONS
-    // ============================================
 
     function setAttestationService(address newService) external onlyOwner {
         if (newService == address(0)) revert InvalidInput();

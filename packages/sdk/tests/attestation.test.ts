@@ -1,4 +1,4 @@
-import path from "path";
+import path from "node:path";
 import { getArtifactDir } from "../utils";
 
 async function attestProof(weightsHash: `0x${string}`) {

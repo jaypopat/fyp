@@ -19,7 +19,7 @@ global TREE_DEPTH: u32 = 7;
 /// 3. The predictions meet the fairness threshold
 /// 4. The weights used match the certified model
 fn main(
-    // ===== PRIVATE INPUTS =====
+    // private inputs
     _model_weights: [Field; NUM_WEIGHTS],
     _sample_count: u32,
     _sample_valid: [bool; SAMPLE_SIZE],
@@ -29,12 +29,12 @@ fn main(
     _merkle_proofs: [[Field; TREE_DEPTH]; SAMPLE_SIZE],
     _merkle_path_indices: [[bool; TREE_DEPTH]; SAMPLE_SIZE],
     _merkle_depth: u32,
-    // ===== PUBLIC INPUTS =====
+    // public inputs
     _batch_merkle_root: pub Field,
     _weights_hash: pub Field,
     _fairness_threshold_epsilon: pub Field,
 ) {
-    // === Step 0: Validate sample count matches validity mask ===
+    // Validate sample count matches validity mask
     let mut valid_count: u32 = 0;
     for i in 0..SAMPLE_SIZE {
         if _sample_valid[i] {
@@ -44,11 +44,11 @@ fn main(
     assert(valid_count == _sample_count);
     assert(_sample_count > 0);
 
-    // === Step 1: Verify model weights commitment ===
+    // Verify model weights commitment
     let computed_weights_hash = poseidon::bn254::hash_15(_model_weights);
     assert(computed_weights_hash == _weights_hash);
 
-    // === Step 2: For each valid sample, verify prediction and Merkle inclusion ===
+    // For each valid sample, verify prediction and Merkle inclusion
     let mut sample_predictions: [Field; SAMPLE_SIZE] = [0; SAMPLE_SIZE];
 
     for i in 0..SAMPLE_SIZE {
@@ -111,7 +111,7 @@ fn main(
         }
     }
 
-    // === Step 3: Compute fairness metric on valid samples ===
+    // Compute fairness metric on valid samples
     let mut group_a_positive: u32 = 0;
     let mut group_a_total: u32 = 0;
     let mut group_b_positive: u32 = 0;
@@ -136,7 +136,7 @@ fn main(
         }
     }
 
-    // === Step 4: Assert fairness threshold ===
+    // Assert fairness threshold
     // Both groups must have representation to measure disparity
     assert(group_a_total > 0);
     assert(group_b_total > 0);

@@ -1,7 +1,4 @@
-/**
- * Browser-safe hashing utilities using Poseidon
- * No Node.js dependencies - safe for browser/web environments
- */
+// No Node.js dependencies — safe for browser environments
 import {
 	poseidon1,
 	poseidon2,
@@ -163,13 +160,6 @@ export function hashPoseidonFields(
 	return hex;
 }
 
-// ============================================
-// AUDIT RECORD HASHING (Browser-safe)
-// ============================================
-
-/**
- * Canonical query record for audit trail
- */
 export type AuditRecord = {
 	seqNum: number;
 	modelId: number;

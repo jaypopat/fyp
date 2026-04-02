@@ -78,7 +78,6 @@ async function setupMockArtifacts(weightsHash: Hash) {
 	console.log(`Mock artifacts set up in ${dir}`);
 }
 
-// --- Stub DB Setup ---
 const sqlite = new Database(":memory:");
 const db = drizzle(sqlite, { schema: zkfairSchema });
 
@@ -120,7 +119,6 @@ const client = createPublicClient({
 async function main() {
 	console.log("Starting Honest Provider Audit E2E Demo");
 
-	// 1. Register Model
 	console.log("Registering Model...");
 	const modelSeed = BigInt(Math.floor(Math.random() * 1000000));
 	const dummyWeights = new Array(15).fill(0n);
@@ -146,9 +144,9 @@ async function main() {
 	const myLog = logs.find((l) => l.weightsHash === weightsHash);
 	if (!myLog) throw new Error("Could not find model registration log");
 	const realModelId = myLog.modelId;
+	if (realModelId == null) throw new Error("Model ID is null");
 	console.log(`Model ID: ${realModelId}`);
 
-	// 2. Simulate Serving Queries & Logging to DB
 	console.log("Serving 50 Queries...");
 	const timestamp = BigInt(Math.floor(Date.now() / 1000));
 	const queries = [];
@@ -174,7 +172,6 @@ async function main() {
 	}
 	console.log("Queries logged to local database.");
 
-	// 3. Commit Batch
 	console.log("Committing Batch...");
 	const auditRecords = queries.map((q) => ({
 		seqNum: q.seq,
@@ -191,7 +188,7 @@ async function main() {
 	console.log(`Batch Root: ${root}`);
 
 	const txBatch = await sdk.batch.commit(
-		realModelId!,
+		realModelId,
 		root,
 		BigInt(count),
 		BigInt(1), // start seq
@@ -204,16 +201,15 @@ async function main() {
 	const batchLogs = await sdk.events.getBatchCommittedHistory();
 	const myBatchLog = batchLogs.find((b) => b.merkleRoot === root);
 	if (!myBatchLog) throw new Error("Batch log not found");
-	const batchId = myBatchLog.batchId!;
+	if (myBatchLog.batchId == null) throw new Error("Batch ID is null");
+	const batchId = myBatchLog.batchId;
 	console.log(`Batch ID: ${batchId}`);
 
-	// 4. Request Audit (Simulating a challenger/user)
 	console.log("Requesting Audit on Batch...");
 
 	// Listen for the event first so we don't miss it (race condition safety)
 	const auditRequestPromise = new Promise((resolve) => {
 		sdk.events.watchAuditRequested(async (event) => {
-			// 5. Provider handles the audit request
 			if (event.batchId === batchId) {
 				console.log(
 					`\n>>> EVENT RECEIVED: Audit Requested for Batch ${event.batchId}`,
@@ -243,7 +239,6 @@ async function main() {
 		passed: boolean;
 	};
 
-	// 6. Verify Result
 	if (result.passed) {
 		console.log("\nSUCCESS: Audit passed and proof submitted!");
 		console.log(`Tx Hash: ${result.txHash}`);

@@ -3,7 +3,7 @@ import type { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
 /**
  * Drizzle database instance type for ZKFair SDK
  */
-export type DrizzleDB = BunSQLiteDatabase<any>;
+export type DrizzleDB = BunSQLiteDatabase<Record<string, unknown>>;
 
 export {
 	type Batch,

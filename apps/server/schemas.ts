@@ -1,14 +1,10 @@
 import { z } from "@hono/zod-openapi";
 
-// === Reusable ===
-
 export const ErrorResponseSchema = z
 	.object({
 		error: z.string(),
 	})
 	.openapi("ErrorResponse");
-
-// === GET /health ===
 
 export const HealthResponseSchema = z
 	.object({
@@ -18,15 +14,11 @@ export const HealthResponseSchema = z
 	})
 	.openapi("HealthResponse");
 
-// === GET /models ===
-
 export const ModelsResponseSchema = z
 	.object({
 		models: z.array(z.object({ modelId: z.number() })),
 	})
 	.openapi("ModelsResponse");
-
-// === POST /predict ===
 
 export const PredictRequestSchema = z
 	.object({
@@ -53,8 +45,6 @@ export const PredictResponseSchema = z
 		}),
 	})
 	.openapi("PredictResponse");
-
-// === GET /proof/:seqNum ===
 
 export const ProofParamsSchema = z.object({
 	seqNum: z.coerce
@@ -85,8 +75,6 @@ export const ProofPendingResponseSchema = z
 		seqNum: z.number(),
 	})
 	.openapi("ProofPendingResponse");
-
-// === Demo routes ===
 
 export const DemoModeSchema = z.enum([
 	"honest",

@@ -78,7 +78,6 @@ app.openapi(trainingRoute, async (c) => {
 
 		const proofBytes = Buffer.from(proof.slice(2), "hex");
 
-		// 1. Verify proof
 		const isValid = await trainingBackend.verifyProof({
 			proof: proofBytes,
 			publicInputs,
@@ -88,10 +87,8 @@ app.openapi(trainingRoute, async (c) => {
 			return c.json({ error: "Proof verification failed", passed: false }, 400);
 		}
 
-		// 2. Create attestation hash from the proof hex
 		const attestationHash = keccak256(proof as Hex);
 
-		// 3. Sign message
 		const messageHash = keccak256(
 			encodePacked(
 				["bytes32", "bytes32", "string"],
@@ -160,10 +157,9 @@ app.openapi(auditRoute, async (c) => {
 			`Audit ${auditId}: Proof verification ${passed ? "PASSED" : "FAILED"}`,
 		);
 
-		// 2. Create attestation hash from proof
 		const attestationHash = keccak256(proof as Hex);
 
-		// 3. Sign message matching contract format:
+		// Sign message matching contract format:
 		// keccak256(abi.encodePacked(uint256(auditId), attestationHash, passed, "AUDIT"))
 		const messageHash = keccak256(
 			encodePacked(
@@ -176,7 +172,6 @@ app.openapi(auditRoute, async (c) => {
 			message: { raw: messageHash },
 		});
 
-		// 4. Return attestation (provider will submit via contract)
 		return c.json({
 			auditId,
 			attestationHash,
@@ -226,13 +221,10 @@ app.openapi(disputeRoute, async (c) => {
 		const { batchId, receipt, featuresHash, providerSignature, merkleProof } =
 			c.req.valid("json");
 
-		// 1. Read batch from chain
 		const batch = await sdk.batch.get(BigInt(batchId));
 
-		// 2. Read model to get provider address
 		const model = await sdk.model.getById(batch.modelId);
 
-		// 3. Verify provider signature on receipt data
 		const dataHash = keccak256(
 			encodePacked(
 				["uint256", "uint256", "bytes32", "uint256", "int256", "uint256"],
@@ -256,7 +248,6 @@ app.openapi(disputeRoute, async (c) => {
 			return c.json({ error: "Invalid provider signature" }, 400);
 		}
 
-		// 4. Compute Poseidon leaf from receipt data
 		const leafHash = hashRecordLeaf({
 			seqNum: receipt.seqNum,
 			modelId: receipt.modelId,
@@ -266,7 +257,6 @@ app.openapi(disputeRoute, async (c) => {
 			timestamp: receipt.timestamp,
 		});
 
-		// 5. Verify Poseidon Merkle proof against on-chain root
 		const isValid = await verifyMerkleProof(
 			leafHash,
 			batch.merkleRoot,
@@ -280,7 +270,7 @@ app.openapi(disputeRoute, async (c) => {
 			);
 		}
 
-		// 6. Proof failed — fraud confirmed. Sign attestation.
+		// Fraud confirmed — sign attestation
 		const batchMerkleRoot = batch.merkleRoot;
 		const attestationHash = keccak256(
 			encodePacked(

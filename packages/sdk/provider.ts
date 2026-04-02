@@ -27,7 +27,6 @@ import {
 	type QueryLog,
 	zkfairBatches,
 	zkfairQueryLogs,
-	zkfairSchema,
 } from "./schema";
 import { SDK } from "./sdk";
 import type { ZkFairOptions } from "./types";
@@ -130,9 +129,7 @@ export class ProviderSDK {
 		});
 	}
 
-	// ============================================
 	// QUERY OPERATIONS
-	// ============================================
 
 	/**
 	 * Store an inference query and return sequence number
@@ -159,9 +156,7 @@ export class ProviderSDK {
 		return row;
 	}
 
-	// ============================================
 	// RECEIPT OPERATIONS
-	// ============================================
 
 	/**
 	 * Create hashes for receipt data without signing
@@ -194,9 +189,7 @@ export class ProviderSDK {
 		return verifyReceipt(receipt, expectedSigner);
 	}
 
-	// ============================================
 	// BATCH OPERATIONS
-	// ============================================
 
 	/**
 	 * Check if batching should be triggered
@@ -243,15 +236,17 @@ export class ProviderSDK {
 
 		const sequences = queries.map((q) => q.seq);
 		const sorted = [...sequences].sort((a, b) => a - b);
-		const startSeq = sorted[0]!;
-		const endSeq = sorted[sorted.length - 1]!;
+		const startSeq = sorted[0];
+		const endSeq = sorted[sorted.length - 1];
+		if (startSeq === undefined || endSeq === undefined) return undefined;
 		const batchId = `${startSeq}-${endSeq}`;
 
 		// Build Merkle tree
 		const auditRecords = queries.map((q) => this.toAuditRecord(q));
 		const { root } = await this.sdk.audit.buildBatch(auditRecords);
 
-		const modelId = queries[0]!.modelId;
+		const modelId = queries[0]?.modelId;
+		if (modelId === undefined) throw new Error("Query missing modelId");
 
 		// Create batch record
 		const batchData: NewBatch = {
@@ -338,9 +333,7 @@ export class ProviderSDK {
 		return { index: proof.index, siblings: proof.proof };
 	}
 
-	// ============================================
 	// HELPERS
-	// ============================================
 
 	private toAuditRecord(query: QueryLog): AuditRecord {
 		return {
@@ -353,9 +346,7 @@ export class ProviderSDK {
 		};
 	}
 
-	// ============================================
 	// AUDIT HANDLING
-	// ============================================
 
 	/**
 	 * Watch for audit requests and handle them automatically
@@ -380,9 +371,7 @@ export class ProviderSDK {
 		});
 	}
 
-	// ============================================
 	// PERIODIC BATCH CHECK
-	// ============================================
 
 	private batchCheckInterval: ReturnType<typeof setInterval> | null = null;
 

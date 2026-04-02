@@ -4,9 +4,14 @@ import {
 	fairness_audit_circuit,
 	type fairness_auditInputType,
 } from "@zkfair/zk-circuits/codegen";
-import { and, asc, between, sql } from "drizzle-orm";
+import { asc, between } from "drizzle-orm";
 import type { Hash, Hex } from "viem";
-import { parseFairnessThresholdFile, parsePathsFile } from "./artifacts";
+import { z } from "zod";
+import {
+	HashSchema,
+	parseFairnessThresholdFile,
+	parsePathsFile,
+} from "./artifacts";
 import { getDefaultConfig } from "./config";
 import type { ContractClient } from "./contract";
 import type { AuditRequestedEvent } from "./events";
@@ -43,6 +48,12 @@ export type AuditProof = {
  * Provides both local computation and on-chain submission capabilities
  * Uses standardized Poseidon hash and JSON encoding
  */
+const AuditAttestationResponseSchema = z.object({
+	attestationHash: HashSchema,
+	signature: z.string().startsWith("0x") as z.ZodType<Hex>,
+	passed: z.boolean(),
+});
+
 export class AuditAPI {
 	private readonly attestationUrl: string;
 
@@ -107,7 +118,6 @@ export class AuditAPI {
 		const SAMPLE_SIZE = 10;
 		const TREE_DEPTH = 7;
 
-		// 1. Load model artifacts from ~/.zkfair/<weightsHash>/
 		const artifactDir = getArtifactDir(weightsHash);
 
 		const pathsFile = Bun.file(`${artifactDir}/paths.json`);
@@ -116,18 +126,15 @@ export class AuditAPI {
 		}
 		const paths = parsePathsFile(await pathsFile.json());
 
-		// Load model weights
 		const weightsBuffer = await Bun.file(paths.weights).arrayBuffer();
 		const modelWeightsFields = await weightsToFields(
 			new Float32Array(weightsBuffer),
 		);
 
-		// Load fairness thresholds
 		const fairnessConfig = parseFairnessThresholdFile(
 			await Bun.file(paths.fairnessThreshold).json(),
 		);
 
-		// 2. Get sampled records based on sampleIndices
 		const sampledRecords = sampleIndices.map((idx) => {
 			const record = records[idx];
 			if (!record) {
@@ -138,7 +145,6 @@ export class AuditAPI {
 			return record;
 		});
 
-		// 3. Prepare circuit inputs from sampled records (flatmapped)
 		const sampleFeatures = sampledRecords.flatMap((r) => {
 			const features = [...r.features];
 			while (features.length < NUM_FEATURES) features.push(0);
@@ -148,14 +154,13 @@ export class AuditAPI {
 			String(r.sensitiveAttr),
 		);
 
-		// 4. Build sample count and validity mask
 		const actualSampleCount = sampleIndices.length;
 		const sampleValid: boolean[] = [];
 		for (let i = 0; i < SAMPLE_SIZE; i++) {
 			sampleValid.push(i < actualSampleCount);
 		}
 
-		// 5. Pad samples/predictions/attrs to SAMPLE_SIZE (but circuit will skip invalid ones)
+		// Pad to SAMPLE_SIZE — circuit skips invalid entries
 		while (sampleFeatures.length < NUM_FEATURES * SAMPLE_SIZE) {
 			sampleFeatures.push("0");
 		}
@@ -163,7 +168,7 @@ export class AuditAPI {
 			sampleSensitiveAttrs.push("0");
 		}
 
-		// 6. Prepare Merkle proofs for circuit (pad to SAMPLE_SIZE)
+		// Pad Merkle proofs to SAMPLE_SIZE
 		const paddedProofs = [...merkleProofs];
 		while (paddedProofs.length < SAMPLE_SIZE) {
 			paddedProofs.push({
@@ -193,7 +198,6 @@ export class AuditAPI {
 			return steps.slice(0, TREE_DEPTH).map((s) => s.position === "right");
 		});
 
-		// 7. Build circuit input with sample count and validity mask
 		const input: fairness_auditInputType = {
 			_model_weights: modelWeightsFields.map(String),
 			_sample_count: String(actualSampleCount),
@@ -220,7 +224,6 @@ export class AuditAPI {
 		);
 		console.log(`  Batch root: ${root}`);
 
-		// 8. Execute circuit and generate proof
 		const noir = new Noir(fairness_audit_circuit as CompiledCircuit);
 
 		let zkProof: Hex;
@@ -246,8 +249,7 @@ export class AuditAPI {
 			publicInputs = [];
 		}
 
-		// 9. Request attestation from service
-		// Note: Don't send circuitPassed - attestation service must verify proof itself
+		// Don't send circuitPassed — attestation service must verify proof itself
 		const attestationResponse = await fetch(
 			`${this.attestationUrl}/attest/audit`,
 			{
@@ -262,17 +264,17 @@ export class AuditAPI {
 		);
 
 		if (!attestationResponse.ok) {
-			const error = await attestationResponse.json();
+			const body = (await attestationResponse.json()) as {
+				error?: string;
+			};
 			throw new Error(
-				`Attestation service error: ${(error as { error?: string }).error || attestationResponse.statusText}`,
+				`Attestation service error: ${body.error || attestationResponse.statusText}`,
 			);
 		}
 
-		const attestation = (await attestationResponse.json()) as {
-			attestationHash: Hash;
-			signature: Hex;
-			passed: boolean;
-		};
+		const attestation = AuditAttestationResponseSchema.parse(
+			await attestationResponse.json(),
+		);
 
 		return {
 			zkProof,
@@ -283,9 +285,6 @@ export class AuditAPI {
 		};
 	}
 
-	/**
-	 * Create proof for a query by sequence number
-	 */
 	async createProof(
 		records: AuditRecord[],
 		seqNum: number,
@@ -318,14 +317,12 @@ export class AuditAPI {
 			batchId: event.batchId.toString(),
 		});
 
-		// Check if we've already responded to this audit
 		const audit = await this.contracts.getAudit(event.auditId);
 		if (audit.responded) {
 			console.log(`Audit ${event.auditId} already has a response, skipping.`);
 			return { txHash: "0x" as Hash, passed: audit.status === 1 }; // AuditStatus.PASSED = 1
 		}
 
-		// 1. Get batch info from contract
 		const batch = await this.contracts.getBatch(event.batchId);
 		const startSeq = Number(batch.seqNumStart);
 		const endSeq = Number(batch.seqNumEnd);
@@ -335,12 +332,9 @@ export class AuditAPI {
 			`Batch covers seqNum ${startSeq} to ${endSeq}, modelId: ${modelId}`,
 		);
 
-		// 2. Get model's weightsHash (needed to find artifacts)
 		const model = await this.contracts.getModel(modelId);
 		const weightsHash = model.weightsHash as Hash;
 		console.log(`Model weightsHash: ${weightsHash}`);
-
-		// 3. Load records from storage by sequence range
 
 		const records = await db
 			.select()
@@ -354,7 +348,6 @@ export class AuditAPI {
 
 		console.log(`Loaded ${records.length} records from storage`);
 
-		// 4. Convert to AuditRecord format
 		const auditRecords: AuditRecord[] = records.map((r: QueryLog) => ({
 			seqNum: r.seq,
 			modelId: r.modelId,
@@ -364,11 +357,9 @@ export class AuditAPI {
 			timestamp: r.timestamp,
 		}));
 
-		// 5. Build Merkle tree for the batch
 		const { root } = await this.buildBatch(auditRecords);
 		console.log(`Built Merkle tree with root ${root}`);
 
-		// 6. Convert sample indices and generate merkle proofs
 		const sampleIndices = event.sampleIndices.map((idx: bigint) => Number(idx));
 		const merkleProofs = await Promise.all(
 			sampleIndices.map(async (index: number) => {
@@ -381,7 +372,6 @@ export class AuditAPI {
 		);
 		console.log(`Generated ${merkleProofs.length} Merkle proofs`);
 
-		// 7. Generate ZK proof and get attestation
 		console.log("Generating ZK proof and requesting attestation...");
 		const { attestationHash, signature, passed } =
 			await this.generateFairnessZKProof(
@@ -395,7 +385,6 @@ export class AuditAPI {
 
 		console.log(`Attestation received: passed=${passed}`);
 
-		// 8. Submit signed attestation to contract
 		console.log("Submitting attestation to contract...");
 		const txHash = await this.submitAuditProof(
 			event.auditId,
@@ -408,15 +397,6 @@ export class AuditAPI {
 		return { txHash, passed };
 	}
 
-	/**
-	 * Commit a batch of queries on-chain
-	 * @param modelId Model ID
-	 * @param merkleRoot Merkle root of the batch
-	 * @param queryCount Number of queries in the batch
-	 * @param startSeq Batch start sequence number
-	 * @param endSeq Batch end sequence number
-	 * @returns Transaction hash
-	 */
 	async commitBatch(
 		modelId: bigint,
 		merkleRoot: Hash,
@@ -433,23 +413,10 @@ export class AuditAPI {
 		);
 	}
 
-	/**
-	 * Request an audit on a committed batch
-	 * @param batchId Batch ID to audit
-	 * @returns Transaction hash
-	 */
 	async requestAudit(batchId: bigint): Promise<Hash> {
 		return await this.contracts.requestAudit(batchId);
 	}
 
-	/**
-	 * Submit audit proof attestation in response to an audit request
-	 * @param auditId Audit ID
-	 * @param attestationHash Hash of the attestation
-	 * @param signature Signature from attestation service
-	 * @param passed Whether the audit passed or failed
-	 * @returns Transaction hash
-	 */
 	async submitAuditProof(
 		auditId: bigint,
 		attestationHash: Hash,
@@ -464,11 +431,6 @@ export class AuditAPI {
 		);
 	}
 
-	/**
-	 * Slash provider for expired audit (permissionless)
-	 * @param auditId Audit ID that expired
-	 * @returns Transaction hash
-	 */
 	async slashExpiredAudit(auditId: bigint): Promise<Hash> {
 		return await this.contracts.slashExpiredAudit(auditId);
 	}

@@ -140,8 +140,7 @@ export async function e2e(opts: E2EOpts) {
 	console.log(`   Weights: ${modelFiles.weightsPath}`);
 	console.log(`   Dataset: ${modelFiles.datasetPath}`);
 
-	// Step 1: Register model
-	console.log("\n Step 1: Registering model...");
+	console.log("\n Registering model...");
 	await registerModel({
 		weightsPath: modelFiles.weightsPath,
 		datasetPath: modelFiles.datasetPath,
@@ -149,8 +148,7 @@ export async function e2e(opts: E2EOpts) {
 		modelMetadata: modelFiles.modelMetadata,
 	});
 
-	// Step 2: Generate and submit proof
-	console.log("\n Step 2: Generating and submitting proof...");
+	console.log("\n Generating and submitting proof...");
 	const weightsData = await Bun.file(modelFiles.weightsPath).arrayBuffer();
 	const weightsFloat32 = new Float32Array(weightsData);
 

@@ -2,7 +2,7 @@
  * Internal types for cross-file usage within SDK package
  * External consumers should use "@zkfair/sdk/types" instead
  */
-import type { GetEventArgs, Hash, Hex } from "viem";
+import type { GetEventArgs, Hex } from "viem";
 import type { Environment } from "./config";
 
 /**

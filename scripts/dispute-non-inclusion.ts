@@ -68,6 +68,7 @@ async function main() {
 		const myLog = logs.find((l) => l.weightsHash === weightsHash);
 		if (!myLog) throw new Error("Could not find model registration log");
 		const realModelId = myLog.modelId;
+		if (realModelId == null) throw new Error("Model ID is null");
 		console.log(`Model ID: ${realModelId}`);
 
 		console.log("Serving Queries (Creating Trap)...");
@@ -107,7 +108,7 @@ async function main() {
 				["uint256", "uint256", "bytes32", "uint256", "int256", "uint256"],
 				[
 					queryB.seqNum,
-					queryB.modelId!,
+					queryB.modelId,
 					featuresHashB,
 					queryB.sensitiveAttr,
 					queryB.prediction,
@@ -128,7 +129,7 @@ async function main() {
 				["uint256", "uint256", "bytes32", "uint256", "int256", "uint256"],
 				[
 					queryA.seqNum,
-					queryA.modelId!,
+					queryA.modelId,
 					featuresHashA,
 					queryA.sensitiveAttr,
 					queryA.prediction,
@@ -144,7 +145,7 @@ async function main() {
 		// Sequence 101 is completely omitted (Type A Fraud)
 
 		const txBatch = await sdk.batch.commit(
-			realModelId!,
+			realModelId,
 			merkleRoot,
 			BigInt(1), // claiming 1 query
 			BigInt(100), // start
@@ -156,18 +157,18 @@ async function main() {
 		console.log("Launching Dispute...");
 
 		console.log("Checking existing stake...");
-		const providerStakeBefore = await getProviderStake(realModelId!);
+		const providerStakeBefore = await getProviderStake(realModelId);
 		console.log(`Provider Stake: ${providerStakeBefore}`);
 
 		const disputePromise = new Promise((resolve) => {
-			sdk.dispute.watchDisputeRaised((event: any) => {
+			sdk.dispute.watchDisputeRaised((event: unknown) => {
 				console.log("EVENT: DisputeRaised detected!");
 				resolve(event);
 			});
 		});
 
 		const txDispute = await sdk.dispute.disputeNonInclusion(
-			realModelId!,
+			realModelId,
 			queryB.seqNum,
 			queryB.timestamp,
 			featuresHashB,
@@ -182,7 +183,7 @@ async function main() {
 
 		console.log("Verifying Justice...");
 
-		const providerStakeAfter = await getProviderStake(realModelId!);
+		const providerStakeAfter = await getProviderStake(realModelId);
 		console.log(`Provider Stake after: ${providerStakeAfter}`);
 
 		if (providerStakeAfter < providerStakeBefore) {

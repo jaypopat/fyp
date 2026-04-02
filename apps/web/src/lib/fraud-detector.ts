@@ -158,10 +158,6 @@ function notifyVerified(receipt: SentinelReceipt) {
 	});
 }
 
-// ============================================
-// INITIALIZATION
-// ============================================
-
 let isInitialized = false;
 let unsubscribe: (() => void) | null = null;
 

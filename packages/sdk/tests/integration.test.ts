@@ -161,6 +161,7 @@ async function registerModel() {
 	const logs = await sdk.events.getModelRegisteredHistory();
 	const log = logs.find((l) => l.weightsHash === weightsHash);
 	if (!log) throw new Error("Model registration log not found");
+	if (log.modelId === undefined) throw new Error("Model ID missing from event");
 
 	return { modelId: log.modelId, weightsHash };
 }
@@ -186,8 +187,10 @@ describe("Protocol Integration Tests", () => {
 
 			const batchIds = await sdk.batch.getIdsByModel(modelId);
 			expect(batchIds.length).toBe(1);
+			const batchId = batchIds[0];
+			if (batchId === undefined) throw new Error("No batch ID returned");
 
-			const batch = await sdk.batch.get(batchIds[0]);
+			const batch = await sdk.batch.get(batchId);
 			expect(batch.merkleRoot).toBe(merkleRoot);
 			expect(batch.queryCount).toBe(10n);
 		}, 30_000);
@@ -341,7 +344,7 @@ describe("Protocol Integration Tests", () => {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
-					batchId: myBatch.batchId!.toString(),
+					batchId: myBatch.batchId?.toString(),
 					receipt: {
 						seqNum: Number(queryUser.seqNum),
 						modelId: Number(modelId),
@@ -359,7 +362,7 @@ describe("Protocol Integration Tests", () => {
 			if (!attestationRes.ok) {
 				const err = await attestationRes.json().catch(() => null);
 				throw new Error(
-					`Attestation failed: ${(err as any)?.error || attestationRes.statusText}`,
+					`Attestation failed: ${(err as Record<string, unknown>)?.error || attestationRes.statusText}`,
 				);
 			}
 
@@ -372,8 +375,9 @@ describe("Protocol Integration Tests", () => {
 			const modelBefore = await sdk.model.getById(modelId);
 			expect(modelBefore.stake).toBeGreaterThan(0n);
 
+			if (!myBatch.batchId) throw new Error("Batch ID not found");
 			const txDispute = await sdk.dispute.disputeFraudulentInclusion(
-				myBatch.batchId!,
+				myBatch.batchId,
 				queryUser.seqNum,
 				queryUser.timestamp,
 				featuresHash,

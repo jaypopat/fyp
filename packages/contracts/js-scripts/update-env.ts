@@ -1,4 +1,4 @@
-import { join } from "path";
+import { join } from "node:path";
 
 async function main() {
 	// Determine which network to sync (default to local/anvil)

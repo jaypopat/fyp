@@ -249,9 +249,9 @@ function DemoPage() {
 						/>
 					))}
 				</div>
-			) : (
+			) : selectedScenario ? (
 				<ActiveScenarioView
-					scenario={selectedScenario!}
+					scenario={selectedScenario}
 					currentStep={currentStep}
 					fraudStep={fraudStep}
 					selectedMode={state.selectedMode}
@@ -261,7 +261,7 @@ function DemoPage() {
 					onReset={resetDemo}
 					onCommitBatch={commitBatch}
 				/>
-			)}
+			) : null}
 		</div>
 	);
 }

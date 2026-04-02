@@ -6,15 +6,24 @@ import {
 } from "@zkfair/zk-circuits/codegen";
 
 import type { Hash } from "viem";
+import { z } from "zod";
 import {
+	HashSchema,
+	MerkleProofsFileSchema,
 	parseCommitmentsFile,
 	parseFairnessThresholdFile,
 	parsePathsFile,
+	SaltsFileSchema,
 } from "./artifacts";
 import { getDefaultConfig } from "./config";
 import type { ContractClient } from "./contract";
 import { bytesToHash } from "./hash";
 import { getArtifactDir, parseCSV, weightsToFields } from "./utils";
+
+const TrainingAttestationResponseSchema = z.object({
+	attestationHash: HashSchema,
+	signature: z.string().startsWith("0x") as z.ZodType<`0x${string}`>,
+});
 
 export class ProofAPI {
 	private readonly attestationUrl: string;
@@ -47,10 +56,9 @@ export class ProofAPI {
 		const weightsFields = await weightsToFields(new Float32Array(weights_data));
 		const dataset = await parseCSV(paths.dataset);
 
-		const salts = (await Bun.file(`${dir}/salts.json`).json()) as Record<
-			number,
-			string
-		>;
+		const salts = SaltsFileSchema.parse(
+			await Bun.file(`${dir}/salts.json`).json(),
+		);
 
 		const thresholds = parseFairnessThresholdFile(
 			await Bun.file(paths.fairnessThreshold).json(),
@@ -60,12 +68,9 @@ export class ProofAPI {
 		);
 
 		// Load Merkle proofs
-		const merkleProofs = (await Bun.file(
-			`${dir}/merkle_proofs.json`,
-		).json()) as {
-			merklePaths: string[][];
-			isEvenFlags: boolean[][];
-		};
+		const merkleProofs = MerkleProofsFileSchema.parse(
+			await Bun.file(`${dir}/merkle_proofs.json`).json(),
+		);
 
 		// Convert hex merkle paths to decimal strings for the circuit
 		const merklePathsDecimal = merkleProofs.merklePaths.map((path) =>
@@ -129,27 +134,25 @@ export class ProofAPI {
 		);
 
 		if (!attestationResponse.ok) {
-			const error = (await attestationResponse.json()) as Record<
-				string,
-				unknown
-			>;
+			const body = (await attestationResponse.json()) as {
+				error?: string;
+			};
 			throw new Error(
-				`Attestation service error: ${(error.error as string) || attestationResponse.statusText}`,
+				`Attestation service error: ${body.error || attestationResponse.statusText}`,
 			);
 		}
 
-		const attestation = (await attestationResponse.json()) as Record<
-			string,
-			unknown
-		>;
+		const attestation = TrainingAttestationResponseSchema.parse(
+			await attestationResponse.json(),
+		);
 
 		const proofRecord = {
 			weightsHash,
 			generatedAt: Date.now(),
 			proof: proofHex,
 			publicInputs: publicInputsHex,
-			attestationHash: attestation.attestationHash as Hash,
-			signature: attestation.signature as `0x${string}`,
+			attestationHash: attestation.attestationHash,
+			signature: attestation.signature,
 		};
 
 		await Bun.write(`${dir}/proof.json`, JSON.stringify(proofRecord, null, 2));

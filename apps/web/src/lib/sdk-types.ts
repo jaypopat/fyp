@@ -15,7 +15,6 @@ export type SDKModelRaw = {
 	certificationProofHash: Hash;
 };
 
-// This is the type used by the frontend components.
 export type SDKModel = {
 	name: string;
 	author: Hash;
