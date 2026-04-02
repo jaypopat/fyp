@@ -1,7 +1,6 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
 import type { AuditRecord, BatchResult } from "@zkfair/sdk";
 import {
-	type NewBatch,
 	type QueryLog,
 	zkfairBatches,
 	zkfairQueryLogs,
@@ -259,28 +258,30 @@ export async function createFraudulentBatch(
 		throw new Error("No model ID found in queries");
 	}
 
-	// Create batch record
-	const batchData: NewBatch = {
-		id: batchId,
-		startSeq,
-		endSeq,
-		merkleRoot: root,
-		recordCount: auditRecords.length,
-		txHash: null,
-		createdAt: Date.now(),
-		committedAt: null,
-	};
+	// Atomic: batch record + query assignment roll back together on failure
+	const batch = await db.transaction(async (tx) => {
+		const [created] = await tx
+			.insert(zkfairBatches)
+			.values({
+				id: batchId,
+				startSeq,
+				endSeq,
+				merkleRoot: root,
+				recordCount: auditRecords.length,
+				txHash: null,
+				createdAt: Date.now(),
+				committedAt: null,
+			})
+			.returning();
+		if (!created) throw new Error("Failed to create batch");
 
-	const [batch] = await db.insert(zkfairBatches).values(batchData).returning();
-	if (!batch) throw new Error("Failed to create batch");
-
-	// Assign queries to batch (all of them, including ones we're cheating on)
-	if (batchSequences.length > 0) {
-		await db
+		await tx
 			.update(zkfairQueryLogs)
 			.set({ batchId })
 			.where(inArray(zkfairQueryLogs.seq, batchSequences));
-	}
+
+		return created;
+	});
 
 	// Commit to blockchain with the fraudulent data
 	const txHash = await provider.sdk.audit.commitBatch(

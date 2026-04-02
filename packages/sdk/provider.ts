@@ -22,7 +22,6 @@ import {
 import {
 	type Batch,
 	type DrizzleDB,
-	type NewBatch,
 	type NewQueryLog,
 	type QueryLog,
 	zkfairBatches,
@@ -248,33 +247,32 @@ export class ProviderSDK {
 		const modelId = queries[0]?.modelId;
 		if (modelId === undefined) throw new Error("Query missing modelId");
 
-		// Create batch record
-		const batchData: NewBatch = {
-			id: batchId,
-			startSeq,
-			endSeq,
-			merkleRoot: root,
-			recordCount: queries.length,
-			txHash: null,
-			createdAt: Date.now(),
-			committedAt: null,
-		};
+		// Atomic: if insert succeeds but assignment fails, both roll back
+		const batch = await this.db.transaction(async (tx) => {
+			const [created] = await tx
+				.insert(zkfairBatches)
+				.values({
+					id: batchId,
+					startSeq,
+					endSeq,
+					merkleRoot: root,
+					recordCount: queries.length,
+					txHash: null,
+					createdAt: Date.now(),
+					committedAt: null,
+				})
+				.returning();
+			if (!created) throw new Error("Failed to create batch");
 
-		const [batch] = await this.db
-			.insert(zkfairBatches)
-			.values(batchData)
-			.returning();
-		if (!batch) throw new Error("Failed to create batch");
-
-		// Assign queries to batch
-		if (sequences.length > 0) {
-			await this.db
+			await tx
 				.update(zkfairQueryLogs)
 				.set({ batchId })
 				.where(inArray(zkfairQueryLogs.seq, sequences));
-		}
 
-		// Commit to blockchain
+			return created;
+		});
+
+		// Commit to blockchain (outside transaction — don't hold DB lock during chain tx)
 		const txHash = await this.sdk.audit.commitBatch(
 			BigInt(modelId),
 			root,

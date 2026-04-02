@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
-import { apiReference } from "@scalar/hono-api-reference";
+import { Scalar } from "@scalar/hono-api-reference";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import * as ort from "onnxruntime-node";
@@ -287,7 +287,7 @@ app.doc("/openapi.json", {
 
 app.get(
 	"/reference",
-	apiReference({
+	Scalar({
 		url: "/openapi.json",
 		theme: "kepler",
 	}),

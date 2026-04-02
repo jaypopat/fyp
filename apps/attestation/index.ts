@@ -1,6 +1,6 @@
 import { UltraHonkBackend } from "@aztec/bb.js";
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
-import { apiReference } from "@scalar/hono-api-reference";
+import { Scalar } from "@scalar/hono-api-reference";
 import { SDK } from "@zkfair/sdk";
 import { hashRecordLeaf } from "@zkfair/sdk/hash";
 import { verifyMerkleProof } from "@zkfair/sdk/merkle";
@@ -344,7 +344,7 @@ app.doc("/openapi.json", {
 
 app.get(
 	"/reference",
-	apiReference({
+	Scalar({
 		url: "/openapi.json",
 		theme: "kepler",
 	}),
